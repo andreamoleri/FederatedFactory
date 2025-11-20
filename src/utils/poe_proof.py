@@ -100,11 +100,6 @@ def load_classifiers(run_dir: Path, device: torch.device, num_classes: int, chan
     CNN architecture, and loads the state dictionaries for every identified
     client model checkpoint.
 
-
-
-[Image of Convolutional Neural Network architecture]
-
-
     Args:
         run_dir (Path): The root directory of the experiment run.
         device (torch.device): The computation device (CPU or CUDA) to map the models to.
@@ -148,11 +143,7 @@ def get_predictions(models, dataloader, device):
 
     The PoE rule is mathematically defined in log-space as the summation of
     individual log-probabilities, which corresponds to multiplication in
-    probability space:
-
-    $$ \log P_{poe}(y|x) \propto \sum_{i} \log P_i(y|x) $$
-
-
+    probability space.
 
     Args:
         models (list): A list of PyTorch models (classifiers).
@@ -216,8 +207,6 @@ def get_predictions(models, dataloader, device):
 def compute_metrics(y_true, probs):
     """
     Calculates a suite of standard classification performance metrics.
-
-
 
     Args:
         y_true (np.ndarray): Ground truth integer labels.
