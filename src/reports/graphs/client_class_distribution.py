@@ -45,6 +45,7 @@ from typing import Optional, List
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,56 @@ def _load_csv(exp_dir: Path, csv_rel_path: str) -> pd.DataFrame:
     return df
 
 
+def _load_alpha(exp_dir: Path) -> Optional[float]:
+    """
+    Attempts to retrieve the Dirichlet alpha parameter from experiment metadata.
+    It returns the value ONLY IF the partition method is 'dirichlet'.
+
+    Priority:
+      1. args.json -> field "alpha" and "partition"
+      2. manifest.json -> identity.dirichlet_alpha and identity.partition
+
+    If not found or if partition is not 'dirichlet', returns None.
+    """
+    
+    # 1) Try args.json
+    args_path = exp_dir / "args.json"
+    if args_path.exists():
+        try:
+            data = json.loads(args_path.read_text())
+            
+            partition_method = str(data.get("partition", "")).lower()
+            alpha_value = data.get("alpha")
+            
+            # Restituisce alpha solo se il metodo di partizione è 'dirichlet'
+            if partition_method == "dirichlet" and alpha_value is not None:
+                return float(alpha_value)
+            
+        except Exception as e:
+            logger.debug(f"Error reading or parsing args.json for alpha: {e}")
+            pass
+
+    # 2) Try manifest.json
+    manifest_path = exp_dir / "manifest.json"
+    if manifest_path.exists():
+        try:
+            data = json.loads(manifest_path.read_text())
+            ident = data.get("identity", {})
+            
+            partition_method = str(ident.get("partition", "")).lower()
+            alpha_value = ident.get("dirichlet_alpha")
+            
+            # Restituisce alpha solo se il metodo di partizione è 'dirichlet'
+            if partition_method == "dirichlet" and alpha_value is not None:
+                return float(alpha_value)
+            
+        except Exception as e:
+            logger.debug(f"Error reading or parsing manifest.json for alpha: {e}")
+            pass
+
+    return None
+
+
 def _present_class_cols(df: pd.DataFrame, class_cols: List[str]) -> List[str]:
     """
     Identifies class columns that contain at least one non-zero value.
@@ -118,7 +169,7 @@ def _present_class_cols(df: pd.DataFrame, class_cols: List[str]) -> List[str]:
     return [c for c in class_cols if (df[c] > 0).any()]
 
 
-def _stacked_counts_figure(df: pd.DataFrame) -> plt.Figure:
+def _stacked_counts_figure(df: pd.DataFrame, alpha: Optional[float] = None) -> plt.Figure:
     """
     Generates a stacked bar chart representing absolute sample counts.
 
@@ -129,6 +180,9 @@ def _stacked_counts_figure(df: pd.DataFrame) -> plt.Figure:
     ----------
     df : pd.DataFrame
         Dataframe indexed by client, containing absolute class counts.
+    alpha : Optional[float]
+        Dirichlet concentration parameter (if any), used for annotating
+        the plot title.
 
     Returns
     -------
@@ -163,7 +217,12 @@ def _stacked_counts_figure(df: pd.DataFrame) -> plt.Figure:
 
     ax.set_xlabel("Client")
     ax.set_ylabel("Number of samples")
-    ax.set_title("Class distribution per client (stacked)")
+
+    title = "Class distribution per client (stacked)"
+    if alpha is not None:
+        title += f" (alpha={alpha:g})"
+    ax.set_title(title)
+
     # Place the legend outside the plot area to prevent occlusion
     ax.legend(title="Classes", bbox_to_anchor=(1.02, 1), loc="upper left")
     plt.xticks(rotation=45, ha="right")
@@ -171,7 +230,7 @@ def _stacked_counts_figure(df: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def _stacked_percent_figure(df: pd.DataFrame) -> plt.Figure:
+def _stacked_percent_figure(df: pd.DataFrame, alpha: Optional[float] = None) -> plt.Figure:
     """
     Generates a 100% stacked bar chart representing relative class proportions.
 
@@ -183,6 +242,9 @@ def _stacked_percent_figure(df: pd.DataFrame) -> plt.Figure:
     ----------
     df : pd.DataFrame
         Dataframe indexed by client, containing absolute class counts.
+    alpha : Optional[float]
+        Dirichlet concentration parameter (if any), used for annotating
+        the plot title.
 
     Returns
     -------
@@ -215,7 +277,12 @@ def _stacked_percent_figure(df: pd.DataFrame) -> plt.Figure:
     ax.set_yticks([0, 20, 40, 60, 80, 100])
     ax.set_ylabel("Percentage (%)")
     ax.set_xlabel("Client")
-    ax.set_title("Class distribution per client (stacked 100%)")
+
+    title = "Class distribution per client (stacked 100%)"
+    if alpha is not None:
+        title += f" (alpha={alpha:g})"
+    ax.set_title(title)
+
     ax.legend(title="Classes", bbox_to_anchor=(1.02, 1), loc="upper left")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
@@ -260,8 +327,11 @@ def generate_client_class_distribution_pages(
         logger.warning(f"[ClientClassDistribution] skip: {e}")
         return
 
+    # Try to load Dirichlet alpha from experiment metadata (if any)
+    alpha = _load_alpha(exp_dir)
+
     # 1) Absolute counts visualization
-    fig1 = _stacked_counts_figure(df)
+    fig1 = _stacked_counts_figure(df, alpha=alpha)
     pdf.savefig(fig1, dpi=_DEF_FIG_DPI)
     if figures_dir is not None:
         (figures_dir / "client_class_distribution.png").parent.mkdir(parents=True, exist_ok=True)
@@ -269,8 +339,9 @@ def generate_client_class_distribution_pages(
     plt.close(fig1)
 
     # 2) Percentage visualization (0–100%)
-    fig2 = _stacked_percent_figure(df)
+    fig2 = _stacked_percent_figure(df, alpha=alpha)
     pdf.savefig(fig2, dpi=_DEF_FIG_DPI)
     if figures_dir is not None:
         fig2.savefig(figures_dir / "client_class_distribution_percent.png", dpi=_DEF_FIG_DPI)
     plt.close(fig2)
+
