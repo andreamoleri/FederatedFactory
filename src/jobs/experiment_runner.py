@@ -61,6 +61,8 @@ from jobs.classifier_phase import (
 from jobs.evaluation_phase import run_evaluation
 from logs import messages as logmsg
 
+from src.models.baselines.scaffold import ScaffoldBaseline
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
@@ -162,6 +164,7 @@ def run_experiment(
         elif baseline_type == "fedprox": baseline = FedProxBaseline(args, num_classes, chans, device)
         elif baseline_type == "feddf": baseline = FedDFBaseline(args, num_classes, chans, device)
         elif baseline_type == "feddyn": baseline = FedDynBaseline(args, num_classes, chans, device)
+        elif baseline_type == "scaffold": baseline = ScaffoldBaseline(args, num_classes, chans, device)
         else: raise ValueError(f"Unknown baseline: {baseline_type}")
 
         # Map partitions to the expected client/class structure for baseline runner

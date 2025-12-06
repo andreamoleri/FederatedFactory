@@ -529,7 +529,7 @@ def main():
     cli.add_argument("--dp", default="false", help="true/false or comma-separated list")
     cli.add_argument("--grayscale", default="false", help=("true/false or comma-separated list."))
     cli.add_argument("--model", default="vae",
-                      choices=["vae", "diffusion", "baseline:fedavg", "baseline:feddf", "baseline:fedprox", "baseline:feddyn"],
+                      choices=["vae", "diffusion", "baseline:fedavg", "baseline:feddf", "baseline:fedprox", "baseline:feddyn", "baseline:scaffold"],
                       help=("Select the model or baseline method"))
 
     # Partitioning

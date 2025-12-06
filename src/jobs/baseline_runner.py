@@ -63,6 +63,7 @@ from models.baselines import (
     FedProxBaseline,
     FedDFBaseline,
     FedDynBaseline,
+    ScaffoldBaseline
 )
 from metrics.costs import ExperimentCostTracker
 from imports.data_management import get_dataset

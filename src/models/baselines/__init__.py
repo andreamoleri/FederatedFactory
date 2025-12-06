@@ -59,4 +59,5 @@ __all__ = [
     "FedProxBaseline",
     "FedDFBaseline",
     "FedDynBaseline",
+    "ScaffoldBaseline",
 ]
