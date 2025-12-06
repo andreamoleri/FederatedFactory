@@ -452,6 +452,52 @@ def _finalize_costs(
         logger.warning("Finalizing cost metrics failed (non-fatal).")
 
 
+def _is_experiment_done(out_dir_root: str, current_ns: argparse.Namespace) -> bool:
+    """
+    Scans the output directory recursively to see if a completed run 
+    with identical parameters already exists.
+    """
+    root_path = Path(out_dir_root)
+    if not root_path.exists():
+        return False
+
+    # Convert current args to a dictionary for comparison
+    current_vars = vars(current_ns)
+    
+    # keys to ignore during comparison (paths, runtime flags)
+    ignored_keys = {'data_dir', 'out_dir', 'max_experiments', 'grid', 'save_datasets', 'network_accounting'}
+
+    # Look for all args.json files in the output structure
+    for args_file in root_path.rglob("args.json"):
+        # 1. Check if the run finished (must have manifest.json)
+        if not (args_file.parent / "manifest.json").exists():
+            continue
+
+        # 2. Compare the configuration
+        try:
+            with open(args_file, 'r') as f:
+                saved_args = json.load(f)
+            
+            is_match = True
+            for k, v in current_vars.items():
+                if k in ignored_keys:
+                    continue
+                
+                # Compare string representations to handle slight type diffs (e.g. tuple vs list)
+                # or missing keys in old runs
+                if str(saved_args.get(k)) != str(v):
+                    is_match = False
+                    break
+            
+            if is_match:
+                print(f"Skipping experiment (Found completed run in: {args_file.parent})")
+                return True
+                
+        except Exception:
+            continue
+
+    return False
+
 def main():
     """
     Main execution routine.
@@ -636,6 +682,10 @@ def main():
                 num_clients=args_raw.num_clients,
                 carbon_intensity_kg_per_kwh=args_raw.carbon_intensity_kg_per_kwh,
             )
+            
+            if _is_experiment_done(args_raw.out_dir, ns):
+                logger.info(f"Skipping experiment {i}/{len(grid)}: Already completed.")
+                continue
 
             logger.info("\n" + logmsg.GRID_SEPARATOR)
             logger.info(
