@@ -5,3 +5,5 @@
 .idea/
 /maths/
 /src/reports/data/
+/src/main (monolith).py
+/src/models/data/
