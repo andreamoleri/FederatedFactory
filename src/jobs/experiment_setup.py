@@ -67,6 +67,21 @@ from jobs.baseline_runner import subset_to_tensor, dataset_to_tensor
 
 logger = logging.getLogger(__name__)
 
+class TransformSubset(torch.utils.data.Dataset):
+    """
+    Overrides the transform of a subset to ensure deterministic evaluation.
+    """
+    def __init__(self, subset, transform):
+        self.subset = subset
+        self.transform = transform
+
+    def __getitem__(self, index):
+        x, y = self.subset[index]
+        return self.transform(x), y
+
+    def __len__(self):
+        return len(self.subset)
+
 def _utc_now_parts():
     """
     Generates synchronized ISO 8601 timestamp parts for file naming and logging.
@@ -198,6 +213,7 @@ def setup_experiment_env(args, run_id: int | None) -> Tuple[PathRegistry, str]:
         
     return P, time_iso
 
+
 def prepare_data(args, device) -> Tuple:
     """
     Loads, transforms, and partitions the dataset according to the experimental configuration.
@@ -215,9 +231,9 @@ def prepare_data(args, device) -> Tuple:
 
     Returns:
         Tuple: A tuple containing twelve elements:
-            1.  **base_train_set**: The complete training dataset object.
-            2.  **test_set**: The complete test dataset object.
-            3.  **tfm**: The composed torchvision transform.
+            1.  **base_train_set**: The complete training dataset object (Augmented).
+            2.  **test_set**: The complete test dataset object (Deterministic).
+            3.  **tfm**: The training torchvision transform.
             4.  **num_classes** (int): Total number of unique classes.
             5.  **img_shape** (Tuple[int, ...]): Shape of a single input image (C, H, W).
             6.  **chans** (int): Number of image channels.
@@ -228,25 +244,42 @@ def prepare_data(args, device) -> Tuple:
             11. **reserved_test_imgs_list** (List[Tensor]): List of test tensors split by class or partition.
             12. **test_imgs_tensor** (Tensor): The full test set as a single tensor.
     """
-    # Transforms
+
     base_key = args.dataset.split("(", 1)[0].lower()
     meta = DATASET_META[base_key]
     chans = meta["channels"]
-    
-    base_tfm = build_transform(args.dataset)
-    
-    # Apply explicit resize if input_size is provided
+
+    # 1. Build distinct base transforms
+    base_key = args.dataset.split("(", 1)[0].lower()
+    meta = DATASET_META[base_key]
+    chans = meta["channels"]
+
+    # Check if robustness is requested in args (default to False if missing)
+    use_robustness = getattr(args, "robustness", False)
+
+    if use_robustness:
+        logger.info("[DATA] 🛡️ Robustness Enabled: Injecting Gaussian Noise for Sensor Heterogeneity")
+
+    # 1. Build distinct base transforms
+    # Pass the flag to the train transform
+    base_tfm_train = build_transform(args.dataset, train=True, robustness=use_robustness)
+    base_tfm_test = build_transform(args.dataset, train=False)  # Test data is usually kept clean
+
+    # 2. Apply explicit resize overrides to BOTH pipelines
     if getattr(args, "input_size", 0):
         sz = int(args.input_size)
-        tfm = T.Compose([T.Resize((sz, sz), antialias=True), base_tfm])
+        resize_op = T.Resize((sz, sz), antialias=True)
+        tfm_train = T.Compose([resize_op, base_tfm_train])
+        tfm_test = T.Compose([resize_op, base_tfm_test])
     else:
-        tfm = base_tfm
+        tfm_train = base_tfm_train
+        tfm_test = base_tfm_test
 
-    # Force grayscale conversion if requested and input is RGB
+    # 3. Apply Grayscale overrides to BOTH pipelines
     if bool(args.grayscale) and chans == 3:
-        tfm = T.Compose([T.Grayscale(num_output_channels=3), base_tfm])
-    else:
-        tfm = base_tfm
+        gray_op = T.Grayscale(num_output_channels=3)
+        tfm_train = T.Compose([gray_op, tfm_train])
+        tfm_test = T.Compose([gray_op, tfm_test])
 
     # NICO++ filter
     # Filters the NICO dataset to only include specific classes if arguments are provided
@@ -254,11 +287,9 @@ def prepare_data(args, device) -> Tuple:
         selected = [c.strip() for c in args.classes.split(",") if c.strip()] or None
         set_dataset_options("nico++", classes=selected)
 
-    # Base Train Set
-    base_train_set = get_dataset(args.dataset, args.data_dir, True, tfm)
-    
+    base_train_set = get_dataset(args.dataset, args.data_dir, True, None)
+
     # Num Classes logic
-    # Attempts to determine class count via attributes 'classes', 'targets', or exhaustive iteration
     if hasattr(base_train_set, "classes") and len(getattr(base_train_set, "classes")) > 0:
         num_classes = len(base_train_set.classes)
     elif hasattr(base_train_set, "targets"):
@@ -266,15 +297,15 @@ def prepare_data(args, device) -> Tuple:
     else:
         labels_tmp = [int(lbl) for _, lbl in base_train_set]
         num_classes = int(len(set(labels_tmp)))
-    
+
     # Img shape
     sample_img, _ = base_train_set[0]
     img_shape = tuple(sample_img.shape)
 
-    # Test Set
-    test_set = get_dataset(args.dataset, args.data_dir, False, tfm)
+    # Test Set -> Uses Deterministic Transform
+    test_set = get_dataset(args.dataset, args.data_dir, False, tfm_test)
     test_imgs_tensor = dataset_to_tensor(test_set)
-    
+
     # Extract labels from the test set for processing
     labels_src = None
     for attr in ("targets", "labels"):
@@ -283,19 +314,19 @@ def prepare_data(args, device) -> Tuple:
             break
     if labels_src is None and hasattr(test_set, "imgs"):
         labels_src = [t for _, t in test_set.imgs]
-    
+
     test_lbls_all = torch.as_tensor(labels_src, dtype=torch.long).reshape(-1)
-    
+
     # Normalize EMNIST labels to be zero-indexed if necessary
     if args.dataset.startswith("emnist") and test_lbls_all.min().item() != 0:
         test_lbls_all = test_lbls_all - test_lbls_all.min()
-        
+
     reserved_test_ld = DataLoader(TensorDataset(test_imgs_tensor, test_lbls_all), batch_size=args.batch_size)
 
     # Partition Logic
     partition_mode = getattr(args, "partition", "silos")
-    train_subsets_dict = {} # For skew/dirichlet
-    train_subsets = []      # For silos
+    train_subsets_dict = {}  # For skew/dirichlet
+    train_subsets = []  # For silos
     reserved_test_imgs_list = []
     reserved_test_lbls = []
     present_classes = []
@@ -305,17 +336,18 @@ def prepare_data(args, device) -> Tuple:
         client_config = parse_client_config(getattr(args, "client_config", ""))
         train_subsets_dict, _ = create_skew_partition(base_train_set, client_config, args.seed, num_classes)
         present_classes = list(range(num_classes))
-        
+
         # Helper for test splitting (simplified)
-        # Consolidate target extraction logic
-        if hasattr(test_set, "targets"): targets_array = test_set.targets
-        elif hasattr(test_set, "labels"): targets_array = test_set.labels
-        else: targets_array = [lbl for _, lbl in test_set]
-        
+        if hasattr(test_set, "targets"):
+            targets_array = test_set.targets
+        elif hasattr(test_set, "labels"):
+            targets_array = test_set.labels
+        else:
+            targets_array = [lbl for _, lbl in test_set]
+
         targets_array = np.asarray(targets_array)
         if targets_array.ndim > 1: targets_array = targets_array[:, 0]
-        
-        # EMNIST label adjustment
+
         if args.dataset.startswith("emnist") and targets_array.min() != 0:
             targets_array = targets_array - targets_array.min()
 
@@ -323,8 +355,8 @@ def prepare_data(args, device) -> Tuple:
         for d in range(num_classes):
             idxs = np.flatnonzero(targets_array == d)
             if len(idxs) == 0:
-                 reserved_test_imgs_list.append(torch.empty(0))
-                 continue
+                reserved_test_imgs_list.append(torch.empty(0))
+                continue
             sub = Subset(test_set, idxs)
             reserved_test_imgs_list.append(subset_to_tensor(sub))
 
@@ -334,35 +366,41 @@ def prepare_data(args, device) -> Tuple:
         n_clients = int(getattr(args, "num_clients", 10))
         train_subsets_dict, _ = create_dirichlet_partition(base_train_set, n_clients, alpha, args.seed)
         present_classes = list(range(num_classes))
-        
+
         # Same test split logic as skew (separating by class)
-        if hasattr(test_set, "targets"): targets_array = test_set.targets
-        elif hasattr(test_set, "labels"): targets_array = test_set.labels
-        else: targets_array = [lbl for _, lbl in test_set]
-        
+        if hasattr(test_set, "targets"):
+            targets_array = test_set.targets
+        elif hasattr(test_set, "labels"):
+            targets_array = test_set.labels
+        else:
+            targets_array = [lbl for _, lbl in test_set]
+
         targets_array = np.asarray(targets_array)
         if targets_array.ndim > 1: targets_array = targets_array[:, 0]
-        
+
         if args.dataset.startswith("emnist") and targets_array.min() != 0:
             targets_array = targets_array - targets_array.min()
 
         for d in range(num_classes):
             idxs = np.flatnonzero(targets_array == d)
             if len(idxs) == 0:
-                 reserved_test_imgs_list.append(torch.empty(0))
-                 continue
+                reserved_test_imgs_list.append(torch.empty(0))
+                continue
             sub = Subset(test_set, idxs)
             reserved_test_imgs_list.append(subset_to_tensor(sub))
 
-    else: # silos
+    else:  # silos
         # 'Silos' partition mode: typically for disjoint class splits
-        if hasattr(base_train_set, "targets"): targets_array = base_train_set.targets
-        elif hasattr(base_train_set, "labels"): targets_array = base_train_set.labels
-        else: targets_array = [lbl for _, lbl in base_train_set]
-        
+        if hasattr(base_train_set, "targets"):
+            targets_array = base_train_set.targets
+        elif hasattr(base_train_set, "labels"):
+            targets_array = base_train_set.labels
+        else:
+            targets_array = [lbl for _, lbl in base_train_set]
+
         targets_array = np.asarray(targets_array)
         if targets_array.ndim > 1: targets_array = targets_array[:, 0]
-        
+
         if args.dataset.startswith("emnist") and targets_array.min() != 0:
             targets_array = targets_array - targets_array.min()
 
@@ -370,20 +408,28 @@ def prepare_data(args, device) -> Tuple:
             idxs = np.flatnonzero(targets_array == d)
             if len(idxs) == 0: continue
             present_classes.append(d)
-            
+
             # Split the class-specific data into train (80%) and test (20%)
             train_idx, test_idx = train_test_split(idxs, test_size=0.20, random_state=args.seed, shuffle=True)
             train_subsets.append(Subset(base_train_set, train_idx))
-            
-            test_sub = Subset(base_train_set, test_idx)
-            reserved_test_imgs_list.append(subset_to_tensor(test_sub))
+
+            # Create a "clean" training set for splitting purposes:
+            clean_train_set = get_dataset(args.dataset, args.data_dir, True, None)  # No transform
+
+            # Create subset from the CLEAN set
+            test_sub_clean = Subset(clean_train_set, test_idx)
+
+            # Wrap it with the deterministic transform
+            test_sub_final = TransformSubset(test_sub_clean, tfm_test)
+
+            reserved_test_imgs_list.append(subset_to_tensor(test_sub_final))
 
     # Adjustment for Silos: if fewer classes are found than expected, update num_classes
     if len(present_classes) != num_classes and partition_mode == 'silos':
-         num_classes = len(present_classes)
+        num_classes = len(present_classes)
 
-    return (base_train_set, test_set, tfm, num_classes, img_shape, chans, 
-            train_subsets_dict, train_subsets, present_classes, 
+    return (base_train_set, test_set, tfm_train, num_classes, img_shape, chans,
+            train_subsets_dict, train_subsets, present_classes,
             reserved_test_ld, reserved_test_imgs_list, test_imgs_tensor)
 
 def _export_client_class_distribution(
