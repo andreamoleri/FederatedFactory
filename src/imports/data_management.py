@@ -657,9 +657,10 @@ def _medmnist_parse(name: str) -> Tuple[str, int]:
     Parses MedMNIST dataset strings.
 
     Supported Formats:
+      - medmnist:subset:res        -> Shell-safe (e.g., medmnist:organamnist:64)
       - medmnist(organamnist;res=64)
       - medmnist(organamnist,64)
-      - medmnist(organamnist)  -> defaults to res=28
+      - medmnist(organamnist)      -> defaults to res=28
 
     Args:
         name (str): The dataset specifier.
@@ -668,6 +669,38 @@ def _medmnist_parse(name: str) -> Tuple[str, int]:
         Tuple[str, int]: The subset name (e.g., 'organamnist') and the resolution.
     """
     key = name.strip().lower()
+
+    # ==============================================================================
+    # STRATEGY 1: COLON FORMAT (Shell-Safe)
+    # Format: medmnist:subset[:resolution]
+    # ==============================================================================
+    if ":" in key:
+        parts = key.split(":")
+
+        # Validation: Must start with 'medmnist'
+        if parts[0] != "medmnist":
+            raise ValueError(f"Invalid medmnist spec (must start with 'medmnist'): {name}")
+
+        # Validation: Must have at least the subset name
+        if len(parts) < 2 or not parts[1].strip():
+            raise ValueError("Must specify the MedMNIST subset (e.g., medmnist:organamnist:64)")
+
+        subset = parts[1].strip()
+        res = 28  # Default resolution
+
+        # Parse resolution if provided
+        if len(parts) >= 3 and parts[2].strip():
+            try:
+                res = int(parts[2])
+            except ValueError:
+                raise ValueError(f"Invalid resolution in spec: {name}")
+
+        return subset, res
+
+    # ==============================================================================
+    # STRATEGY 2: LEGACY PARENTHESES FORMAT
+    # Format: medmnist(subset, res)
+    # ==============================================================================
     assert key.startswith("medmnist"), f"Not a medmnist spec: {name}"
 
     subset = None
@@ -675,11 +708,15 @@ def _medmnist_parse(name: str) -> Tuple[str, int]:
 
     m = re.match(r"^medmnist\((.*?)\)$", key)
     if not m:
-        raise ValueError("For MedMNIST use syntax 'medmnist(<subset>[;res=<int>] | ,<int>)'")
+        # Updated error message to include the new colon format
+        raise ValueError(
+            "For MedMNIST use syntax 'medmnist:subset:res' (shell-safe) "
+            "or 'medmnist(<subset>[;res=<int>] | ,<int>)'"
+        )
 
     inside = m.group(1).strip()
 
-    # Strategy A: Key-value pairs (key=val;key=val)
+    # Sub-Strategy A: Key-value pairs (key=val;key=val)
     if ";" in inside or "=" in inside:
         params = {}
         for part in inside.split(";"):
@@ -707,7 +744,7 @@ def _medmnist_parse(name: str) -> Tuple[str, int]:
         subset = subset.lower()
         return subset, res
 
-    # Strategy B: Positional format "<subset>[, <res>]"
+    # Sub-Strategy B: Positional format "<subset>[, <res>]"
     parts = [p.strip() for p in inside.split(",") if p.strip()]
     if len(parts) == 0:
         raise ValueError("Must specify the MedMNIST subset")

@@ -2,92 +2,144 @@
 🌌 Data Augmentation and Transformation Module
 ----------------------------------------------
 
-This module provides a comprehensive suite of utilities for image data augmentation, 
-tensor normalization, and the construction of adaptive transformation pipelines.
+This module implements a scientifically rigorous factory for constructing image
+transformation pipelines. It provides domain-specific augmentation strategies
+tailored for disparate data modalities, including natural images, medical
+imaging, and structural patterns (e.g., optical character recognition).
 
 🧠 Purpose:
-    Designed to enhance the robustness of machine learning models by systematically 
-    introducing variations (noise, affine transformations, occlusions) into training data. 
-    It also serves as a factory for standardizing input data dimensions and channel 
-    configurations across diverse datasets.
+    To standardize data preprocessing across experimental conditions, ensuring
+    statistical consistency during model training and evaluation. It handles
+    resolution adjustments, geometric transformations, and intensity
+    normalization based on empirical dataset statistics.
 
 🔧 Core Functionalities:
-    • Implementation of additive Gaussian noise injection with range clamping.
-    • A dataset wrapper (`NoisyCleanDataset`) for self-supervised or denoising tasks.
-    • Dynamic construction of `torchvision` transformation pipelines based on dataset metadata.
-    • Utility functions for tensor renormalization.
+    • Factory-based construction of `torchvision.transforms.Compose` pipelines
+    • Domain-aware strategy selection (e.g., Isotropic vs. Oriented medical data)
+    • Inverse normalization utilities for visualization and debugging
+    • Robustness injection via additive Gaussian noise for simulated heterogeneity
 
 🎯 Intended Use:
-    • Deep learning research pipelines requiring robust data preprocessing.
-    • Denoising Autoencoder (DAE) training setups.
-    • Standardization of heterogeneous image datasets (Grayscale/RGB).
+    • Deep Learning research pipelines
+    • Federated Learning experiments requiring client-side data standardization
+    • Benchmarking across diverse datasets (CIFAR, ImageNet, MedMNIST, etc.)
 
 📁 Dependencies:
-    • numpy
     • torch
     • torchvision
+    • .data_management (Dataset metadata and parsing logic)
 
 📝 Notes:
-    This module relies on a global registry (`DATASET_META`) imported from `.data_management` 
-    to retrieve dataset-specific parameters such as input size and channel depth.
+    The module assumes input images are RGB or Grayscale. Statistical
+    normalization values (Mean/Std) are hardcoded based on standard
+    literature benchmarks (e.g., ImageNet, CIFAR-10).
 
 Author: Andrea Moleri
-File Location: src/imports/data_augmentation.py
-Last Modified: 06/12/2025
+File Location: src/data/data_augmentation.py
+Last Modified: 07/12/2025
 """
 
 from __future__ import annotations
-
-from typing import Any
-
-import numpy as np
+import logging
 import torch
-import torch.nn.functional as F
-from torch.utils.data import Dataset, Subset
 from torchvision import transforms
+from torchvision.transforms import InterpolationMode
+from .data_management import DATASET_META, _medmnist_parse
 
-from .data_management import DATASET_META  # Global dataset registry
+logger = logging.getLogger(__name__)
+
+# ============================ Scientific Constants ===============================
+
+# Empirical mean and standard deviation for the ImageNet dataset (RGB channels).
+# Used for normalizing high-resolution natural images to aid model convergence.
+IMAGENET_MEAN = (0.485, 0.456, 0.406)
+IMAGENET_STD = (0.229, 0.224, 0.225)
+
+# Empirical statistics for CIFAR-10/100 datasets.
+# Precise normalization is critical for reproducing baseline accuracies in low-res domains.
+CIFAR_MEAN = (0.4914, 0.4822, 0.4465)
+CIFAR_STD = (0.2023, 0.1994, 0.2010)
+
+# Neutral statistics for mapping inputs to the range [-1, 1].
+# Often used when domain-specific statistics are unavailable or for zero-centered data.
+NEUTRAL_MEAN = (0.5, 0.5, 0.5)
+NEUTRAL_STD = (0.5, 0.5, 0.5)
+NEUTRAL_MEAN_1CH = (0.5,)
+NEUTRAL_STD_1CH = (0.5,)
 
 
 # ============================ Utility Functions ==================================
-def denormalize(t: torch.Tensor) -> torch.Tensor:
+
+def denormalize(t: torch.Tensor, dataset_name: str = "imagenet") -> torch.Tensor:
     """
-    Rescales a tensor from the normalized range [-1, 1] back to the domain [0, 1].
+    Reverses the normalization operation to restore tensors to the [0, 1] range.
 
-    This operation is typically required when visualizing tensors that were previously 
-    normalized using a mean of 0.5 and a standard deviation of 0.5 (Tanh-style normalization).
-
-    Mathematically:
-    $$ x_{new} = \\frac{x_{old} + 1}{2} $$
+    This function applies the inverse transformation:
+    $x_{orig} = x_{norm} \\times \\sigma + \\mu$
+    It is primarily used for visualization, logging, or debugging purposes where
+    human-interpretable images are required.
 
     Args:
-        t (torch.Tensor): The input tensor with values in the range [-1, 1].
+        t (torch.Tensor): The normalized input tensor, typically with shape
+            (C, H, W) or (B, C, H, W).
+        dataset_name (str): The identifier of the dataset (e.g., 'cifar10',
+            'imagenet') used to resolve the correct statistical parameters.
 
     Returns:
-        torch.Tensor: The denormalized tensor with values in the range [0, 1].
+        torch.Tensor: The denormalized tensor with values approximately in [0, 1].
+
+    Raises:
+        None: Safe defaults are applied if the dataset name is unrecognized.
     """
-    return (t + 1) / 2
+    device = t.device
+    ds = dataset_name.lower()
+
+    # Determine the appropriate statistical distribution based on the dataset identifier.
+    # String matching is used to handle variants (e.g., 'cifar10' vs 'cifar100').
+    if "cifar" in ds:
+        mean, std = CIFAR_MEAN, CIFAR_STD
+    elif any(x in ds for x in ["medmnist", "mnist", "omniglot", "emnist"]):
+        # Handle channel differences for grayscale vs RGB variants of structural datasets.
+        if t.shape[0] == 3:
+            mean, std = NEUTRAL_MEAN, NEUTRAL_STD
+        else:
+            mean, std = NEUTRAL_MEAN_1CH, NEUTRAL_STD_1CH
+    elif t.shape[0] == 3:
+        mean, std = IMAGENET_MEAN, IMAGENET_STD
+    else:
+        mean, std = NEUTRAL_MEAN_1CH, NEUTRAL_STD_1CH
+
+    # Reshape statistics to (C, 1, 1) to enable broadcasting against the spatial dimensions (H, W).
+    mean_t = torch.tensor(mean).view(-1, 1, 1).to(device)
+    std_t = torch.tensor(std).view(-1, 1, 1).to(device)
+
+    return t * std_t + mean_t
 
 
-# ============================ Augmentation Logic ==================================
 class AddGaussianNoise:
     """
-    A callable class that injects additive Gaussian noise into a tensor.
+    A callable transformation that injects additive Gaussian noise into a tensor.
 
-    This class adds noise drawn from a normal distribution $\mathcal{N}(\mu, \sigma)$ 
-    to the input tensor and ensures the resulting values are clamped within the 
-    normalized range [-1, 1].
+    This is frequently used in Federated Learning and robust optimization to:
+    1. Simulate sensor heterogeneity or transmission noise.
+    2. Regularize the model by destabilizing batch normalization statistics.
+    3. Mitigate overfitting in low-data regimes.
+
+    Attributes:
+        mean (float): The mean ($\mu$) of the Gaussian distribution.
+        std (float): The standard deviation ($\sigma$) of the Gaussian distribution.
     """
 
-    def __init__(self, mean: float = 0.0, std: float = 0.1):
+    def __init__(self, mean: float = 0.0, std: float = 0.05):
         """
-        Initialize the noise generator.
+        Initialize the noise injector.
 
         Args:
-            mean (float): The mean ($\mu$) of the Gaussian distribution. Defaults to 0.0.
-            std (float): The standard deviation ($\sigma$) of the Gaussian distribution. Defaults to 0.1.
+            mean (float): The center of the noise distribution. Defaults to 0.0.
+            std (float): The spread of the noise distribution. Defaults to 0.05.
         """
-        self.mean, self.std = mean, std
+        self.mean = mean
+        self.std = std
 
     def __call__(self, tensor: torch.Tensor) -> torch.Tensor:
         """
@@ -97,144 +149,200 @@ class AddGaussianNoise:
             tensor (torch.Tensor): The input image tensor.
 
         Returns:
-            torch.Tensor: The noisy tensor, clamped to the range [-1.0, 1.0].
+            torch.Tensor: The noisy tensor, calculated as $tensor + \mathcal{N}(\mu, \sigma)$.
         """
-        # Generate noise matching the tensor's shape, add it, and clamp the result to maintain validity.
-        return torch.clamp(
-            tensor + torch.randn_like(tensor) * self.std + self.mean, -1.0, 1.0
-        )
+        # Generates noise of the same shape as the input tensor on the correct device.
+        return tensor + torch.randn_like(tensor) * self.std + self.mean
 
 
-class NoisyCleanDataset(Dataset):
+# ============================ Granular Pipeline Logic ============================
+
+def _get_medmnist_strategy(name: str) -> str:
     """
-    A Dataset wrapper designed to produce paired samples (noisy, clean) for training.
+    Determines the augmentation strategy for MedMNIST sub-datasets.
 
-    This class applies "heavy" augmentations (affine transformations, random erasing) 
-    to the source image to generate a 'clean' target, and then adds Gaussian noise 
-    to a copy of that target to generate the 'noisy' input.
-
-
-
-    This approach is particularly useful for training Denoising Autoencoders (DAEs) 
-    where the model must learn to reconstruct the geometric and structural content 
-    despite noise and occlusions.
-    """
-
-    def __init__(self, subset: Subset, noise_std: float, augment: bool = True):
-        """
-        Initialize the dataset wrapper.
-
-        Args:
-            subset (Subset): The underlying data subset containing source images.
-            noise_std (float): The standard deviation of the Gaussian noise to be applied.
-            augment (bool): If True, applies random affine and erasing transformations. 
-                            If False, the transformation pipeline is an identity function.
-        """
-        self.subset = subset
-        self.noise = AddGaussianNoise(0.0, noise_std)
-        if augment:
-            # Apply slight rotation/translation/scaling
-            self.aug = transforms.RandomAffine(
-                15, translate=(0.12, 0.12), scale=(0.9, 1.1)
-            )
-            # Randomly occlude parts of the image to force structure learning
-            self.erase = transforms.RandomErasing(
-                p=0.25, scale=(0.02, 0.1), ratio=(0.3, 3.3)
-            )
-        else:
-            # No-op: Identity function used when augmentation is disabled
-            self.aug = self.erase = lambda x: x
-
-    def __len__(self) -> int:  # type: ignore[override]
-        """
-        Retrieve the total number of samples in the dataset.
-
-        Returns:
-            int: The length of the underlying subset.
-        """
-        return len(self.subset)
-
-    def __getitem__(self, idx: int):  # type: ignore[override]
-        """
-        Retrieve a sample pair at the specified index.
-
-        Args:
-            idx (int): The index of the sample to retrieve.
-
-        Returns:
-            tuple: A tuple containing:
-                - noisy (torch.Tensor): The augmented image with added Gaussian noise.
-                - img (torch.Tensor): The augmented image (clean target).
-        """
-        img, _ = self.subset[idx]
-
-        # Apply geometric and occlusion augmentations to the base image
-        img = self.erase(self.aug(img))
-
-        # Return a noisy copy as input, and the clean augmented version as target
-        return self.noise(img.clone()), img
-
-
-# top of file (optional – only if you want extra safety elsewhere)
-# Note: The import below appears redundant as it was performed at the module level,
-# but it is retained here to preserve the original code structure.
-from .data_management import DATASET_META  # already present
-
-
-def build_transform(dataset_name: str):
-    """
-    Constructs a transformation pipeline consistent with the dataset's channel count 
-    and recommended input dimensions.
-
-    This factory function retrieves metadata from the global registry and builds a 
-    `torchvision.transforms.Compose` object. It handles resizing, cropping, tensor 
-    conversion, and normalization.
+    Distinguishes between datasets where rotation preserves semantic meaning
+    (isotropic) and those where orientation is diagnostically relevant.
 
     Args:
-        dataset_name (str): The identifier for the dataset (e.g., "cifar10", "medmnist(s)").
+        name (str): The specific MedMNIST subset name (e.g., 'pathmnist').
 
     Returns:
-        torchvision.transforms.Compose: The composed sequence of image transformations.
+        str: 'medical_isotropic' for rotation-invariant data, or
+             'medical_oriented' otherwise.
+    """
+    subset, _ = _medmnist_parse(name)
+    # Datasets like Pathology or Dermatology are often view-agnostic (microscope slides).
+    isotropic = ["pathmnist", "bloodmnist", "tissuemnist", "dermamnist"]
+    if subset in isotropic:
+        return "medical_isotropic"
+    return "medical_oriented"
+
+
+def _is_sparse_domain(dataset_name: str) -> bool:
+    """
+    Identifies if a dataset belongs to a sparse or structural domain.
+
+    Sparse domains typically consist of line drawings, sketches, or glyphs
+    rather than dense natural photography.
+
+    Args:
+        dataset_name (str): The name of the dataset.
+
+    Returns:
+        bool: True if the dataset represents a sparse domain, False otherwise.
+    """
+    name = dataset_name.lower()
+    return any(x in name for x in ["sketch", "quickdraw", "infograph", "mnist", "omniglot"])
+
+
+def build_transform(dataset_name: str, train: bool = False, robustness: bool = False):
+    """
+    Constructs a scientifically calibrated transformation pipeline for a given dataset.
+
+    This factory method orchestrates the assembly of preprocessing steps including
+    resizing, cropping, geometric augmentation, and normalization. It adapts
+    dynamically to the dataset's resolution (low-res vs. high-res) and modality
+    (natural vs. medical vs. structural).
+
+    Args:
+        dataset_name (str): The unique identifier for the target dataset.
+        train (bool): If True, applies stochastic augmentations (e.g., random crops,
+            flips) for training. If False, applies deterministic transforms for
+            evaluation. Defaults to False.
+        robustness (bool): If True, appends noise injection to the pipeline to
+            simulate data corruption or enhance model robustness. Defaults to False.
+
+    Returns:
+        torchvision.transforms.Compose: A composed pipeline of transformations.
 
     Raises:
-        AssertionError: If the resolved `input_size` is not a positive integer.
+        ValueError: If the dataset metadata cannot be resolved from the global registry.
     """
-    # Normalize the dataset key to handle parametric names (e.g., "medmnist(s)" -> "medmnist")
+    # 1. Resolve Metadata
+    # distinct MedMNIST subsets need to map back to the 'medmnist' base key for metadata lookup.
     base_key = dataset_name.split("(", 1)[0].lower()
-    meta = DATASET_META.get(base_key, None)
+    if base_key.startswith("medmnist"): base_key = "medmnist"
+
+    # Retrieve dataset properties (input size, channel count) from the metadata registry.
+    # Falls back to partial string matching if the exact key is not found.
+    meta = DATASET_META.get(base_key) or DATASET_META.get(dataset_name)
     if meta is None:
-        # Fallback: Attempt to use the original name if base key extraction failed
-        meta = DATASET_META[dataset_name]
+        for k in DATASET_META:
+            if k in dataset_name:
+                meta = DATASET_META[k]
+                break
+        if meta is None: raise ValueError(f"Unknown dataset: {dataset_name}")
 
-    size = meta["input_size"]
-    # Ensure the input size is physically valid
-    assert isinstance(size, int) and size > 0, "input_size must be > 0"
+    target_size = meta["input_size"]
+    channels = meta["channels"]
 
-    import logging as _logging
-    _logging.getLogger(__name__).info(
-        f"[TFM] {base_key} input_size={size}, channels={meta['channels']}"
-    )
-    ch = meta["channels"]
+    # 2. Determine Strategy
+    # Categorize the dataset to select the appropriate augmentation philosophy.
+    structural_sets = ["mnist", "fashion", "kmnist", "qmnist", "emnist", "omniglot", "quickdraw"]
 
-    from torchvision import transforms
+    if base_key in structural_sets: strategy = "structural"
+    elif base_key == "medmnist": strategy = _get_medmnist_strategy(dataset_name)
+    elif "cifar" in base_key: strategy = "cifar_optimized"
+    elif target_size <= 64: strategy = "natural_low_res"
+    else: strategy = "natural_high_res"
 
-    # Define operations common to all image types (Resize -> Crop -> Tensor conversion)
-    common_ops = [
-        transforms.Resize(size),
-        transforms.CenterCrop(size),
-        transforms.ToTensor(),
-    ]
+    ops = []
 
-    # Branch logic based on channel depth (RGB vs. Grayscale)
-    if ch == 3:
-        # For RGB images: Normalize 3 channels
-        return transforms.Compose(common_ops + [
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
+    # --- TRAIN TIME ---
+    if train:
+        if strategy == "structural":
+            # For digits and characters, slight affine transformations simulate
+            # handwriting variations without destroying legibility.
+            ops.append(transforms.RandomAffine(
+                degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1),
+                interpolation=InterpolationMode.BILINEAR))
+            ops.append(transforms.Resize((target_size, target_size)))
+
+        elif strategy == "medical_isotropic":
+            # Isotropic medical data (e.g., cells) allows for aggressive geometric
+            # invariances including 90-degree rotations.
+            ops.append(transforms.RandomHorizontalFlip())
+            ops.append(transforms.RandomVerticalFlip())
+            ops.append(transforms.RandomChoice([
+                transforms.RandomRotation((90, 90)),
+                transforms.RandomRotation((180, 180)),
+                transforms.RandomRotation((270, 270)),
+                transforms.Lambda(lambda x: x)
+            ]))
+            ops.append(transforms.Resize((target_size, target_size), interpolation=InterpolationMode.BICUBIC))
+
+        elif strategy == "medical_oriented":
+            # Oriented medical data (e.g., Chest X-Ray) must maintain verticality.
+            # ColorJitter helps simulate varying acquisition equipment settings.
+            ops.append(transforms.RandomAffine(
+                degrees=5, translate=(0.05, 0.05), scale=(0.95, 1.05),
+                interpolation=InterpolationMode.BILINEAR))
+            ops.append(transforms.Resize((target_size, target_size), interpolation=InterpolationMode.BICUBIC))
+            ops.append(transforms.ColorJitter(brightness=0.1, contrast=0.1))
+
+        elif strategy in ["natural_low_res", "cifar_optimized"]:
+            # Standard optimization for low-res inputs (e.g., 32x32):
+            # Resize guarantees dimensions, followed by padding and cropping to prevent information loss.
+            ops.append(transforms.Resize((target_size, target_size)))
+            ops.append(transforms.RandomCrop(target_size, padding=4, padding_mode='reflect'))
+            ops.append(transforms.RandomHorizontalFlip())
+
+        elif strategy == "natural_high_res":
+            # High-resolution regimes (e.g., ImageNet) benefit from RandomResizedCrop (RRC).
+            # The crop scale is adjusted based on domain sparsity.
+            is_sparse = _is_sparse_domain(dataset_name)
+            crop_scale = (0.6, 1.0) if is_sparse else (0.2, 1.0)
+
+            ops.append(transforms.RandomResizedCrop(
+                target_size, scale=crop_scale, interpolation=InterpolationMode.BICUBIC
+            ))
+            ops.append(transforms.RandomHorizontalFlip())
+
+            if not is_sparse:
+                # RandAugment is the current State-of-the-Art (SOTA) standard for
+                # dense natural images, significantly improving generalization.
+                ops.append(transforms.RandAugment(num_ops=2, magnitude=9))
+
+    # --- TEST TIME ---
     else:
-        # For Grayscale images: Ensure single channel and normalize 1 channel
-        return transforms.Compose(
-            [transforms.Grayscale()] + common_ops + [
-                transforms.Normalize((0.5,), (0.5,))
-            ]
-        )
+        if strategy in ["natural_low_res", "cifar_optimized", "structural"]:
+            # Direct resizing for low-resolution or structural data where cropping
+            # might remove essential features.
+            ops.append(transforms.Resize((target_size, target_size)))
+        else:
+            # Standard evaluation protocol for high-res CNNs:
+            # Resize the smaller edge to 256 (approx) and CenterCrop the target size.
+            crop_scale = 256.0 / 224.0
+            resize_dim = int(target_size * crop_scale)
+            ops.append(transforms.Resize(resize_dim, interpolation=InterpolationMode.BICUBIC))
+            ops.append(transforms.CenterCrop(target_size))
+
+    # 4. Finalize
+    # Convert PIL images or ndarrays to PyTorch Tensors [C, H, W] in range [0, 1].
+    ops.append(transforms.ToTensor())
+    if channels == 1:
+        ops.append(transforms.Grayscale(num_output_channels=3))
+
+    # 5. Normalization (Scientifically Accurate)
+    # Apply statistical normalization based on the dataset domain.
+    effective_channels = 3 if channels == 1 else channels
+
+    if "cifar" in dataset_name.lower():
+        norm = transforms.Normalize(CIFAR_MEAN, CIFAR_STD)
+    elif strategy == "natural_high_res" and effective_channels == 3:
+        norm = transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
+    elif effective_channels == 3:
+        # This now correctly catches converted Grayscale->RGB data
+        norm = transforms.Normalize(NEUTRAL_MEAN, NEUTRAL_STD)
+    else:
+        norm = transforms.Normalize(NEUTRAL_MEAN_1CH, NEUTRAL_STD_1CH)
+
+    ops.append(norm)
+
+    # 6. Robustness (Noise) - Applied AFTER Normalization
+    # Noise is added in the normalized feature space to ensure consistent magnitude relative to the signal.
+    if train and robustness:
+        ops.append(AddGaussianNoise(std=0.05))
+
+    return transforms.Compose(ops)

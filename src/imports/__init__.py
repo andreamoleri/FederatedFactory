@@ -42,7 +42,6 @@ from .data_management import DATASET_META, get_dataset
 # tensor renormalization.
 from .data_augmentation import (
     AddGaussianNoise,
-    NoisyCleanDataset,
     build_transform,
     denormalize,
 )
@@ -55,7 +54,6 @@ __all__ = [
     "DATASET_META",
     "get_dataset",
     "AddGaussianNoise",
-    "NoisyCleanDataset",
     "build_transform",
     "denormalize",
 ]
