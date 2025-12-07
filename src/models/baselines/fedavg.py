@@ -359,6 +359,14 @@ class FedAvgBaseline(FederatedBaseline):
                         model.parameters(), max_norm=self._max_grad_norm
                     )
 
+                if torch.cuda.is_available():
+                    try:
+                        torch.cuda.synchronize()
+                    except RuntimeError as e:
+                        logger.error(f"[CRITICAL] CUDA error detected during backward/clip for {client_name}: {e}")
+                        non_finite_detected = True
+                        break
+
                 # Check for non-finite gradients (e.g., overflow)
                 grads_ok = True
                 for p in model.parameters():
@@ -544,6 +552,12 @@ class FedAvgBaseline(FederatedBaseline):
         new_global_state = {}
         for key, arr in zip(param_keys, aggregated_ndarrays):
             ref_tensor = first_state[key]  # Preserve the dtype of the original tensor
+
+            # --- FIX: Handle numpy scalars (e.g. float64) which torch.from_numpy rejects ---
+            if np.isscalar(arr):
+                arr = np.array(arr)
+            # -------------------------------------------------------------------------------
+
             new_global_state[key] = torch.from_numpy(arr).to(ref_tensor.dtype)
 
         # Update the global model

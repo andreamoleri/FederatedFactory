@@ -16,6 +16,7 @@ and comparative analysis in distributed learning environments.
     • Export the abstract base class for federated strategies
     • Expose implementations of standard algorithms (FedAvg, FedProx)
     • Expose advanced distillation and dynamic regularization methods (FedDF, FedDyn)
+    • Expose control variate methods (SCAFFOLD)
 
 🎯 Intended Use:
     • Benchmarking new federated learning algorithms against established standards
@@ -23,11 +24,11 @@ and comparative analysis in distributed learning environments.
     • Modular integration into larger federated simulation frameworks
 
 📁 Dependencies:
-    • Internal modules: base, fedavg, fedprox, feddf, feddyn
+    • Internal modules: base, fedavg, fedprox, feddf, feddyn, scaffold
 
 Author: Andrea Moleri
 File Location: src/models/baselines/__init__.py
-Last Modified: 20/11/2025
+Last Modified: 06/12/2025
 """
 
 # Import the abstract base class which defines the interface for all federated strategies.
@@ -50,12 +51,16 @@ from .feddf import FedDFBaseline
 # global and local objective functions (Acar et al., 2021).
 from .feddyn import FedDynBaseline
 
+# Import SCAFFOLD, which uses control variates to reduce client drift
+# (Karimireddy et al., 2020).
+from .scaffold import ScaffoldBaseline
+
 # Define the public API of this module.
 # This list controls the behavior of 'from module import *' and explicitly declares
 # which symbols are intended for external use, hiding implementation details.
 __all__ = [
     "FederatedBaseline",
-    "FedAvgBaseline", 
+    "FedAvgBaseline",
     "FedProxBaseline",
     "FedDFBaseline",
     "FedDynBaseline",

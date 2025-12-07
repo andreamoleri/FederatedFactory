@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 
 
 class FedProxBaseline(FederatedBaseline):
-    """
+    r"""
     FedProx baseline implementation reusing Flower's FedAvg aggregation logic.
 
     Reference: Li et al., "Federated Optimization in Heterogeneous Networks"
@@ -116,7 +116,7 @@ class FedProxBaseline(FederatedBaseline):
             self._max_grad_norm = None
 
         # The coefficient mu for the proximal term.
-        self.mu = float(getattr(self.args, "prox_mu", 0.01))
+        self.mu = float(getattr(self.args, "fedprox_mu", 0.01))
 
         logger.info(
             "[FedProx] Initialized with mu=%.4f | momentum=%.3f | weight_decay=%.1e | clip_grad_norm=%s",
@@ -247,7 +247,7 @@ class FedProxBaseline(FederatedBaseline):
             val_loader,
             round_num: int,
     ) -> Tuple[dict, int]:
-        """
+        r"""
         Train a single client using the FedProx objective.
 
         Objective for client $k$ at round $t$:
@@ -518,20 +518,6 @@ class FedProxBaseline(FederatedBaseline):
     ) -> None:
         """
         Perform FedProx aggregation using the FedAvg strategy (via Flower).
-
-        FedProx utilizes the same aggregation rule as FedAvg:
-        Weighted average of parameters based on the number of examples.
-
-        Process:
-        1. Convert client Torch `state_dicts` into lists of NumPy arrays.
-        2. Invoke `flwr_aggregate` to perform the weighted averaging.
-        3. Reconstruct the aggregated `state_dict` into the global model.
-        4. Broadcast the updated global model to all clients.
-
-        Args:
-            round_num (int): The current global round number.
-            client_updates (Dict[str, Tuple[dict, int]]): A dictionary mapping
-                client names to tuples of (state_dict, number_of_samples).
         """
         if not client_updates:
             logger.warning("[FedProx] No client updates to aggregate")
@@ -599,9 +585,16 @@ class FedProxBaseline(FederatedBaseline):
                 )
                 return
 
+        # Reconstruct the global model state
         new_global_state = {}
         for key, arr in zip(param_keys, aggregated_ndarrays):
             ref_tensor = first_state[key]
+
+            # --- FIX: Handle numpy scalars (e.g. float64) which torch.from_numpy rejects ---
+            if np.isscalar(arr):
+                arr = np.array(arr)
+            # -------------------------------------------------------------------------------
+
             new_global_state[key] = torch.from_numpy(arr).to(ref_tensor.dtype)
 
         # Update global model.

@@ -143,6 +143,16 @@ class FedDynBaseline(FederatedBaseline):
     # ------------------------------------------------------------------ #
     # Helpers                                                            #
     # ------------------------------------------------------------------ #
+    def state_dict(self):
+        return {
+            'client_h': self.client_h,
+            'global_model': self.global_model.state_dict()
+        }
+
+    def load_state_dict(self, state):
+        self.client_h = state['client_h']
+        self.global_model.load_state_dict(state['global_model'])
+
     @torch.no_grad()
     def _evaluate_on_loader(
             self,
