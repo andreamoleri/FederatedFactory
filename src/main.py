@@ -43,7 +43,7 @@ Last Modified: 21/11/2025
 import os as _os
 
 # Thread environment optimizations
-# Setting these variables to "1" prevents CPU oversubscription when running 
+# Setting these variables to "1" prevents CPU oversubscription when running
 # multiple jobs on the same node, ensuring predictable performance.
 _os.environ.setdefault("OMP_NUM_THREADS", "1")
 _os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -94,16 +94,16 @@ from jobs.experiment_runner import run_experiment
 def _write_environment(root: Path):
     """
     Captures and writes details about the execution environment to text files.
-    
+
     This function ensures reproducibility by logging the current Git commit,
     Conda environment, Pip packages, and PyTorch/CUDA configuration. It is
-    designed to be fail-safe, catching exceptions to avoid halting the 
+    designed to be fail-safe, catching exceptions to avoid halting the
     experiment if environmental data cannot be retrieved.
 
     Parameters
     ----------
     root : Path
-        The root directory of the experiment output where the 'environment' 
+        The root directory of the experiment output where the 'environment'
         sub-folder will be created.
     """
     env_dir = root / "environment"
@@ -284,7 +284,7 @@ def _finalize_costs(
     Finalizes cost/emission metrics and formalizes network statistics.
 
     This function aggregates temporary logging data, backfills carbon emission
-    calculations based on energy usage and intensity factors, and estimates 
+    calculations based on energy usage and intensity factors, and estimates
     network traffic for Federated Learning scenarios based on model checkpoint sizes.
 
     Parameters
@@ -296,7 +296,7 @@ def _finalize_costs(
     args_ns : Namespace
         The experiment configuration arguments.
     carbon_intensity_kg_per_kwh : float | None, optional
-        The carbon intensity factor. If None, attempts to read from env vars 
+        The carbon intensity factor. If None, attempts to read from env vars
         or defaults to a fallback value (0.40).
     """
     try:
@@ -351,7 +351,7 @@ def _finalize_costs(
                     pass
 
             if carbon_intensity_kg_per_kwh is None:
-                carbon_intensity_kg_per_kwh = 0.40 
+                carbon_intensity_kg_per_kwh = 0.40
 
             kwh = data.get("energy", {}).get("kwh", None)
             if isinstance(kwh, (int, float)):
@@ -454,8 +454,12 @@ def _finalize_costs(
 
 def _is_experiment_done(out_dir_root: str, current_ns: argparse.Namespace) -> bool:
     """
-    Scans the output directory recursively to see if a completed run 
+    Scans the output directory recursively to see if a *successfully completed* run
     with identical parameters already exists.
+
+    A run is considered "done" only if:
+    1. It has a matching `args.json` configuration.
+    2. It has a `manifest.json` file (indicating successful completion).
     """
     root_path = Path(out_dir_root)
     if not root_path.exists():
@@ -463,37 +467,42 @@ def _is_experiment_done(out_dir_root: str, current_ns: argparse.Namespace) -> bo
 
     # Convert current args to a dictionary for comparison
     current_vars = vars(current_ns)
-    
+
     # keys to ignore during comparison (paths, runtime flags)
     ignored_keys = {'data_dir', 'out_dir', 'max_experiments', 'grid', 'save_datasets', 'network_accounting'}
 
     # Look for all args.json files in the output structure
     for args_file in root_path.rglob("args.json"):
-        # 1. Check if the run finished (must have manifest.json)
-        if not (args_file.parent / "manifest.json").exists():
+        experiment_dir = args_file.parent
+
+        # 1. CRITICAL CHECK: Does manifest.json exist?
+        # If not, the previous run failed or didn't finish. We should NOT skip.
+        if not (experiment_dir / "manifest.json").exists():
             continue
 
         # 2. Compare the configuration
         try:
             with open(args_file, 'r') as f:
                 saved_args = json.load(f)
-            
+
             is_match = True
             for k, v in current_vars.items():
                 if k in ignored_keys:
                     continue
-                
+
                 # Compare string representations to handle slight type diffs (e.g. tuple vs list)
-                # or missing keys in old runs
+                # or missing keys in old runs.
+                # We use str() to be robust against "10" vs 10 or "1e-4" vs 0.0001
                 if str(saved_args.get(k)) != str(v):
                     is_match = False
                     break
-            
+
             if is_match:
-                print(f"Skipping experiment (Found completed run in: {args_file.parent})")
+                print(f"Skipping experiment (Found completed run in: {experiment_dir})")
                 return True
-                
+
         except Exception:
+            # If args.json is corrupted, treat it as not a match
             continue
 
     return False
@@ -558,11 +567,20 @@ def main():
     cli.add_argument("--dit-heads", type=int, default=8)
     cli.add_argument("--dit-patch", type=int, default=2)
 
+    # === HYPERPARAMETERS FOR TUNING ===
+    cli.add_argument("--learning-rate", type=float, default=0.1, help="Global/Local Learning Rate")
+    cli.add_argument("--baseline-momentum", type=float, default=0.9, help="SGD Momentum")
+    cli.add_argument("--baseline-weight-decay", type=float, default=1e-4, help="SGD Weight Decay")
+
+    # Method Specific
+    cli.add_argument("--fedprox-mu", type=float, default=0.01, help="FedProx proximal term")
+    cli.add_argument("--feddyn-alpha", type=float, default=0.01, help="FedDyn regularization alpha")
+
     # DP
     cli.add_argument("--dp-clip", type=float, default=1.0)
     cli.add_argument("--dp-noise", type=float, default=1.1)
     cli.add_argument("--dp-microbatch", type=int, default=8)
-     
+
     # Dirichlet
     cli.add_argument(
     "--alpha",
@@ -604,6 +622,9 @@ def main():
         "model": parse_csv_or_single(args_raw.model, str),
         "partition": parse_csv_or_single(args_raw.partition, str),
         "alpha": parse_csv_or_single(args_raw.alpha, float),
+        "learning_rate": parse_csv_or_single(args_raw.learning_rate, float),
+        "fedprox_mu": parse_csv_or_single(args_raw.fedprox_mu, float),
+        "feddyn_alpha": parse_csv_or_single(args_raw.feddyn_alpha, float),
     }
 
     multiple_values = any(len(v) > 1 for v in list_params.values())
@@ -618,6 +639,7 @@ def main():
 
         logger.info(logmsg.GRID_LAUNCH.format(n=len(grid)))
 
+        # --- LOOP 1: Planning / Logging ---
         planned_lines = []
         for i, g in enumerate(grid, 1):
             planned_lines.append(
@@ -625,7 +647,7 @@ def main():
                 f"latent={g['latent_dim']} noise_std={g['noise_std']} "
                 f"mode={g['infer_mode']} dp={g['dp']} "
                 f"grayscale={g['grayscale']} model={g['model']} "
-                 f"partition={g['partition']} alpha={g['alpha']}"
+                f"partition={g['partition']} alpha={g['alpha']}"
             )
         msg = "Planned experiments:\n" + "\n".join(planned_lines)
         logger.info(msg)
@@ -639,8 +661,12 @@ def main():
         logger.info("")
         results = []
 
+        # --- LOOP 2: Execution (THIS WAS MISSING) ---
         for i, g in enumerate(grid, 1):
+
+            # Create the namespace for THIS specific experiment 'g'
             ns = argparse.Namespace(
+                # --- Grid/List Params ---
                 dataset=g["dataset"],
                 seed=g["seed"],
                 latent_dim=g["latent_dim"],
@@ -651,6 +677,13 @@ def main():
                 model=g["model"],
                 partition=g["partition"],
                 alpha=g["alpha"],
+                learning_rate=g["learning_rate"],
+                fedprox_mu=g["fedprox_mu"],
+                feddyn_alpha=g["feddyn_alpha"],
+
+                # --- Static Args (passed from args_raw) ---
+                baseline_momentum=args_raw.baseline_momentum,
+                baseline_weight_decay=args_raw.baseline_weight_decay,
                 client_config=args_raw.client_config,
                 aggregation=args_raw.aggregation,
                 samples_per_class=args_raw.samples_per_class,
@@ -682,7 +715,7 @@ def main():
                 num_clients=args_raw.num_clients,
                 carbon_intensity_kg_per_kwh=args_raw.carbon_intensity_kg_per_kwh,
             )
-            
+
             if _is_experiment_done(args_raw.out_dir, ns):
                 logger.info(f"Skipping experiment {i}/{len(grid)}: Already completed.")
                 continue
@@ -709,15 +742,13 @@ def main():
 
             _finalize_costs(tmp_cost_dir, final_folder, ns,
                             carbon_intensity_kg_per_kwh=ns.carbon_intensity_kg_per_kwh)
-                            
-           
+
             try:
                 args_path = final_folder / "args.json"
                 with args_path.open("w") as f:
                     json.dump(vars(ns), f, indent=2)
             except Exception as e:
                 logger.warning(f"Could not write args.json: {e}")
-
 
             _write_environment(final_folder)
             _write_manifest(
@@ -738,49 +769,25 @@ def main():
     # SINGLE RUN MODE
     # ======================================================================
     else:
-        ns = argparse.Namespace(
-            dataset=list_params["dataset"][0],
-            seed=list_params["seed"][0],
-            latent_dim=list_params["latent_dim"][0],
-            noise_std=list_params["noise_std"][0],
-            infer_mode=list_params["infer_mode"][0],
-            dp=list_params["dp"][0],
-            grayscale=list_params["grayscale"][0],
-            model=list_params["model"][0],
-            partition=list_params["partition"][0],
-            alpha=list_params["alpha"][0],
-            client_config=args_raw.client_config,
-            aggregation=args_raw.aggregation,
-            samples_per_class=args_raw.samples_per_class,
-            baseline_epochs_per_round=args_raw.baseline_epochs_per_round,
-            baseline_max_rounds=args_raw.baseline_max_rounds,
-            baseline_patience=args_raw.baseline_patience,
-            epochs=args_raw.epochs,
-            clf_epochs=args_raw.clf_epochs,
-            batch_size=args_raw.batch_size,
-            data_dir=args_raw.data_dir,
-            out_dir=args_raw.out_dir,
-            dp_clip=args_raw.dp_clip,
-            dp_noise=args_raw.dp_noise,
-            dp_microbatch=args_raw.dp_microbatch,
-            eval_samples_per_class=args_raw.eval_samples_per_class,
-            pr_knn_k=args_raw.pr_knn_k,
-            sota_json=args_raw.sota_json,
-            copy_threshold_percentile=args_raw.copy_threshold_percentile,
-            classes=args_raw.classes,
-            dit_embed=args_raw.dit_embed,
-            dit_depth=args_raw.dit_depth,
-            dit_heads=args_raw.dit_heads,
-            dit_patch=args_raw.dit_patch,
-            input_size=args_raw.input_size,
-            save_datasets=args_raw.save_datasets,
-            network_accounting=args_raw.network_accounting,
-            client_fraction=args_raw.client_fraction,
-            clients_per_round=args_raw.clients_per_round,
-            num_clients=args_raw.num_clients,
-            carbon_intensity_kg_per_kwh=args_raw.carbon_intensity_kg_per_kwh,
-        )
+        # ------------------------------------------------------------------
+        # FIX: Dynamically copy ALL args so we don't lose learning_rate, etc.
+        # ------------------------------------------------------------------
 
+        # 1. Create a dictionary copy of all raw arguments
+        ns_dict = vars(args_raw).copy()
+
+        # 2. Overwrite the list-based arguments with their single values
+        #    (We use [0] because in single mode, these lists only have 1 item)
+        for key, val_list in list_params.items():
+            if key in ns_dict:
+                ns_dict[key] = val_list[0]
+
+        # 3. Reconstruct Namespace from the updated dictionary
+        ns = argparse.Namespace(**ns_dict)
+
+        # ------------------------------------------------------------------
+        # Execution (Same as before)
+        # ------------------------------------------------------------------
         tmp_cost_dir = Path(ns.out_dir) / ".costs_tmp_single"
         tmp_cost_dir.mkdir(parents=True, exist_ok=True)
 
@@ -795,15 +802,14 @@ def main():
 
         _finalize_costs(tmp_cost_dir, final_folder, ns,
                         carbon_intensity_kg_per_kwh=ns.carbon_intensity_kg_per_kwh)
-                        
-        # NEW: salva args.json anche in single run
+
+        # Save args.json
         try:
             args_path = final_folder / "args.json"
             with args_path.open("w") as f:
                 json.dump(vars(ns), f, indent=2)
         except Exception as e:
             logger.warning(f"Could not write args.json: {e}")
-
 
         _write_environment(final_folder)
         _write_manifest(
