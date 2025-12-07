@@ -34,8 +34,8 @@ across simulated distributed clients using various federated algorithms.
     • metrics.costs (Internal)
 
 📝 Notes:
-    This module assumes that data shuffling and partitioning have been handled 
-    upstream. It relies on a specific directory structure for saving models 
+    This module assumes that data shuffling and partitioning have been handled
+    upstream. It relies on a specific directory structure for saving models
     and metrics.
 
 Author: Andrea Moleri
@@ -49,12 +49,14 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
+
+from imports.data_management import DATASET_META
 
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, TensorDataset, Subset
+from torch.utils.data import DataLoader, TensorDataset, Subset, ConcatDataset, Dataset
 
 # Models & Metrics
 from models.baselines import (
@@ -72,53 +74,63 @@ from imports.data_augmentation import build_transform
 logger = logging.getLogger(__name__)
 
 
+class TransformSubset(Dataset):
+    """
+    A wrapper that overrides the transform of a subset or dataset.
+    Essential for ensuring:
+    1. Training data gets random augmentation.
+    2. Validation/Test data gets deterministic formatting.
+    """
+
+    def __init__(self, subset, transform):
+        self.subset = subset
+        self.transform = transform
+
+    def __getitem__(self, index):
+        x, y = self.subset[index]
+        # Applies the new transform (augmentation or deterministic crop)
+        # regardless of what the underlying dataset might have done,
+        # assuming compatibility (e.g. PIL -> Tensor).
+        return self.transform(x), y
+
+    def __len__(self):
+        return len(self.subset)
+
+
 # ---------------------------------------------------------------------------
 # Utility functions
 # ---------------------------------------------------------------------------
-
 def _default_num_workers() -> int:
     """
-    Determine the optimal number of data loading workers based on CPU availability.
-
-    Returns:
-        int: The recommended number of worker processes. Defaults to 4 if 
-        CPU count cannot be determined, or `cpu_count - 1` otherwise.
+    Determine the optimal number of data loading workers.
+    Respects MAX_WORKERS env var if set, otherwise falls back to heuristics.
     """
+    import os
+    # 1. Check for explicit limit from Shell Script (Critical for Parallel Jobs)
+    env_max = os.environ.get("MAX_WORKERS")
+    if env_max is not None and env_max.strip() != "":
+        try:
+            return int(env_max)
+        except ValueError:
+            pass
+
+    # 2. Fallback heuristic
     try:
-        import os
-        # Reserve one core for the main process to prevent deadlock or starvation
+        # Reserve one core for the main process
         return max(1, (os.cpu_count() or 2) - 1)
     except Exception:
         return 4
 
 
 def subset_to_tensor(
-    subset: torch.utils.data.Dataset,
-    batch_size: int = 1024,
-    num_workers: Optional[int] = None,
-    pin_memory: bool = True,
-    limit: Optional[int] = None,
+        subset: torch.utils.data.Dataset,
+        batch_size: int = 1024,
+        num_workers: Optional[int] = None,
+        pin_memory: bool = True,
+        limit: Optional[int] = None,
 ) -> torch.Tensor:
     """
     Efficiently converts a Dataset or Subset into a single contiguous Tensor.
-
-    This function bypasses standard Python loops for data accumulation where possible,
-    utilizing a DataLoader to leverage multi-processing and memory pinning.
-
-    Parameters:
-        subset (torch.utils.data.Dataset): The source dataset or subset to convert.
-        batch_size (int): The size of chunks to fetch during iteration. 
-                          Larger values reduce overhead.
-        num_workers (Optional[int]): Number of subprocesses for data loading. 
-                                     If None, a default heuristic is used.
-        pin_memory (bool): If True, the data loader will copy tensors into CUDA 
-                           pinned memory before returning them.
-        limit (Optional[int]): A maximum number of samples to retrieve. 
-                               Useful for debugging or quick previews.
-
-    Returns:
-        torch.Tensor: A single tensor containing the stacked data samples 
-                      (e.g., shape [N, C, H, W]).
     """
     if num_workers is None:
         num_workers = _default_num_workers()
@@ -150,22 +162,13 @@ def subset_to_tensor(
 
 
 def dataset_to_tensor(
-    ds: torch.utils.data.Dataset,
-    batch_size: int = 1024,
-    num_workers: Optional[int] = None,
-    pin_memory: bool = True,
+        ds: torch.utils.data.Dataset,
+        batch_size: int = 1024,
+        num_workers: Optional[int] = None,
+        pin_memory: bool = True,
 ) -> torch.Tensor:
     """
     Wrapper function to convert a full Dataset object into a single Tensor.
-
-    Parameters:
-        ds (torch.utils.data.Dataset): The dataset to convert.
-        batch_size (int): Chunk size for data loading.
-        num_workers (Optional[int]): Number of worker processes.
-        pin_memory (bool): Whether to use pinned memory.
-
-    Returns:
-        torch.Tensor: The complete dataset represented as a tensor.
     """
     return subset_to_tensor(
         ds,
@@ -177,20 +180,10 @@ def dataset_to_tensor(
 
 @torch.no_grad()
 def evaluate_single_classifier(
-    model: torch.nn.Module, ld: DataLoader, device: torch.device
+        model: torch.nn.Module, ld: DataLoader, device: torch.device
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Perform inference using a specific model on a given DataLoader.
-
-    Parameters:
-        model (torch.nn.Module): The neural network model to evaluate.
-        ld (DataLoader): The data loader containing the evaluation data.
-        device (torch.device): The computation device (CPU or GPU).
-
-    Returns:
-        Tuple[np.ndarray, np.ndarray]:
-            - Array of ground truth labels.
-            - Array of predicted class indices.
     """
     model.to(device).eval()
     y_true, y_pred = [], []
@@ -204,134 +197,66 @@ def evaluate_single_classifier(
     return torch.cat(y_true).numpy(), torch.cat(y_pred).numpy()
 
 
-def safe_train_val_split(
-    X,
-    y,
-    val_size: float = 0.2,
-    random_state: Optional[int] = None,
-    client_name: Optional[str] = None,
-    logger_: Optional[logging.Logger] = None,
-):
-    """
-    Perform a train/validation split that gracefully handles rare classes.
-
-    This wrapper around sklearn's train_test_split:
-      - Uses stratified splitting when every class has at least 2 samples.
-      - Falls back to a non-stratified split when some classes are too rare
-        to support stratification (which would otherwise raise a ValueError).
-
-    This prevents the error:
-        "The least populated class in y has only 1 member, which is too few..."
-
-    Args:
-        X: Features (array-like, PyTorch Tensor, etc.).
-        y: Labels (array-like or Tensor).
-        val_size (float): Fraction of samples to allocate to the validation set.
-        random_state (Optional[int]): Random seed.
-        client_name (Optional[str]): Client identifier for logging context.
-        logger_ (Optional[logging.Logger]): Logger to use (defaults to module logger).
-
-    Returns:
-        X_train, X_val, y_train, y_val
-    """
-    if logger_ is None:
-        logger_ = logger
-
-    # Convert labels to a NumPy array for statistics, but keep the original
-    # object for the actual split to preserve types (e.g., PyTorch Tensor).
-    if isinstance(y, torch.Tensor):
-        y_np = y.detach().cpu().numpy()
-    else:
-        y_np = np.asarray(y)
-
-    y_np = y_np.reshape(-1)
-    unique, counts = np.unique(y_np, return_counts=True)
-
-    # Default: no stratification
-    stratify = None
-
-    if len(unique) <= 1:
-        logger_.warning(
-            "[BASELINE] Client %s: not stratifying train/val split because only one "
-            "class is present (classes=%s, counts=%s).",
-            client_name,
-            unique.tolist(),
-            counts.tolist(),
-        )
-    else:
-        min_count = counts.min()
-        if min_count < 2:
-            logger_.warning(
-                "[BASELINE] Client %s: not stratifying train/val split because some "
-                "classes have < 2 samples (classes=%s, counts=%s). "
-                "Falling back to random (non-stratified) split.",
-                client_name,
-                unique.tolist(),
-                counts.tolist(),
-            )
-        else:
-            stratify = y
-            logger_.info(
-                "[BASELINE] Client %s: using stratified train/val split "
-                "(classes=%s, counts=%s).",
-                client_name,
-                unique.tolist(),
-                counts.tolist(),
-            )
-
-    return train_test_split(
-        X,
-        y,
-        test_size=val_size,
-        stratify=stratify,
-        random_state=random_state,
-    )
-
-
 # ---------------------------------------------------------------------------
 # Main baseline runner
 # ---------------------------------------------------------------------------
 
 def run_federated_baseline(
-    baseline: FederatedBaseline,
-    train_subsets_dict: Dict[str, Dict[int, Subset]],
-    test_subsets_dict: Dict[str, Dict[int, Subset]],
-    base_train_set,
-    args,
-    device,
-    P,  # PathRegistry instance
-    tracker: Optional[ExperimentCostTracker] = None,
+        baseline: FederatedBaseline,
+        train_subsets_dict: Dict[str, Dict[int, Subset]],
+        test_subsets_dict: Dict[str, Dict[int, Subset]],
+        base_train_set,
+        args,
+        device,
+        P,  # PathRegistry instance
+        tracker: Optional[ExperimentCostTracker] = None,
+        # --- NEW ARGUMENTS ---
+        train_transform_override: Optional[any] = None,
+        eval_transform_override: Optional[any] = None,
 ) -> Tuple[float, Dict, Dict, np.ndarray, np.ndarray]:
     """
     Execute the complete federated learning baseline experiment lifecycle.
-
-    This function manages the iterative process of client selection, local training,
-    server aggregation, and global evaluation. It handles data splitting, 
-    model checkpointing, and metric logging.
-
-    Parameters:
-        baseline (FederatedBaseline): The specific federated algorithm instance 
-                                      (e.g., FedAvg, FedProx).
-        train_subsets_dict (Dict): Dictionary mapping client IDs to their training 
-                                   subsets (partitioned by class).
-        test_subsets_dict (Dict): Dictionary mapping client IDs to their testing 
-                                  subsets.
-        base_train_set: The original full training dataset object.
-        args: Configuration namespace containing experiment hyperparameters.
-        device: The torch device for computation.
-        P: A PathRegistry object managing file system paths.
-        tracker (Optional[ExperimentCostTracker]): Utility to track computational 
-                                                   and communication costs.
-
-    Returns:
-        Tuple[float, Dict, Dict, np.ndarray, np.ndarray]:
-            - The final accuracy on the test set.
-            - The training history (losses, accuracies per round).
-            - A dictionary of comprehensive experiment metrics.
-            - y_true: Ground truth labels from the final evaluation (best model).
-            - y_pred: Predicted labels from the final evaluation (best model).
     """
     logger.info(f"[BASELINE] Starting {type(baseline).__name__} federated learning")
+
+    # 1. Resolve key
+    base_key = args.dataset.split("(", 1)[0].lower()
+    if base_key.startswith("medmnist"): base_key = "medmnist"
+
+    # 2. Find metadata pointer
+    meta_ptr = DATASET_META.get(base_key) or DATASET_META.get(args.dataset)
+    if meta_ptr is None:
+        # Fallback search
+        for k in DATASET_META:
+            if k in args.dataset:
+                meta_ptr = DATASET_META[k]
+                break
+
+    # 3. Apply override
+    if meta_ptr and meta_ptr.get("input_size") != args.input_size:
+        logger.info(f"⚠️ Overriding dataset default resolution to: {args.input_size}")
+        meta_ptr["input_size"] = args.input_size
+
+    # ---------------------------------------------------------------
+    # 0. Initialize Augmentation Strategies (NeurIPS Correction)
+    # ---------------------------------------------------------------
+    # specific=True -> Random Augmentation (Crops/Flips)
+    # specific=False -> Deterministic (Resize/CenterCrop)
+
+    # CHECK: Did experiment_setup pass us a robust transform?
+    if train_transform_override is not None:
+        logger.info("[BASELINE] Using provided TRAIN transform (preserving robustness/noise settings)")
+        train_transform = train_transform_override
+    else:
+        # Fallback: Build it here (Note: might miss robustness flag if not passed in args)
+        use_robustness = getattr(args, "robustness", False)
+        train_transform = build_transform(args.dataset, train=True, robustness=use_robustness)
+
+    # CHECK: Did experiment_setup pass us a deterministic eval transform?
+    if eval_transform_override is not None:
+        eval_transform = eval_transform_override
+    else:
+        eval_transform = build_transform(args.dataset, train=False)
 
     # ---------------------------------------------------------------
     # Initialize models
@@ -365,20 +290,13 @@ def run_federated_baseline(
     # ---------------------------------------------------------------
     # Official Test Loader Construction
     # ---------------------------------------------------------------
-    train_transform = getattr(base_train_set, "transform", None)
-    if train_transform is None:
-        logger.warning(
-            "[BASELINE] base_train_set has no .transform attribute; "
-            "falling back to build_transform(%s) for test set.",
-            args.dataset,
-        )
-
     try:
+        # Use deterministic eval_transform for the global test set
         test_set = get_dataset(
             args.dataset,
             args.data_dir,
             False,  # is_train=False
-            train_transform or build_transform(args.dataset),
+            eval_transform,
         )
         test_imgs = dataset_to_tensor(test_set)
 
@@ -401,8 +319,7 @@ def run_federated_baseline(
             shuffle=False,
         )
         logger.info(
-            f"[BASELINE] Created test loader with {len(test_imgs)} samples using "
-            f"transform={train_transform if train_transform is not None else 'build_transform'}"
+            f"[BASELINE] Created test loader with {len(test_imgs)} samples using deterministic transform."
         )
     except Exception as e:
         logger.warning(f"[BASELINE] Could not create proper test loader: {e}")
@@ -414,76 +331,92 @@ def run_federated_baseline(
     # ---------------------------------------------------------------
     # Precompute Train/Val Splits for Each Client
     # ---------------------------------------------------------------
-    client_train_data: Dict[str, Tuple[torch.Tensor, torch.Tensor]] = {}
+    # train_data is kept as Dataset/Subset to ensure Dynamic Augmentation
+    # val_data is converted to Tensors for Deterministic Evaluation & Speed
+    client_train_data: Dict[str, Dataset] = {}
     client_val_data: Dict[str, Tuple[torch.Tensor, torch.Tensor]] = {}
 
     for client_name in client_names:
-        # --- Process Training Data ---
-        xs_train: List[torch.Tensor] = []
-        ys_train: List[torch.Tensor] = []
+        # 1. Consolidate all class-subsets for this client into one dataset
+        client_subsets = list(train_subsets_dict[client_name].values())
+        if not client_subsets:
+            continue
 
-        for class_id, train_subset in train_subsets_dict[client_name].items():
-            imgs = subset_to_tensor(train_subset)
-            if imgs.numel() == 0:
-                continue
-            xs_train.append(imgs)
-            ys_train.append(torch.full((len(imgs),), class_id, dtype=torch.long))
+        full_client_dataset = ConcatDataset(client_subsets)
 
-        if xs_train:
-            X_all = torch.cat(xs_train)
-            y_all = torch.cat(ys_train)
-        else:
-            X_all = torch.empty(0)
-            y_all = torch.empty(0, dtype=torch.long)
+        # 2. Handle Validation Split
 
-        # --- Process Validation Data (explicit subsets, if available) ---
-        xs_val: List[torch.Tensor] = []
-        ys_val: List[torch.Tensor] = []
-
-        if client_name in test_subsets_dict:
+        # Case A: Explicit Validation Set (from Partitioning)
+        if client_name in test_subsets_dict and test_subsets_dict[client_name]:
+            # Convert validation data to tensors immediately (Freeze)
+            xs_val = []
+            ys_val = []
             for class_id, val_subset in test_subsets_dict[client_name].items():
-                imgs_val = subset_to_tensor(val_subset)
-                if imgs_val.numel() == 0:
-                    continue
-                xs_val.append(imgs_val)
-                ys_val.append(torch.full((len(imgs_val),), class_id, dtype=torch.long))
+                # APPLIED CORRECTION: Wrap validation subset with deterministic transform
+                val_wrapped = TransformSubset(val_subset, eval_transform)
 
-        if xs_val:
-            # Case 1: Explicit validation set exists
-            X_val = torch.cat(xs_val)
-            y_val = torch.cat(ys_val)
-            X_train = X_all
-            y_train = y_all
-            logger.info(
-                f"[BASELINE] Client {client_name}: using explicit validation set "
-                f"of size {len(X_val)}"
-            )
-        else:
-            # Case 2: Create a hold-out split from the training data
-            if len(X_all) > 1:
-                X_train, X_val, y_train, y_val = safe_train_val_split(
-                    X_all,
-                    y_all,
-                    val_size=0.2,
-                    random_state=getattr(args, "seed", None),
-                    client_name=client_name,
-                    logger_=logger,
-                )
-                logger.info(
-                    f"[BASELINE] Client {client_name}: created hold-out "
-                    f"validation split (train={len(X_train)}, val={len(X_val)})"
-                )
+                imgs_val = subset_to_tensor(val_wrapped)
+                if imgs_val.numel() > 0:
+                    xs_val.append(imgs_val)
+                    ys_val.append(torch.full((len(imgs_val),), class_id, dtype=torch.long))
+
+            if xs_val:
+                X_val = torch.cat(xs_val)
+                y_val = torch.cat(ys_val)
+                logger.info(f"[BASELINE] Client {client_name}: using explicit validation set ({len(X_val)})")
             else:
-                # Case 3: Insufficient data for splitting
-                X_train, y_train = X_all, y_all
-                X_val, y_val = X_all, y_all
-                logger.warning(
-                    f"[BASELINE] Client {client_name}: not enough data to split, "
-                    f"using same set for train and validation (size={len(X_all)})"
+                X_val, y_val = torch.empty(0), torch.empty(0)
+
+            # Train data remains dynamic
+            client_train_data[client_name] = full_client_dataset
+            client_val_data[client_name] = (X_val, y_val)
+
+        # Case B: Implicit Hold-out Split
+        else:
+            total_len = len(full_client_dataset)
+            if total_len > 1:
+                val_len = int(total_len * 0.2)
+                train_len = total_len - val_len
+
+                # Random split (labels not easily accessible for stratification without loading)
+                train_ds, val_ds = torch.utils.data.random_split(
+                    full_client_dataset,
+                    [train_len, val_len],
+                    generator=torch.Generator().manual_seed(int(getattr(args, "seed", 42)))
                 )
 
-        client_train_data[client_name] = (X_train, y_train)
-        client_val_data[client_name] = (X_val, y_val)
+                # APPLIED CORRECTION: Wrap implicit validation split with deterministic transform
+                val_wrapped = TransformSubset(val_ds, eval_transform)
+
+                # Freeze validation set
+                X_val = subset_to_tensor(val_wrapped)
+
+                # Extract labels for validation tensor
+                # We reuse the wrapped loader to ensure consistency
+                val_loader_temp = DataLoader(val_wrapped, batch_size=1024, shuffle=False)
+                val_xs, val_ys = [], []
+                for x, y in val_loader_temp:
+                    # x is already transformed by TransformSubset/subset_to_tensor call implies similar
+                    # But here we are iterating directly.
+                    # Note: subset_to_tensor re-iterates. We optimize by capturing here if needed.
+                    # But subset_to_tensor is efficient. We just need Ys.
+                    val_ys.append(y)
+
+                if X_val.numel() > 0:
+                    y_val = torch.cat(val_ys)
+                else:
+                    X_val, y_val = torch.empty(0), torch.empty(0)
+
+                client_train_data[client_name] = train_ds
+                client_val_data[client_name] = (X_val, y_val)
+
+                logger.info(
+                    f"[BASELINE] Client {client_name}: created dynamic train ({train_len}) / static val ({val_len}) split")
+            else:
+                # Not enough data
+                client_train_data[client_name] = full_client_dataset
+                client_val_data[client_name] = (torch.empty(0), torch.empty(0))
+                logger.warning(f"[BASELINE] Client {client_name}: insufficient data for split.")
 
     # ---------------------------------------------------------------
     # Global Validation Loader Assembly
@@ -546,19 +479,27 @@ def run_federated_baseline(
                 tracker.start_phase(f"client_{client_name}_round_{round_num}")
 
             try:
-                X_train, y_train = client_train_data[client_name]
+                # Training Data: Dynamic Dataset/Subset
+                train_ds = client_train_data[client_name]
+
+                # Validation Data: Static Tensors
                 X_val, y_val = client_val_data[client_name]
 
-                if X_train.numel() == 0:
-                    logger.warning(
-                        f"[BASELINE] No training data for client {client_name}"
-                    )
+                if len(train_ds) == 0:
+                    logger.warning(f"[BASELINE] No training data for client {client_name}")
                     continue
 
+                # APPLIED CORRECTION: Wrap training set with Augmentation pipeline
+                # This ensures every epoch yields different random crops/flips
+                augmented_train_ds = TransformSubset(train_ds, train_transform)
+
                 train_loader = DataLoader(
-                    TensorDataset(X_train, y_train),
+                    augmented_train_ds,
                     batch_size=args.batch_size,
                     shuffle=True,
+                    num_workers=_default_num_workers(),
+                    pin_memory=True,
+                    persistent_workers=True
                 )
 
                 if X_val.numel() > 0:
@@ -569,10 +510,7 @@ def run_federated_baseline(
                     )
                 else:
                     val_loader = DataLoader(
-                        TensorDataset(
-                            torch.empty(0, *X_train.shape[1:]),
-                            torch.empty(0, dtype=torch.long),
-                        ),
+                        TensorDataset(torch.empty(0), torch.empty(0)),
                         batch_size=args.batch_size,
                         shuffle=False,
                     )
@@ -668,7 +606,7 @@ def run_federated_baseline(
     # ---------------------------------------------------------------
     final_test_accuracy = best_val_accuracy
     model_path = P.root / "models" / "classifiers" / "central_best.pt"
-    
+
     # Initialize empty arrays in case loading fails
     final_y_true = np.array([])
     final_y_pred = np.array([])
@@ -677,7 +615,7 @@ def run_federated_baseline(
         try:
             baseline.global_model.load_state_dict(torch.load(model_path))
             final_test_accuracy = baseline.evaluate(test_loader)
-            
+
             # CAPTURE PREDICTIONS for confusion matrix
             final_y_true, final_y_pred = evaluate_single_classifier(
                 baseline.global_model, test_loader, device
@@ -693,7 +631,7 @@ def run_federated_baseline(
     # ---------------------------------------------------------------
     # Metrics Serialization
     # ---------------------------------------------------------------
-    
+
     # Calculate detailed class distribution per client
     client_class_dist: Dict[str, Dict[str, int]] = {}
     for c_name, c_subsets in train_subsets_dict.items():
