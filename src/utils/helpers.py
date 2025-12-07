@@ -97,8 +97,6 @@ class VGGPerceptualLoss(torch.nn.Module):
     losses based on high-level semantic content rather than pixel-wise differences.
     It supports both content reconstruction loss and Gram-matrix based style loss.
 
-
-
     Attributes:
         blocks (torch.nn.ModuleList): Frozen VGG-16 blocks used for feature extraction.
         transform (callable): Function to resize inputs to VGG-compatible dimensions.
@@ -112,7 +110,7 @@ class VGGPerceptualLoss(torch.nn.Module):
         Initialize the VGG perceptual loss module.
 
         Args:
-            resize (bool): If True, resizes inputs to (224, 224) to match 
+            resize (bool): If True, resizes inputs to (224, 224) to match
                            VGG-16 training conditions. Defaults to True.
         """
         super(VGGPerceptualLoss, self).__init__()
@@ -244,11 +242,11 @@ def _dp_add_noise_(params: List[torch.Tensor], clip: float, noise_mult: float) -
     """
     Inject Gaussian noise into gradients or parameters for Differential Privacy.
 
-    This operation is typically performed during DP-SGD updates. It adds noise 
+    This operation is typically performed during DP-SGD updates. It adds noise
     proportional to the clipping threshold and a noise multiplier.
 
     math:
-        \theta \leftarrow \theta + \mathcal{N}(0, \sigma^2 I) 
+        \theta \leftarrow \theta + \mathcal{N}(0, \sigma^2 I)
         \text{ where } \sigma = \text{clip} \times \text{noise\_mult}
 
     Args:
@@ -289,13 +287,8 @@ def plot_curves(history: Dict[str, List[float]], out_path: Path) -> None:
     """
     Render and save training history plots (Loss and Accuracy).
 
-
-
-[Image of deep learning training curves]
-
-
     Args:
-        history (Dict[str, List[float]]): Dictionary mapping metric names to 
+        history (Dict[str, List[float]]): Dictionary mapping metric names to
                                           lists of recorded values per epoch.
         out_path (Path): Filesystem path to save the generated plot.
 
@@ -345,21 +338,23 @@ def decoder_size_mb(decoder: Decoder) -> float:
 
 
 # ============================================================ CSV PARSING
-def parse_csv_or_single(value: str, dtype: type = str) -> List[Any]:
+def parse_csv_or_single(value: Union[str, float, int], dtype: type = str) -> List[Any]:
     """
     Parse a configuration string that may be a single value or a CSV list.
+    Safely handles numbers (floats/ints) by converting them to strings first.
 
     Args:
-        value (str): The input string (e.g., "1,2,3" or "1").
+        value (str | float | int): The input string (e.g., "1,2,3") or single numeric value.
         dtype (type): The target type to cast each element to (e.g., int, float).
 
     Returns:
         List[Any]: A list of parsed values of type `dtype`.
     """
-    if ',' in value:
-        return [dtype(x.strip()) for x in value.split(',')]
+    s_val = str(value)
+    if ',' in s_val:
+        return [dtype(x.strip()) for x in s_val.split(',')]
     else:
-        return [dtype(value.strip())]
+        return [dtype(s_val.strip())]
 
 
 def expand_grid(params: Dict[str, List[Any]]) -> List[Dict[str, Any]]:
@@ -367,11 +362,11 @@ def expand_grid(params: Dict[str, List[Any]]) -> List[Dict[str, Any]]:
     Generate a Cartesian product of hyperparameters for grid search.
 
     Args:
-        params (Dict[str, List[Any]]): Dictionary mapping parameter names to 
+        params (Dict[str, List[Any]]): Dictionary mapping parameter names to
                                        lists of possible values.
 
     Returns:
-        List[Dict[str, Any]]: A list of dictionaries, each representing a 
+        List[Dict[str, Any]]: A list of dictionaries, each representing a
                               unique combination of parameters.
     """
     keys = params.keys()
@@ -396,7 +391,7 @@ def evaluate_single_classifier(
         device (torch.device): Compute device (CPU/GPU).
 
     Returns:
-        Tuple[np.ndarray, np.ndarray]: 
+        Tuple[np.ndarray, np.ndarray]:
             - Array of true labels.
             - Array of predicted labels (class indices).
     """
@@ -450,7 +445,7 @@ def subset_to_tensor(
     """
     Efficiently convert a Dataset or Subset into a single contiguous Tensor.
 
-    This function bypasses standard Python loops where possible by utilizing 
+    This function bypasses standard Python loops where possible by utilizing
     a DataLoader with multi-processing to fetch batches, which are then concatenated.
 
     Args:
@@ -473,7 +468,7 @@ def subset_to_tensor(
         num_workers=num_workers,
         pin_memory=pin_memory,
     )
-    xs = []
+    xs: List[torch.Tensor] = []
     n_acc = 0
     for x, _ in loader:
         # Halt loading if the limit is reached
