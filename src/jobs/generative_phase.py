@@ -14,8 +14,8 @@ learning simulation.
 
 🔧 Core Functionalities:
     • Orchestrate local training for Variational Autoencoders (VAE) and Diffusion Transformers (DiT)
-    • Manage data loading with optional noise injection for robustness experiments
-    • execute simple parameter aggregation (FedAvg) across client models
+    • Apply scientifically grounded Data Augmentation policies (NeurIPS Standard)
+    • Execute simple parameter aggregation (FedAvg) across client models
     • Persist model checkpoints and generate visual sampling artifacts
     • Simulate and log network bandwidth usage (upload/download) for performance analysis
 
@@ -27,30 +27,31 @@ learning simulation.
 📁 Dependencies:
     • torch (PyTorch)
     • models.vae / models.diffusion
-    • utils (visualization and metrics)
+    • imports.data_augmentation (Scientific Transforms)
     • jobs.experiment_setup
 
 📝 Notes:
-    The module assumes a specific directory structure for artifacts and relies on 
-    an external `tracker` object for experimental metric logging.
+    The module forces strict augmentation policies defined in `data_augmentation.py`
+    to ensure generative models learn robust features rather than memorizing raw data.
 
 Author: Andrea Moleri
 File Location: src/jobs/generative_phase.py
-Last Modified: 21/11/2025
+Last Modified: 08/12/2025
 """
 
 from __future__ import annotations
 import logging
 import time
-from typing import Dict, List, Tuple, Any, Optional, Union
+from typing import Dict, List, Tuple, Any, Optional, Union, Callable
 from pathlib import Path
 import json
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
-from imports.data_augmentation import NoisyCleanDataset
+# Updated Import: Use the centralized transformation factory
+from imports.data_augmentation import build_transform
 from models.trainers import train_vae, train_diffusion
 from models.vae import VAE, Decoder
 from models.diffusion import DiT, DiffusionConfig, rectified_flow_sampler
@@ -60,68 +61,147 @@ from jobs.experiment_setup import _export_client_class_distribution
 
 logger = logging.getLogger(__name__)
 
+# ============================ Utilities ==================================
+
+class TransformedSubset(Dataset):
+    """
+    A Dataset wrapper that applies a transformation pipeline dynamically upon access.
+
+    This class decouples data storage from data augmentation, allowing
+    computational transformations (e.g., normalization, robust augmentation)
+    to be applied lazily during the training loop.
+    """
+    def __init__(self, subset: Any, transform: Callable):
+        """
+        Initialize the TransformedSubset.
+
+        Parameters
+        ----------
+        subset : Any
+            The underlying dataset or subset (must support indexing).
+        transform : Callable
+            A function or callable object (e.g., torchvision.transforms.Compose)
+            that processes a single data sample.
+        """
+        self.subset = subset
+        self.transform = transform
+
+    def __getitem__(self, index):
+        """
+        Retrieve a sample by index and apply the transformation.
+
+        Parameters
+        ----------
+        index : int
+            The index of the item to retrieve.
+
+        Returns
+        -------
+        Tuple[Any, Any]
+            A tuple containing the transformed input data and its associated label.
+        """
+        x, y = self.subset[index]
+        if self.transform:
+            x = self.transform(x)
+        return x, y
+
+    def __len__(self):
+        """
+        Return the size of the subset.
+
+        Returns
+        -------
+        int
+            The total number of samples in the subset.
+        """
+        return len(self.subset)
+
 def _module_size_mb(m: nn.Module) -> float:
     """
-    Calculates the total size of the model parameters in Megabytes (MB).
+    Calculate the memory footprint of a PyTorch module's parameters.
 
-    Args:
-        m (nn.Module): The PyTorch module to evaluate.
+    Parameters
+    ----------
+    m : nn.Module
+        The neural network module to evaluate.
 
-    Returns:
-        float: The size of the model in MB.
+    Returns
+    -------
+    float
+        The total size of the model parameters in Megabytes (MB).
     """
     return float(sum(p.numel() * p.element_size() for p in m.parameters()) / 1_000_000.0)
 
 def sample_grid_diffusion(model: DiT, out_path: Path, n: int, device: torch.device, img_shape: Tuple[int, int, int], steps: int = 50):
     """
-    Generates a grid of synthetic images using a trained Diffusion Transformer (DiT) 
-    and saves the result to disk.
+    Generate and save a grid of synthetic images using a Diffusion Transformer (DiT).
 
-    Args:
-        model (DiT): The trained diffusion model.
-        out_path (Path): The filesystem path where the generated image grid will be saved.
-        n (int): The number of samples to generate.
-        device (torch.device): The computation device (CPU or CUDA).
-        img_shape (Tuple[int, int, int]): The dimensions of the target image (Channels, Height, Width).
-        steps (int, optional): The number of integration steps for the flow matching sampler. Defaults to 50.
+    This function utilizes a Rectified Flow sampler to generate samples from
+    noise, denormalizes the output, and saves the resulting grid to disk.
 
-    Returns:
-        None
+
+
+[Image of Diffusion Model sampling process]
+
+
+    Parameters
+    ----------
+    model : DiT
+        The trained Diffusion Transformer model.
+    out_path : Path
+        The filesystem path where the generated image grid will be saved.
+    n : int
+        The total number of samples to generate.
+    device : torch.device
+        The computational device (CPU or GPU) to use for inference.
+    img_shape : Tuple[int, int, int]
+        The dimensions of the target image (Channels, Height, Width).
+    steps : int, optional
+        The number of integration steps for the flow matching sampler (default is 50).
     """
     C, H, W = img_shape
     model.to(device).eval()
-    
-    # Generate samples using the rectified flow ODE solver
+
+    # Execute the ordinary differential equation (ODE) solver for sampling
     imgs = rectified_flow_sampler(model, n=n, shape=(C, H, W), steps=steps, device=device).cpu()
     model.cpu()
 
-    # Denormalize pixel values from [-1, 1] to [0, 1] for visualization
+    # Denormalize the pixel values from the range [-1, 1] to [0, 1] for visualization
     imgs = (imgs + 1.0) / 2.0
     imgs = imgs.clamp(0.0, 1.0)
 
-    # Create a grid visualization from the first 64 samples
+    # Organize the tensor batch into a visual grid and save to disk
     grid_img = grid_from_tensors(imgs[:64])
     plt.imsave(out_path, grid_img)
 
 def aggregate_models_simple(client_models: Dict[str, Dict[int, torch.nn.Module]]) -> Dict[int, torch.nn.Module]:
     """
-    Performs simple Federated Averaging (FedAvg) on a collection of client models, 
-    grouping them by class label.
+    Perform Federated Averaging (FedAvg) on a collection of client models.
 
-    This function computes the arithmetic mean of the state dictionaries of all 
-    models associated with a specific class ID across different clients.
+    This function groups models by their associated class ID and computes the
+    arithmetic mean of their parameters (state dictionaries). It handles dynamic
+    reconstruction of model architectures (VAE Decoder or DiT) to load the
+    aggregated weights.
 
-    Args:
-        client_models (Dict[str, Dict[int, torch.nn.Module]]): A nested dictionary 
-            mapping client IDs to a dictionary of class-specific models.
 
-    Returns:
-        Dict[int, torch.nn.Module]: A dictionary mapping class IDs to the aggregated 
-            global model for that class.
+
+[Image of Federated Learning architecture]
+
+
+    Parameters
+    ----------
+    client_models : Dict[str, Dict[int, torch.nn.Module]]
+        A nested dictionary mapping client identifiers to a dictionary of
+        class IDs and their corresponding local models.
+
+    Returns
+    -------
+    Dict[int, torch.nn.Module]
+        A dictionary mapping class IDs to the aggregated global models.
     """
     logger.info("[SIMPLE AGGREGATION] Starting simple aggregation")
 
-    # Group models by their target class ID
+    # Group models by target class ID across all clients
     class_models: Dict[int, List[torch.nn.Module]] = {}
     for _, models_dict in client_models.items():
         for class_id, model in models_dict.items():
@@ -130,42 +210,31 @@ def aggregate_models_simple(client_models: Dict[str, Dict[int, torch.nn.Module]]
     aggregated: Dict[int, torch.nn.Module] = {}
 
     for class_id, models in class_models.items():
-        if not models:
-            continue
+        if not models: continue
 
         logger.info(f"[SIMPLE AGGREGATION] Aggregating class {class_id} from {len(models)} models")
 
         # Initialize the averaged state dictionary with the structure of the first model
         avg_sd = models[0].state_dict().copy()
 
-        # Iterate through all parameters and compute the average across models
+        # Iterate through all parameters and compute the element-wise mean
         for k in avg_sd:
-            # Only average floating point parameters; preserve integers (e.g., version counters)
             if avg_sd[k].dtype in [torch.float32, torch.float64, torch.float16]:
                 s = torch.zeros_like(avg_sd[k])
-                for m in models:
-                    s += m.state_dict()[k]
+                for m in models: s += m.state_dict()[k]
                 avg_sd[k] = s / len(models)
 
         tmpl = models[0]
 
-        # -------------------- caso VAE Decoder --------------------
+        # Reconstruct the specific model architecture to host the aggregated weights
+        # This factory logic handles both VAE Decoders and DiT configurations
         if isinstance(tmpl, Decoder):
-            agg_model = Decoder(
-                tmpl.latent_dim,
-                tmpl.output_channels,
-                tmpl.hidden_dims,
-            )
-            logger.info(f"[SIMPLE AGGREGATION] Created VAE Decoder for class {class_id}")
-
-        # -------------------- caso DiT (diffusion) ----------------
-        elif isinstance(tmpl, DiT) or hasattr(tmpl, "config") or hasattr(tmpl, "in_ch"):
+            agg_model = Decoder(tmpl.latent_dim, tmpl.output_channels, tmpl.hidden_dims)
+        elif isinstance(tmpl, DiT) or hasattr(tmpl, "config"):
             try:
-                # Se il modello ha già una config, usala direttamente
-                if hasattr(tmpl, "config"):
-                    cfg = tmpl.config
+                if hasattr(tmpl, "config"): cfg = tmpl.config
                 else:
-                    # Altrimenti ricostruisci DiffusionConfig dagli attributi del modello
+                    # Fallback configuration extraction if the config object is missing
                     cfg = DiffusionConfig(
                         in_ch=getattr(tmpl, "in_ch", 1),
                         embed_dim=getattr(tmpl, "embed_dim", 256),
@@ -175,80 +244,75 @@ def aggregate_models_simple(client_models: Dict[str, Dict[int, torch.nn.Module]]
                         patch_size=getattr(tmpl, "patch_size", 2),
                     )
                 agg_model = DiT(cfg)
-                logger.info(f"[SIMPLE AGGREGATION] Created DiT model for class {class_id}")
             except Exception as e:
-                logger.warning(f"[SIMPLE AGGREGATION] Could not create DiT model for class {class_id}: {e}")
-                # Fallback: prova a istanziare il tipo “nudo”
-                try:
-                    agg_model = type(tmpl)()
-                except Exception:
-                    # Ultima spiaggia: usa direttamente il primo modello
-                    agg_model = tmpl
-
-        # -------------------- altri tipi generici -----------------
-        else:
-            try:
+                logger.warning(f"Aggregation Fallback for DiT: {e}")
                 agg_model = type(tmpl)()
-                logger.info(f"[SIMPLE AGGREGATION] Created generic model for class {class_id}")
-            except Exception as e:
-                logger.warning(f"[SIMPLE AGGREGATION] Could not create model for class {class_id}: {e}")
-                agg_model = tmpl  # fallback
+        else:
+            agg_model = type(tmpl)()
 
-        # Carica lo state_dict medio dentro il modello aggregato
-        try:
-            agg_model.load_state_dict(avg_sd)
-            logger.info(f"[SIMPLE AGGREGATION] Successfully loaded averaged state dict for class {class_id}")
-        except Exception as e:
-            logger.warning(f"[SIMPLE AGGREGATION] Could not load state dict for class {class_id}: {e}")
-            agg_model = tmpl  # fallback: usa il modello originale
-
+        agg_model.load_state_dict(avg_sd)
         aggregated[class_id] = agg_model
 
     return aggregated
 
+# ============================ Main Training Orchestrator ========================
 
 def run_generative_training(
-    args: Any, 
-    device: torch.device, 
-    P: Any, 
-    train_subsets_dict: Dict[str, Dict[int, Any]], 
-    train_subsets: List[Any], 
-    present_classes: List[int], 
-    num_classes: int, 
-    chans: int, 
-    img_shape: Tuple[int, int, int], 
-    tracker: Any, 
-    hist: Any, 
+    args: Any,
+    device: torch.device,
+    P: Any,
+    train_subsets_dict: Dict[str, Dict[int, Any]],
+    train_subsets: List[Any],
+    present_classes: List[int],
+    num_classes: int,
+    chans: int,
+    img_shape: Tuple[int, int, int],
+    tracker: Any,
+    hist: Any,
     perc_loss: nn.Module
 ) -> Tuple[List[Optional[nn.Module]], Dict[str, Dict[int, nn.Module]], Dict[str, Dict[int, int]], float, float]:
     """
-    Executes the generative model training pipeline across simulated clients.
+    Execute the generative model training phase across all simulated clients.
 
-    This function handles the partitioning logic (Skew/Dirichlet vs. Silos), instantiates
-    local training loops, manages checkpoints, performs model aggregation, and logs
-    performance metrics.
+    This function manages the data loading, training execution, artifact generation,
+    and model aggregation for the experiment. It supports varying partition modes,
+    specifically 'silos' (isolated learning) and 'skew/dirichlet' (federated learning).
 
-    Args:
-        args (Any): Configuration namespace containing hyperparameters (batch size, epochs, model type, etc.).
-        device (torch.device): The hardware accelerator device.
-        P (Any): Path configuration object containing root directories.
-        train_subsets_dict (Dict[str, Dict[int, Any]]): Data partitions mapped by client and class (for Skew/Dirichlet).
-        train_subsets (List[Any]): Data partitions list (for Silos).
-        present_classes (List[int]): List of class IDs available in the current context.
-        num_classes (int): Total number of classes in the dataset.
-        chans (int): Number of image channels (e.g., 1 for grayscale, 3 for RGB).
-        img_shape (Tuple[int, int, int]): Dimensions of the input images.
-        tracker (Any): Experiment tracker object for logging metrics and phases.
-        hist (Any): History object for accumulating loss/metric trends.
-        perc_loss (nn.Module): Perceptual loss module (e.g., LPIPS) used for training VAEs.
+    Parameters
+    ----------
+    args : Any
+        Configuration namespace containing hyperparameters (epochs, batch size, model type, etc.).
+    device : torch.device
+        The hardware device (CPU/GPU) for training.
+    P : Any
+        Path configuration object managing project directories.
+    train_subsets_dict : Dict[str, Dict[int, Any]]
+        Data partitions mapped by client name and class ID (used for complex partitions).
+    train_subsets : List[Any]
+        List of data subsets (used for simple silo partitioning).
+    present_classes : List[int]
+        List of class IDs present in the current experiment scope.
+    num_classes : int
+        Total number of classes in the dataset.
+    chans : int
+        Number of image channels.
+    img_shape : Tuple[int, int, int]
+        Dimensions of the input images.
+    tracker : Any
+        Experiment tracker for logging metrics and phases.
+    hist : Any
+        History object for recording loss curves.
+    perc_loss : nn.Module
+        Perceptual loss module (LPIPS or similar) used during VAE training.
 
-    Returns:
-        Tuple containing:
-        - gen_models (List[Optional[nn.Module]]): List of aggregated or trained models indexed by class ID.
-        - client_gen_models (Dict[str, Dict[int, nn.Module]]): Dictionary of models trained by specific clients.
-        - client_sample_counts (Dict[str, Dict[int, int]]): Sample counts per client per class.
-        - gen_step_total (float): Total number of optimization steps performed.
-        - gen_start (float): Timestamp of when the training started.
+    Returns
+    -------
+    Tuple[...]
+        - gen_models: List of aggregated/global models per class.
+        - client_gen_models: Dictionary of local models trained by clients.
+        - client_sample_counts: Dictionary of sample counts per client per class.
+        - gen_step_total: Total number of training steps executed.
+        - gen_start: Timestamp of the phase start.
     """
     gen_models: List[torch.nn.Module] = []
     client_gen_models: Dict[str, Dict[int, torch.nn.Module]] = {}
@@ -259,8 +323,10 @@ def run_generative_training(
     partition_mode = getattr(args, "partition", "silos")
 
     # -------------------------------------------------------------------------
-    # Logic for Complex Partitions (Skew / Dirichlet)
+    # PART A: Complex Partitions (Skew / Dirichlet)
     # -------------------------------------------------------------------------
+    # In this mode, clients may hold data for multiple classes. We iterate over
+    # clients and then over the classes they possess.
     if partition_mode in ["skew", "dirichlet"]:
         for client_name, class_subsets in train_subsets_dict.items():
             client_gen_models[client_name] = {}
@@ -268,30 +334,32 @@ def run_generative_training(
 
             for class_id, train_subset in class_subsets.items():
                 logger.info(f"[{partition_mode.upper()}] Training client {client_name}, class {class_id}")
-                
-                # Configure Data Loading: Inject noise if training VAEs for denoising tasks
-                if args.model == "vae":
-                    ds_client = NoisyCleanDataset(train_subset, args.noise_std)
-                    ld = DataLoader(ds_client, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
-                else:
-                    ld = DataLoader(train_subset, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
+
+                # Apply robust augmentation policies to prevent memorization
+                # This ensures the generative model captures generalized features suitable for
+                # downstream classification tasks rather than overfitting to specific samples.
+                robust_transform = build_transform(args.dataset, train=True, robustness=True)
+                ds_client = TransformedSubset(train_subset, robust_transform)
+
+                ld = DataLoader(ds_client, batch_size=args.batch_size, shuffle=True,
+                                num_workers=args.workers, pin_memory=True)
 
                 if tracker: tracker.start_phase(f"client_{client_name}_class_{class_id}_gen")
 
-                # Branch: VAE Training
+                # Dispatch training to the appropriate model trainer (VAE vs. DiT)
                 if args.model == "vae":
                     vae, steps = train_vae(
-                        VAE(chans, args.latent_dim), ld, device, args.epochs, hist, 
-                        f"{client_name}_class_{class_id}", perc_loss, 
+                        VAE(chans, args.latent_dim), ld, device, args.epochs, hist,
+                        f"{client_name}_class_{class_id}", perc_loss,
                         dp=args.dp, dp_clip=args.dp_clip, dp_noise_mult=args.dp_noise, dp_microbatch=args.dp_microbatch, tracker=tracker
                     )
                     model_to_save = vae.decoder
                     full_model = vae
-                # Branch: Diffusion Transformer (DiT) Training
                 else:
-                    cfg = DiffusionConfig(in_ch=chans, embed_dim=int(args.dit_embed), depth=int(args.dit_depth), num_heads=int(args.dit_heads), mlp_ratio=4.0, patch_size=int(args.dit_patch))
+                    cfg = DiffusionConfig(in_ch=chans, embed_dim=int(args.dit_embed), depth=int(args.dit_depth),
+                                          num_heads=int(args.dit_heads), mlp_ratio=4.0, patch_size=int(args.dit_patch))
                     dit, steps = train_diffusion(
-                        DiT(cfg), ld, device, args.epochs, hist, f"{client_name}_class_{class_id}", 
+                        DiT(cfg), ld, device, args.epochs, hist, f"{client_name}_class_{class_id}",
                         dp=args.dp, dp_clip=args.dp_clip, dp_noise_mult=args.dp_noise, dp_microbatch=args.dp_microbatch, tracker=tracker
                     )
                     model_to_save = dit
@@ -302,44 +370,43 @@ def run_generative_training(
                 client_gen_models[client_name][class_id] = model_to_save
                 client_sample_counts[client_name][class_id] = len(train_subset)
 
-                # Persist model checkpoint to disk
+                # Persist checkpoints and generate visual artifacts (samples)
                 gen_ckpt = P.root / "models" / "generators" / f"client_{client_name}_class_{class_id:03d}.pt"
                 torch.save(full_model.state_dict(), gen_ckpt)
                 if tracker: tracker.record_artifact(gen_ckpt)
 
-                # Generate and save visual samples for quality inspection
                 out_png = P.root / "artifacts" / "samples" / f"client_{client_name}_class_{class_id:03d}.png"
-                if args.model == "vae":
-                    sample_grid(full_model, args.latent_dim, out_png)
-                else:
-                    sample_grid_diffusion(full_model, out_png, 64, device, img_shape)
-                
+                if args.model == "vae": sample_grid(full_model, args.latent_dim, out_png)
+                else: sample_grid_diffusion(full_model, out_png, 64, device, img_shape)
+
                 gen_step_total += steps
 
-        # Aggregation Logic: Combine client models into a global model if configured
+        # Perform Federation: Aggregate local models into a global model per class
         if getattr(args, "aggregation", "simple") == "simple":
             aggregated = aggregate_models_simple(client_gen_models)
             gen_models = [aggregated.get(i, None) for i in range(num_classes)]
         else:
             gen_models = [None] * num_classes
-            
+
         _export_client_class_distribution(P.root, client_sample_counts, num_classes)
 
     # -------------------------------------------------------------------------
-    # Logic for Silos Partition (Isolated Clients)
+    # PART B: Silos Partition (Isolated Clients)
     # -------------------------------------------------------------------------
-    else: 
+    # In this mode, we assume a one-to-one mapping where each client represents
+    # a distinct class or isolated silo. No aggregation is typically performed here.
+    else:
         silos_client_counts = {}
         for i, d in enumerate(present_classes):
             logger.info(f"[SILOS] Training client {d}")
-            
-            # In 'silos' mode, each client corresponds to a distinct class index 'd'
-            if args.model == "vae":
-                ds_client = NoisyCleanDataset(train_subsets[i], args.noise_std)
-                ld = DataLoader(ds_client, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
-            else:
-                ld = DataLoader(train_subsets[i], batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
-            
+
+            # Apply robust augmentation policies
+            robust_transform = build_transform(args.dataset, train=True, robustness=True)
+            ds_client = TransformedSubset(train_subsets[i], robust_transform)
+
+            ld = DataLoader(ds_client, batch_size=args.batch_size, shuffle=True,
+                            num_workers=args.workers, pin_memory=True)
+
             if tracker: tracker.start_phase(f"client_{d:03d}_gen")
 
             if args.model == "vae":
@@ -350,7 +417,8 @@ def run_generative_training(
                 model_to_save = vae.decoder
                 full_model = vae
             else:
-                cfg = DiffusionConfig(in_ch=chans, embed_dim=int(args.dit_embed), depth=int(args.dit_depth), num_heads=int(args.dit_heads), mlp_ratio=4.0, patch_size=int(args.dit_patch))
+                cfg = DiffusionConfig(in_ch=chans, embed_dim=int(args.dit_embed), depth=int(args.dit_depth),
+                                      num_heads=int(args.dit_heads), mlp_ratio=4.0, patch_size=int(args.dit_patch))
                 dit, steps = train_diffusion(
                     DiT(cfg), ld, device, args.epochs, hist, d,
                     dp=args.dp, dp_clip=args.dp_clip, dp_noise_mult=args.dp_noise, dp_microbatch=args.dp_microbatch, tracker=tracker
@@ -359,57 +427,61 @@ def run_generative_training(
                 full_model = dit
 
             if tracker: tracker.end_phase(f"client_{d:03d}_gen")
-            
+
             gen_models.append(model_to_save)
             gen_step_total += steps
 
-            # Persist model checkpoint
+            # Persist checkpoints and generate visual artifacts
             gen_ckpt = P.root / "models" / "generators" / f"class-{d:03d}.pt"
             torch.save(full_model.state_dict(), gen_ckpt)
             if tracker: tracker.record_artifact(gen_ckpt)
-            
-            # Generate samples
+
             out_png = P.root / "artifacts" / "samples" / f"class-{d:03d}.png"
             if args.model == "vae": sample_grid(full_model, args.latent_dim, out_png)
             else: sample_grid_diffusion(full_model, out_png, 64, device, img_shape)
-            
+
             silos_client_counts[f"client{d}"] = {d: len(train_subsets[i])}
 
-        # Calculate and store model size metrics for analysis
+        # Calculate and log the size of the generator model for resource tracking
         sz = _module_size_mb(gen_models[0])
         with open(P.root / "models" / "sizes.json", "w") as f:
             json.dump({"generator_mb": float(sz)}, f, indent=2)
         _export_client_class_distribution(P.root, silos_client_counts, num_classes)
 
     # ---------------------------------------------------------------
-    # Network Accounting Logic
+    # Network Accounting
     # ---------------------------------------------------------------
+    # Delegate to the network simulation handler to estimate bandwidth usage
     _handle_network_simulation(args, P, tracker, partition_mode, present_classes, client_gen_models)
 
     return gen_models, client_gen_models, client_sample_counts, gen_step_total, gen_start
 
 def _handle_network_simulation(args: Any, P: Any, tracker: Any, partition_mode: str, present_classes: List[int], client_gen_models: Dict[str, Any]):
     """
-    Simulates network bandwidth usage (upload/download) by analyzing file presence on disk.
+    Simulate and log network bandwidth usage based on generated file artifacts.
 
-    This function does not perform actual network IO but records 'virtual' transfers
-    to the experiment tracker. It assumes that if a checkpoint file exists, it was 
-    uploaded by the creator and potentially downloaded by peers or the server.
+    This function iterates through generated model checkpoints and logs
+    'tx' (transmission/upload) and 'rx' (reception/download) events
+    to the experiment tracker, mimicking the costs of a real distributed system.
 
-    Args:
-        args (Any): Configuration namespace.
-        P (Any): Path configuration object.
-        tracker (Any): Experiment tracker for recording network events.
-        partition_mode (str): The data partitioning strategy ("silos", "skew", etc.).
-        present_classes (List[int]): List of class IDs present in the simulation.
-        client_gen_models (Dict[str, Any]): Dictionary of trained models by client.
-
-    Returns:
-        None
+    Parameters
+    ----------
+    args : Any
+        Configuration arguments containing inference mode settings.
+    P : Any
+        Path configuration object.
+    tracker : Any
+        Experiment tracker instance.
+    partition_mode : str
+        The data partitioning strategy used (e.g., 'skew', 'dirichlet', 'silos').
+    present_classes : List[int]
+        List of class IDs involved in the experiment.
+    client_gen_models : Dict[str, Any]
+        Dictionary of trained client models.
     """
     if tracker is None: return
-    
-    # Map existing checkpoint files to their logical identifiers (client/class)
+
+    # Map logical model identifiers to their physical file paths
     gen_ckpts_map = {}
     if partition_mode in ["skew", "dirichlet"]:
         for p in (P.root / "models" / "generators").glob("client_*_class_*.pt"):
@@ -423,10 +495,8 @@ def _handle_network_simulation(args: Any, P: Any, tracker: Any, partition_mode: 
             except: pass
 
     is_server = (args.infer_mode == "server")
-    
-    # -------------------------------------------------------------------------
-    # Simulate Uploads (Client -> Server/Network)
-    # -------------------------------------------------------------------------
+
+    # Simulate Uploads (Client -> Server)
     if partition_mode in ["skew", "dirichlet"]:
         for (cname, cid), p in gen_ckpts_map.items():
             if p.exists():
@@ -434,8 +504,7 @@ def _handle_network_simulation(args: Any, P: Any, tracker: Any, partition_mode: 
                 tracker.start_phase(ph)
                 tracker.note_network_file_transfer(p, "tx", phase=ph)
                 tracker.end_phase(ph)
-                if is_server: # Server ingest simulation
-                    tracker.note_network_file_transfer(p, "rx", phase="server_ingest")
+                if is_server: tracker.note_network_file_transfer(p, "rx", phase="server_ingest")
     else:
         for d in present_classes:
             p = gen_ckpts_map.get(d)
@@ -444,22 +513,16 @@ def _handle_network_simulation(args: Any, P: Any, tracker: Any, partition_mode: 
                 tracker.start_phase(ph)
                 tracker.note_network_file_transfer(p, "tx", phase=ph)
                 tracker.end_phase(ph)
-                if is_server:
-                    tracker.note_network_file_transfer(p, "rx", phase="server_ingest")
+                if is_server: tracker.note_network_file_transfer(p, "rx", phase="server_ingest")
 
-    # -------------------------------------------------------------------------
-    # Simulate Downloads (Server -> Client / Peer -> Peer)
-    # -------------------------------------------------------------------------
-    # Only perform download accounting if not running in server mode 
-    # (i.e., clients downloading models from others in a P2P or Federated manner)
+    # Simulate Downloads (Server -> Client or Peer-to-Peer)
     if not is_server:
         if partition_mode in ["skew", "dirichlet"]:
             for cname in client_gen_models.keys():
                 ph = f"client_{cname}_download"
                 tracker.start_phase(ph)
                 for (src, cid), p in gen_ckpts_map.items():
-                    # Download logic: If the model does not belong to me, and I do not
-                    # already possess a model for this class, I need to download it.
+                    # Download models from other clients/classes not present locally
                     if src != cname and cid not in client_gen_models.get(cname, {}):
                         if p.exists(): tracker.note_network_file_transfer(p, "rx", phase=ph)
                 tracker.end_phase(ph)

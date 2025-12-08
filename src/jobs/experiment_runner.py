@@ -49,7 +49,7 @@ from torch.utils.data import DataLoader, TensorDataset
 # Importazioni da moduli locali
 from utils import set_seed, VGGPerceptualLoss
 from metrics.costs import ExperimentCostTracker
-from models.baselines import FedAvgBaseline, FedProxBaseline, FedDFBaseline, FedDynBaseline
+from models.baselines import FedAvgBaseline, FedProxBaseline, FedDFBaseline, FedDynBaseline, ScaffoldBaseline
 from models.vae import Decoder
 from jobs.baseline_runner import run_federated_baseline, subset_to_tensor
 from jobs.experiment_setup import setup_experiment_env, prepare_data
@@ -61,7 +61,6 @@ from jobs.classifier_phase import (
 from jobs.evaluation_phase import run_evaluation
 from logs import messages as logmsg
 
-from src.models.baselines.scaffold import ScaffoldBaseline
 
 logger = logging.getLogger(__name__)
 

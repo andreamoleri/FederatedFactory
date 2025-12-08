@@ -328,7 +328,7 @@ def run_centralized(args: argparse.Namespace):
         model.parameters(),
         lr=args.lr,
         momentum=0.9,
-        weight_decay=5e-4
+        weight_decay=1e-4
     )
     # Apply Cosine Annealing to decay the learning rate smoothly over epochs
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)

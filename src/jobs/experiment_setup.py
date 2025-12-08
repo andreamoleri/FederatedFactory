@@ -255,7 +255,7 @@ def prepare_data(args, device) -> Tuple:
     chans = meta["channels"]
 
     # Check if robustness is requested in args (default to False if missing)
-    use_robustness = getattr(args, "robustness", False)
+    use_robustness = getattr(args, "robustness", True)
 
     if use_robustness:
         logger.info("[DATA] 🛡️ Robustness Enabled: Injecting Gaussian Noise for Sensor Heterogeneity")
@@ -409,9 +409,17 @@ def prepare_data(args, device) -> Tuple:
             if len(idxs) == 0: continue
             present_classes.append(d)
 
-            # Split the class-specific data into train (80%) and test (20%)
+            # 1. Calculate indices (unchanged)
             train_idx, test_idx = train_test_split(idxs, test_size=0.20, random_state=args.seed, shuffle=True)
-            train_subsets.append(Subset(base_train_set, train_idx))
+
+            # 2. Create the Raw Subset
+            raw_train_subset = Subset(base_train_set, train_idx)
+
+            # 3. Wrap it with the training transform (Noise + Aug + Norm)
+            augmented_train_subset = TransformSubset(raw_train_subset, tfm_train)
+
+            # 4. Append the AUGMENTED subset, not the raw one
+            train_subsets.append(augmented_train_subset)
 
             # Create a "clean" training set for splitting purposes:
             clean_train_set = get_dataset(args.dataset, args.data_dir, True, None)  # No transform
