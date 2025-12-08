@@ -241,11 +241,18 @@ def build_transform(dataset_name: str, train: bool = False, robustness: bool = F
     # Categorize the dataset to select the appropriate augmentation philosophy.
     structural_sets = ["mnist", "fashion", "kmnist", "qmnist", "emnist", "omniglot", "quickdraw"]
 
-    if base_key in structural_sets: strategy = "structural"
-    elif base_key == "medmnist": strategy = _get_medmnist_strategy(dataset_name)
-    elif "cifar" in base_key: strategy = "cifar_optimized"
-    elif target_size <= 64: strategy = "natural_low_res"
-    else: strategy = "natural_high_res"
+    if base_key in structural_sets:
+        strategy = "structural"
+    elif base_key == "medmnist":
+        strategy = _get_medmnist_strategy(dataset_name)
+    elif any(x in base_key for x in ["camelyon", "isic", "fed_camelyon", "fed_isic"]):
+        strategy = "medical_isotropic"
+    elif "cifar" in base_key:
+        strategy = "cifar_optimized"
+    elif target_size <= 64:
+        strategy = "natural_low_res"
+    else:
+        strategy = "natural_high_res"
 
     ops = []
 
