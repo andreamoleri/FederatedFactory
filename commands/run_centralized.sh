@@ -60,7 +60,7 @@ export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=4
 
 # Adjust based on your GPU VRAM.
-JOBS_PER_GPU=3
+JOBS_PER_GPU=4
 
 # ==============================================================================
 # EXPERIMENT CONFIG & SMART RESUME FILES
@@ -203,9 +203,14 @@ if ! command -v parallel &> /dev/null; then
     exit 1
 fi
 
-NUM_GPUS=$(nvidia-smi --list-gpus | wc -l)
-if [[ "$NUM_GPUS" -eq 0 ]]; then NUM_GPUS=1; fi
+# --- MODIFIED: RESTRICT TO GPUS 1, 2, 3 ---
+# Define the IDs of the GPUs you want to use (space separated)
+export TARGET_GPU_LIST="1 2 3"
+
+# Count them automatically
+NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
 export NUM_GPUS
+export TARGET_GPU_LIST
 
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
 
@@ -219,16 +224,27 @@ parallel --jobs "$TOTAL_CONCURRENCY" \
     --env PYTHONPATH \
     --env CUDA_VISIBLE_DEVICES \
     --env NUM_GPUS \
+    --env TARGET_GPU_LIST \
     --line-buffer \
     '
     JOB_SLOT={%}
-    GPU_ID=$(( (JOB_SLOT - 1) % NUM_GPUS ))
+
+    # --- LOGIC CHANGE START ---
+    # Convert the string list "1 2 3" into an array
+    IFS=" " read -r -a GPU_ARRAY <<< "$TARGET_GPU_LIST"
+
+    # Calculate which index of the array to use (0, 1, or 2)
+    ARRAY_INDEX=$(( (JOB_SLOT - 1) % NUM_GPUS ))
+
+    # Get the actual Physical GPU ID (1, 2, or 3)
+    GPU_ID=${GPU_ARRAY[$ARRAY_INDEX]}
+    # --- LOGIC CHANGE END ---
+
     export CUDA_VISIBLE_DEVICES=$GPU_ID
 
     echo "🚀 [GPU $GPU_ID] Starting Job {#}"
 
-    # Eseguiamo il comando. Notare che il comando stesso contiene già
-    # il redirect > log_file.log, quindi qui non serve aggiungere altro.
+    # Execute command
     eval {}
     status=$?
 
@@ -236,7 +252,6 @@ parallel --jobs "$TOTAL_CONCURRENCY" \
         echo "✅ [GPU $GPU_ID] Job {#} Finished"
     else
         echo "❌ [GPU $GPU_ID] Job {#} Failed"
-        # Uscire con errore è fondamentale per far capire a --resume-failed che deve riprovarci
         exit 1
     fi
     ' :::: "$CMD_FILE"

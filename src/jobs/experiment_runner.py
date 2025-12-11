@@ -180,7 +180,7 @@ def run_experiment(
             ts_dict = train_subsets_dict
             test_dict = {}
 
-        # --- UPDATED CALL ---
+        ## --- UPDATED CALL ---
         acc, hist, baseline_metrics, y_true, y_pred = run_federated_baseline(
             baseline=baseline,
             train_subsets_dict=ts_dict,
@@ -196,6 +196,10 @@ def run_experiment(
             train_transform_override=tfm,  # tfm from prepare_data is tfm_train
             eval_transform_override=None  # Will default to deterministic
         )
+
+        # ✅ Update the main metrics dictionary with baseline results
+        metrics["accuracy"] = acc
+        metrics.update(baseline_metrics)
 
     # =========================================================================
     # PATH B: GENERATIVE + CLASSIFIER (Hybrid)

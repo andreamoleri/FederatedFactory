@@ -58,7 +58,6 @@ from torch.utils.data import DataLoader, Dataset, Subset
 
 # --- Project Imports ---
 from models.cnn import SimpleCNN
-# NEURIPS FIX: Added DATASET_META to imports to enable resolution override
 from imports.data_management import get_dataset, prime_dataset_meta_for_transform, DATASET_META
 from imports.data_augmentation import build_transform
 from utils import set_seed
@@ -182,7 +181,6 @@ def run_centralized(args: argparse.Namespace):
     prime_dataset_meta_for_transform(args.dataset, args.data_dir)
 
     # =========================================================================
-    # NEURIPS FIX: RESOLUTION MISMATCH
     # We must explicitly update the DATASET_META registry with the CLI input size.
     # Otherwise, build_transform() will use defaults while SimpleCNN uses args.input_size.
     # =========================================================================

@@ -177,7 +177,8 @@ def setup_experiment_env(args: Any, run_id: int | None) -> Tuple[PathRegistry, s
         ValueError: If the specified dataset is not defined in the global DATASET_META.
     """
     # Isolate the base dataset key (e.g., remove parameters from 'dataset(param)')
-    base_key = args.dataset.split("(", 1)[0].lower()
+    # FIXED: Split on both '(' and ':' to handle 'medmnist:retinamnist'
+    base_key = args.dataset.split("(", 1)[0].split(":", 1)[0].lower()
 
     # Attempt to pre-calculate or load dataset metadata required for transforms
     try:
@@ -259,7 +260,12 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
             - reserved_test_imgs_list (List[Tensor]): List of test tensors per class.
             - test_imgs_tensor (Tensor): Full test set as a single tensor.
     """
-    base_key = args.dataset.split("(", 1)[0].lower()
+    # FIXED: Correct parsing for colon-separated names (e.g. medmnist:retinamnist)
+    base_key = args.dataset.split("(", 1)[0].split(":", 1)[0].lower()
+
+    # DETECT BASELINE: If we are running a baseline, we can skip memory-heavy evaluation steps
+    is_baseline = args.model.startswith("baseline:")
+
     meta = DATASET_META[base_key]
     chans = meta["channels"]
 
@@ -272,12 +278,19 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
     base_tfm_test = build_transform(args.dataset, train=False)
 
     # 2. Apply explicit input size overrides if specified
+    # MEMORY OPTIMIZATION CHECK: Large inputs (Camelyon/NICO)
+    is_large_dataset = False
     if getattr(args, "input_size", 0):
         sz = int(args.input_size)
+        if sz > 64:
+            is_large_dataset = True
         resize_op = T.Resize((sz, sz), antialias=True)
         tfm_train = T.Compose([resize_op, base_tfm_train])
         tfm_test = T.Compose([resize_op, base_tfm_test])
     else:
+        # Check meta default
+        if meta.get("input_size", 32) > 64:
+            is_large_dataset = True
         tfm_train = base_tfm_train
         tfm_test = base_tfm_test
 
@@ -299,7 +312,14 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
 
     # Load the canonical test set (deterministic behavior required)
     test_set = get_dataset(args.dataset, args.data_dir, False, tfm_test)
-    test_imgs_tensor = dataset_to_tensor(test_set)
+
+    # MEMORY FIX: If baseline OR large dataset, do not load full test set into Tensor.
+    if is_large_dataset or is_baseline:
+        if is_large_dataset:
+            logger.info("[DATA] ⚠️ Large dataset detected: Using Lazy Loading for Test Set to prevent OOM.")
+        test_imgs_tensor = torch.empty(0)
+    else:
+        test_imgs_tensor = dataset_to_tensor(test_set)
 
     # Determine the number of classes via introspection of the dataset object
     if hasattr(base_train_set, "classes") and len(getattr(base_train_set, "classes")) > 0:
@@ -311,8 +331,14 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
         labels_tmp = [int(lbl) for _, lbl in base_train_set]
         num_classes = int(len(set(labels_tmp)))
 
-    sample_img, _ = base_train_set[0]
-    img_shape = tuple(sample_img.shape)
+    # Grab a raw sample (PIL Image)
+    raw_sample, _ = base_train_set[0]
+
+    # Apply the training transform to convert it to a Tensor and resize it (if needed)
+    # This ensures img_shape matches exactly what the model will receive (C, H, W)
+    sample_tensor = tfm_train(raw_sample)
+
+    img_shape = tuple(sample_tensor.shape)
 
     # --- PREPARE TEST LABELS ---
     # extract labels uniformly across different dataset implementations (targets vs labels)
@@ -330,7 +356,12 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
     if args.dataset.startswith("emnist") and test_lbls_all.min().item() != 0:
         test_lbls_all = test_lbls_all - test_lbls_all.min()
 
-    reserved_test_ld = DataLoader(TensorDataset(test_imgs_tensor, test_lbls_all), batch_size=args.batch_size)
+    # MEMORY FIX: Use Lazy DataLoader for large datasets instead of TensorDataset.
+    # Also set num_workers=0 to avoid fork overhead in concurrent environments.
+    if is_large_dataset or is_baseline:
+        reserved_test_ld = DataLoader(test_set, batch_size=args.batch_size, num_workers=0, shuffle=False)
+    else:
+        reserved_test_ld = DataLoader(TensorDataset(test_imgs_tensor, test_lbls_all), batch_size=args.batch_size)
 
     # --- PARTITION LOGIC ---
     partition_mode = getattr(args, "partition", "silos")
@@ -353,9 +384,11 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
     if args.dataset.startswith("emnist") and test_targets_arr.min() != 0:
         test_targets_arr = test_targets_arr - test_targets_arr.min()
 
+    # MEMORY FIX: Limit samples for Generative Metrics (FID/KID)
+    max_eval_samples = getattr(args, "eval_samples_per_class", 2000)
+
     if partition_mode in ["skew", "dirichlet"]:
         # Logic for Synthetic Federated Partitions (Skew/Dirichlet)
-        # Note: These modes typically utilize the entire training set distributed among clients.
         if partition_mode == "skew":
             client_config = parse_client_config(getattr(args, "client_config", ""))
             train_subsets_dict, _ = create_skew_partition(base_train_set, client_config, args.seed, num_classes)
@@ -368,19 +401,26 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
 
         # Create evaluation tensors for every class using the CANONICAL TEST SET
         for d in range(num_classes):
+            # MEMORY FIX: If running a baseline, we DO NOT need these heavy tensors.
+            # Skip loading them to save GBs of RAM.
+            if is_baseline:
+                reserved_test_imgs_list.append(torch.empty(0))
+                continue
+
             idxs = np.flatnonzero(test_targets_arr == d)
             if len(idxs) == 0:
                 reserved_test_imgs_list.append(torch.empty(0))
                 continue
-            # Note: test_set already has tfm_test applied
+
+            # Slice indices if dataset is large to prevent OOM
+            if is_large_dataset and len(idxs) > max_eval_samples:
+                idxs = idxs[:max_eval_samples]
+
             sub = Subset(test_set, idxs)
             reserved_test_imgs_list.append(subset_to_tensor(sub))
 
     else:
         # Logic for "Silos" Mode (Natural/Domain Splits)
-        # This typically separates data by distinct classes or domains (e.g., DomainNet, PACS).
-
-        # Access train targets
         if hasattr(base_train_set, "targets"):
             train_targets_arr = np.asarray(base_train_set.targets)
         elif hasattr(base_train_set, "labels"):
@@ -399,13 +439,21 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
             present_classes.append(d)
 
             # 1. Assign 100% of these indices for Training
-            # Validation is performed strictly on the Canonical Test Set.
             raw_train_subset = Subset(base_train_set, idxs)
             train_subsets.append(raw_train_subset)
 
             # 2. Extract corresponding samples from the Canonical Test Set for evaluation
+            # MEMORY FIX: If baseline, skip this heavy loading.
+            if is_baseline:
+                reserved_test_imgs_list.append(torch.empty(0))
+                continue
+
             test_class_idxs = np.flatnonzero(test_targets_arr == d)
             if len(test_class_idxs) > 0:
+                # Slice indices for generative metrics if dataset is large
+                if is_large_dataset and len(test_class_idxs) > max_eval_samples:
+                    test_class_idxs = test_class_idxs[:max_eval_samples]
+
                 test_sub_final = Subset(test_set, test_class_idxs)
                 reserved_test_imgs_list.append(subset_to_tensor(test_sub_final))
             else:

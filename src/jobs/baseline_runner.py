@@ -48,6 +48,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import gc
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Union, Any
 
@@ -88,9 +89,6 @@ class TransformSubset(Dataset):
 
     def __getitem__(self, index):
         x, y = self.subset[index]
-        # Applies the new transform (augmentation or deterministic crop)
-        # regardless of what the underlying dataset might have done,
-        # assuming compatibility (e.g. PIL -> Tensor).
         return self.transform(x), y
 
     def __len__(self):
@@ -101,25 +99,8 @@ class TransformSubset(Dataset):
 # Utility functions
 # ---------------------------------------------------------------------------
 def _default_num_workers() -> int:
-    """
-    Determine the optimal number of data loading workers.
-    Respects MAX_WORKERS env var if set, otherwise falls back to heuristics.
-    """
-    import os
-    # 1. Check for explicit limit from Shell Script (Critical for Parallel Jobs)
-    env_max = os.environ.get("MAX_WORKERS")
-    if env_max is not None and env_max.strip() != "":
-        try:
-            return int(env_max)
-        except ValueError:
-            pass
-
-    # 2. Fallback heuristic
-    try:
-        # Reserve one core for the main process
-        return max(1, (os.cpu_count() or 2) - 1)
-    except Exception:
-        return 4
+    # MEMORY FIX: Force 0 workers to prevent multiprocessing overhead in concurrent jobs
+    return 0
 
 
 def subset_to_tensor(
@@ -190,10 +171,20 @@ def evaluate_single_classifier(
 
     with torch.no_grad():
         for x, y in ld:
+            x = x.to(device)
+            # Forward pass
+            logits = model(x)
+            preds = logits.argmax(1).cpu()
+
             y_true.append(y)
-            y_pred.append(model(x.to(device)).argmax(1).cpu())
+            y_pred.append(preds)
+
+            # MEMORY FIX: Delete intermediates immediately
+            del x, logits, preds
 
     model.cpu()
+    torch.cuda.empty_cache()
+
     return torch.cat(y_true).numpy(), torch.cat(y_pred).numpy()
 
 
@@ -221,7 +212,7 @@ def run_federated_baseline(
     logger.info(f"[BASELINE] Starting {type(baseline).__name__} federated learning")
 
     # 1. Resolve key (for fallback logic)
-    base_key = args.dataset.split("(", 1)[0].lower()
+    base_key = args.dataset.split("(", 1)[0].split(":", 1)[0].lower()
     if base_key.startswith("medmnist"): base_key = "medmnist"
 
     # 2. Find metadata pointer
@@ -269,26 +260,12 @@ def run_federated_baseline(
 
         try:
             test_set = get_dataset(args.dataset, args.data_dir, False, eval_transform)
-            test_imgs = dataset_to_tensor(test_set)
-
-            # Label Extraction
-            labels_src = None
-            for attr in ("targets", "labels"):
-                if hasattr(test_set, attr):
-                    labels_src = getattr(test_set, attr)
-                    break
-            if labels_src is None and hasattr(test_set, "imgs"):
-                labels_src = [t for _, t in test_set.imgs]
-
-            if labels_src is None:
-                test_lbls = torch.zeros(len(test_imgs), dtype=torch.long)
-            else:
-                test_lbls = torch.as_tensor(labels_src, dtype=torch.long).reshape(-1)
-
+            # Use lazy loader fallback with 0 workers
             test_loader = DataLoader(
-                TensorDataset(test_imgs, test_lbls),
+                test_set,
                 batch_size=args.batch_size,
                 shuffle=False,
+                num_workers=0
             )
         except Exception as e:
             logger.warning(f"[BASELINE] Could not create fallback test loader: {e}")
@@ -329,92 +306,62 @@ def run_federated_baseline(
     # ---------------------------------------------------------------
     # Precompute Train/Val Splits for Each Client
     # ---------------------------------------------------------------
-    # train_data is kept as Dataset/Subset to ensure Dynamic Augmentation
-    # val_data is converted to Tensors for Deterministic Evaluation & Speed
     client_train_data: Dict[str, Dataset] = {}
-    client_val_data: Dict[str, Tuple[torch.Tensor, torch.Tensor]] = {}
+    client_val_data: Dict[str, Dataset] = {}
 
     for client_name in client_names:
-        # 1. Consolidate all class-subsets for this client into one dataset
         client_subsets = list(train_subsets_dict[client_name].values())
         if not client_subsets:
             continue
 
         full_client_dataset = ConcatDataset(client_subsets)
 
-        # 2. Handle Validation Split
-
-        # Case A: Explicit Validation Set (from Partitioning)
+        # Case A: Explicit Validation Set
         if client_name in test_subsets_dict and test_subsets_dict[client_name]:
-            # Convert validation data to tensors immediately (Freeze)
-            xs_val = []
-            ys_val = []
+            val_subsets = []
             for class_id, val_subset in test_subsets_dict[client_name].items():
-                # APPLIED CORRECTION: Wrap validation subset with deterministic transform
                 val_wrapped = TransformSubset(val_subset, eval_transform)
+                val_subsets.append(val_wrapped)
 
-                imgs_val = subset_to_tensor(val_wrapped)
-                if imgs_val.numel() > 0:
-                    xs_val.append(imgs_val)
-                    ys_val.append(torch.full((len(imgs_val),), class_id, dtype=torch.long))
-
-            if xs_val:
-                X_val = torch.cat(xs_val)
-                y_val = torch.cat(ys_val)
-                logger.info(f"[BASELINE] Client {client_name}: using explicit validation set ({len(X_val)})")
+            if val_subsets:
+                client_train_data[client_name] = full_client_dataset
+                client_val_data[client_name] = ConcatDataset(val_subsets)
+                logger.info(f"[BASELINE] Client {client_name}: using explicit validation set")
             else:
-                X_val, y_val = torch.empty(0), torch.empty(0)
-
-            # Train data remains dynamic
-            client_train_data[client_name] = full_client_dataset
-            client_val_data[client_name] = (X_val, y_val)
+                client_train_data[client_name] = full_client_dataset
+                client_val_data[client_name] = None
 
         # Case B: Implicit Hold-out Split
         else:
             total_len = len(full_client_dataset)
-
-            # We assume "Upper Bound" local behavior: use all data for training.
-            # Validation falls back to the canonical global test set.
-            val_len = 0
-            train_len = total_len
-
-            if train_len > 0:
-                train_ds = full_client_dataset
-                # Empty validation tensors -> triggers fallback
-                X_val, y_val = torch.empty(0), torch.empty(0)
-
-                client_train_data[client_name] = train_ds
-                client_val_data[client_name] = (X_val, y_val)
-
-                logger.info(
-                    f"[BASELINE] Client {client_name}: using 100% data for training ({train_len} samples). Val fallback to Global Test.")
-            else:
-                # Not enough data
+            if total_len > 0:
                 client_train_data[client_name] = full_client_dataset
-                client_val_data[client_name] = (torch.empty(0), torch.empty(0))
+                client_val_data[client_name] = None
+                logger.info(
+                    f"[BASELINE] Client {client_name}: using 100% data for training ({total_len} samples). Val fallback to Global Test.")
+            else:
+                client_train_data[client_name] = full_client_dataset
+                client_val_data[client_name] = None
 
     # ---------------------------------------------------------------
     # Global Validation Loader Assembly
     # ---------------------------------------------------------------
-    val_imgs_list: List[torch.Tensor] = []
-    val_lbls_list: List[torch.Tensor] = []
+    val_datasets_list: List[Dataset] = []
+    for client_name, ds_val in client_val_data.items():
+        if ds_val is not None and len(ds_val) > 0:
+            val_datasets_list.append(ds_val)
 
-    for client_name, (Xv, yv) in client_val_data.items():
-        if Xv.numel() == 0:
-            continue
-        val_imgs_list.append(Xv)
-        val_lbls_list.append(yv)
-
-    if val_imgs_list:
-        global_val_imgs = torch.cat(val_imgs_list)
-        global_val_lbls = torch.cat(val_lbls_list)
+    if val_datasets_list:
+        global_val_ds = ConcatDataset(val_datasets_list)
         val_loader_global = DataLoader(
-            TensorDataset(global_val_imgs, global_val_lbls),
+            global_val_ds,
             batch_size=args.batch_size,
             shuffle=False,
+            num_workers=0,  # MEMORY FIX: 0 workers
+            persistent_workers=False
         )
         logger.info(
-            f"[BASELINE] Global validation set size: {len(global_val_imgs)} samples"
+            f"[BASELINE] Global validation set size: {len(global_val_ds)} samples"
         )
     else:
         logger.info(
@@ -452,34 +399,35 @@ def run_federated_baseline(
             if tracker is not None:
                 tracker.start_phase(f"client_{client_name}_round_{round_num}")
 
-            try:
-                # Training Data: Dynamic Dataset/Subset
-                train_ds = client_train_data[client_name]
+            # MEMORY FIX: Defrost VRAM
+            gc.collect()
+            torch.cuda.empty_cache()
 
-                # Validation Data: Static Tensors
-                X_val, y_val = client_val_data[client_name]
+            try:
+                train_ds = client_train_data[client_name]
+                val_ds = client_val_data[client_name]
 
                 if len(train_ds) == 0:
                     logger.warning(f"[BASELINE] No training data for client {client_name}")
                     continue
 
-                # This ensures every epoch yields different random crops/flips
                 augmented_train_ds = TransformSubset(train_ds, train_transform)
 
+                # MEMORY FIX: 0 workers to minimize overhead
                 train_loader = DataLoader(
                     augmented_train_ds,
                     batch_size=args.batch_size,
                     shuffle=True,
-                    num_workers=_default_num_workers(),
-                    pin_memory=True,
-                    persistent_workers=True
+                    num_workers=0,
+                    pin_memory=True
                 )
 
-                if X_val.numel() > 0:
+                if val_ds is not None and len(val_ds) > 0:
                     val_loader = DataLoader(
-                        TensorDataset(X_val, y_val),
+                        val_ds,
                         batch_size=args.batch_size,
                         shuffle=False,
+                        num_workers=0
                     )
                 else:
                     val_loader = DataLoader(
@@ -491,7 +439,16 @@ def run_federated_baseline(
                 client_state_dict, num_samples = baseline.train_client(
                     client_name, train_loader, val_loader, round_num
                 )
-                client_updates[client_name] = (client_state_dict, num_samples)
+
+                # MEMORY FIX: STRICT CPU OFFLOAD
+                # Move state dict to CPU immediately to free VRAM for next client
+                cpu_state_dict = {k: v.cpu() for k, v in client_state_dict.items()}
+
+                # Store CPU version
+                client_updates[client_name] = (cpu_state_dict, num_samples)
+
+                # Force delete reference to GPU dict
+                del client_state_dict
 
                 loss_key = f"{client_name}_round{round_num}"
                 if loss_key in baseline.history.get("train_loss", {}):
@@ -505,22 +462,34 @@ def run_federated_baseline(
 
             except Exception as e:
                 logger.error(f"[BASELINE] Error training client {client_name}: {e}")
+                # Important: Don't just continue, print traceback if debugging needed
+                import traceback
+                traceback.print_exc()
                 continue
             finally:
                 if tracker is not None:
                     tracker.end_phase(f"client_{client_name}_round_{round_num}")
+                # MEMORY FIX: Clean up immediately
+                torch.cuda.empty_cache()
 
         # --- Aggregation Phase ---
         if tracker is not None:
             tracker.start_phase(f"aggregation_round_{round_num}")
 
         if client_updates:
+            # Baseline aggregation expects dicts, ours are on CPU now.
+            # Most aggregators (FedAvg) handle CPU tensors fine or can move them back.
+            # If your baseline implementation forces .to(device), it will handle it.
             baseline.aggregate(round_num, client_updates)
             logger.info(
                 f"[BASELINE] Successfully aggregated {len(client_updates)} client updates"
             )
         else:
             logger.warning("[BASELINE] No client updates to aggregate")
+
+        # Cleanup updates after aggregation
+        del client_updates
+        gc.collect()
 
         if tracker is not None:
             tracker.end_phase(f"aggregation_round_{round_num}")
@@ -529,6 +498,7 @@ def run_federated_baseline(
         if tracker is not None:
             tracker.start_phase(f"evaluation_round_{round_num}")
 
+        torch.cuda.empty_cache()
         val_accuracy = baseline.evaluate(val_loader_global)
         round_accuracies.append(val_accuracy)
 
@@ -580,16 +550,16 @@ def run_federated_baseline(
     final_test_accuracy = best_val_accuracy
     model_path = P.root / "models" / "classifiers" / "central_best.pt"
 
-    # Initialize empty arrays in case loading fails
     final_y_true = np.array([])
     final_y_pred = np.array([])
 
     if model_path.exists() and baseline.global_model is not None:
         try:
             baseline.global_model.load_state_dict(torch.load(model_path))
+
+            torch.cuda.empty_cache()
             final_test_accuracy = baseline.evaluate(test_loader)
 
-            # CAPTURE PREDICTIONS for confusion matrix
             final_y_true, final_y_pred = evaluate_single_classifier(
                 baseline.global_model, test_loader, device
             )
@@ -604,11 +574,8 @@ def run_federated_baseline(
     # ---------------------------------------------------------------
     # Metrics Serialization
     # ---------------------------------------------------------------
-
-    # Calculate detailed class distribution per client
     client_class_dist: Dict[str, Dict[str, int]] = {}
     for c_name, c_subsets in train_subsets_dict.items():
-        # Convert class key to string for JSON compatibility
         dist = {str(k): len(v) for k, v in c_subsets.items()}
         client_class_dist[c_name] = dist
 
@@ -618,6 +585,7 @@ def run_federated_baseline(
         "partition": getattr(args, "partition", None),
         "alpha": getattr(args, "alpha", None),
         "aggregation": "flower_fedavg",
+        "accuracy": float(final_test_accuracy),
         "best_accuracy": float(best_val_accuracy),
         "final_accuracy": float(final_test_accuracy),
         "best_val_accuracy": float(best_val_accuracy),

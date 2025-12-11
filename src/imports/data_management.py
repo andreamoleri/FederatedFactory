@@ -919,7 +919,7 @@ def prime_dataset_meta_for_transform(dataset_name: str, root: str) -> None:
         root (str): The root data directory.
     """
     key = dataset_name.strip().lower()
-    base_key = re.split(r"\(", key)[0]
+    base_key = re.split(r"[:(]", key)[0]
 
     if base_key == "medmnist":
         subset, res = _medmnist_parse(key)
