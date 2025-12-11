@@ -108,8 +108,8 @@ DATASETS=(
 # Format: "model_name|args"
 MODELS=(
     "baseline:fedavg|--learning-rate 0.1"
-    "baseline:fedprox|--learning-rate 0.05 --fedprox-mu 0.01"
-    "baseline:feddyn|--learning-rate 0.05 --feddyn-alpha 0.01"
+    "baseline:fedprox|--learning-rate 0.1 --fedprox-mu 0.01"
+    "baseline:feddyn|--learning-rate 0.1 --feddyn-alpha 0.01"
     "baseline:scaffold|--learning-rate 0.1 --baseline-momentum 0.9"
 )
 
