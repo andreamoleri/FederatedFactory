@@ -88,14 +88,14 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 > "$CMD_FILE"
 
 # --- HYPERPARAMETERS (UNCHANGED) ---
-SEEDS=(1) # TODO: Add 2 3 4 5 for final run!!!!!!!!!
+SEEDS=(1 2 3 4 5)
 BS=128
 LATENT=128
-ROUNDS=2 # TODO: Increase to 200 for final run!!!!!!!
-PATIENCE=1 # TODO: Increase to 15 for final run!!!!!!!
+ROUNDS=200
+PATIENCE=15
 CLIENTS=10
 FRACTION=1.0
-EPOCHS_LIST=(2) # TODO: Increase to (5 10) for final run!!!!!!!
+EPOCHS_LIST=(5)
 
 DATASETS=(
   "cifar"
