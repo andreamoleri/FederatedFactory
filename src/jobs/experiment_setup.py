@@ -3,38 +3,39 @@
 ---------------------------------------------------
 
 This module orchestrates the initialization of the experimental environment and 
-the pre-processing of datasets for machine learning workflows, specifically tailored 
-for Federated Learning or distribution shift studies.
+the pre-processing of datasets for machine learning workflows.
 
 🧠 Purpose:
-    It serves as the foundational layer for experiment reproducibility and data management. 
-    It creates structured directory trees for artifacts, snapshots the codebase, and 
-    partitions datasets according to various heterogeneity strategies (e.g., Silos, Skew, Dirichlet).
+    Designed to establish a reproducible research environment by managing
+    directory structures, standardising timestamps, and preparing partitioned
+    datasets for federated or centralized learning experiments.
 
 🔧 Core Functionalities:
-    • Construct hierarchical filesystem paths based on experiment hyperparameters.
-    • Snapshot the execution script to ensure code reproducibility.
-    • Configure image transformations (resizing, grayscale conversion).
-    • Load and partition datasets (IID vs. non-IID) for simulated distributed learning.
-    • Export data distribution statistics for auditing.
+    • Construct hierarchical directory paths for artifacts and models
+    • Archive the execution context for reproducibility
+    • Load, normalize, and transform image datasets (e.g., NICO++, EMNIST)
+    • partition data according to specific distributions (Silos, Dirichlet, Skew)
+    • Generate PyTorch DataLoaders and Tensors for training and evaluation
 
 🎯 Intended Use:
-    • Initialization phase of training pipelines (`main.py` or `runner.py`).
-    • Academic benchmarking of Federated Learning algorithms under non-IID conditions.
+    • Research pipelines requiring rigorous experiment tracking
+    • Federated learning simulations with non-IID data distributions
+    • Benchmarking machine learning models on diverse datasets
 
 📁 Dependencies:
-    • torch, torchvision (Data loading and tensors)
-    • numpy, sklearn (Data splitting and array manipulation)
-    • imports.data_management (Dataset retrieval and metadata)
-    • imports.data_partitions (Partitioning logic)
+    • torch
+    • torchvision
+    • numpy
+    • sklearn (compatibility utilities)
+    • internal modules (imports.*)
 
 📝 Notes:
-    The module handles complex return signatures containing dataset objects, 
-    transformation pipelines, and tensors to minimize overhead during the training loop.
+    This module assumes the existence of a global DATASET_META dictionary
+    defining dataset-specific properties (channels, classes, etc.).
 
 Author: Andrea Moleri
 File Location: src/jobs/experiment_setup.py
-Last Modified: 21/11/2025
+Last Modified: 23/04/2025
 """
 
 from __future__ import annotations
@@ -44,22 +45,23 @@ import re
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple, Dict, List, Optional
+from typing import Tuple, Dict, List, Optional, Any
 
 import torch
 import numpy as np
 from torch.utils.data import DataLoader, Subset, TensorDataset
 import torchvision.transforms as T
+# Retention of train_test_split is required for legacy compatibility with specific external callers.
 from sklearn.model_selection import train_test_split
 
 from imports.data_management import (
-    DATASET_META, get_dataset, 
-    prime_dataset_meta_for_transform, 
+    DATASET_META, get_dataset,
+    prime_dataset_meta_for_transform,
     set_dataset_options
 )
 from imports.data_partitions import (
-    parse_client_config, 
-    create_skew_partition, 
+    parse_client_config,
+    create_skew_partition,
     create_dirichlet_partition
 )
 from imports.data_augmentation import build_transform
@@ -69,61 +71,81 @@ logger = logging.getLogger(__name__)
 
 class TransformSubset(torch.utils.data.Dataset):
     """
-    Overrides the transform of a subset to ensure deterministic evaluation.
+    A custom dataset wrapper that applies a transformation lazily upon item retrieval.
+
+    This class is essential for scenarios where the underlying subset (train or test)
+    requires dynamic augmentation or normalization that differs from the base dataset's
+    original configuration, ensuring deterministic evaluation when required.
     """
-    def __init__(self, subset, transform):
+
+    def __init__(self, subset: Subset, transform: T.Compose):
+        """
+        Initialize the TransformSubset.
+
+        Args:
+            subset (Subset): The subset of the original dataset.
+            transform (T.Compose): The torchvision transform pipeline to apply.
+        """
         self.subset = subset
         self.transform = transform
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, int]:
+        """
+        Retrieve a sample and its label, applying the transform to the data.
+
+        Args:
+            index (int): The index of the item to retrieve.
+
+        Returns:
+            Tuple[torch.Tensor, int]: The transformed image tensor and its corresponding label.
+        """
         x, y = self.subset[index]
         return self.transform(x), y
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        Return the total number of samples in the subset.
+
+        Returns:
+            int: Length of the subset.
+        """
         return len(self.subset)
 
-def _utc_now_parts():
+def _utc_now_parts() -> Tuple[str, str, str]:
     """
-    Generates synchronized ISO 8601 timestamp parts for file naming and logging.
+    Generate synchronized UTC timestamp components for file naming and logging.
 
     Returns:
         Tuple[str, str, str]:
-            - Date string (YYYY-MM-DD).
-            - Time string formatted for filesystem paths (T%H-%M-%SZ).
-            - Full ISO 8601 timestamp string.
+            - date_str: ISO formatted date (YYYY-MM-DD).
+            - time_for_path: Filesystem-safe time string (T%H-%M-%SZ).
+            - time_iso: Full ISO 8601 timestamp with Z designator.
     """
     now = datetime.now(timezone.utc).replace(microsecond=0)
     date_str = now.date().isoformat()
     time_iso = now.isoformat().replace("+00:00", "Z")
-    # Format time for safe use in directory names (avoid colons)
     time_for_path = "T" + now.strftime("%H-%M-%SZ")
     return date_str, time_for_path, time_iso
 
 @dataclass
 class PathRegistry:
     """
-    A data class responsible for managing and creating the directory structure
-    for experiment artifacts.
+    A registry for managing and enforcing the existence of experiment directory structures.
 
     Attributes:
-        root (Path): The base directory for the current experiment run.
+        root (Path): The base root directory for the current experiment run.
     """
     root: Path
 
-    def ensure(self):
+    def ensure(self) -> PathRegistry:
         """
-        Creates the standard subdirectory hierarchy if it does not exist.
+        Create the standard directory hierarchy required for experiment artifacts.
 
-        The following directories are created:
-        - environment: For code snapshots.
-        - metrics: For logging numerical results.
-        - models/*: For saving generator and classifier state dictionaries.
-        - artifacts/*: For generated samples, pairwise plots, and t-SNE projections.
-        - datasets/*: For caching real or synthetic data.
-        - costs/distributions: For analysis of computational cost and class balance.
+        This method ensures that directories for metrics, models, distributions,
+        and generated artifacts exist, creating parent directories as necessary.
 
         Returns:
-            PathRegistry: The instance itself (fluent interface).
+            PathRegistry: The instance itself, allowing for method chaining.
         """
         for d in (
                 "environment", "metrics", "models/generators", "models/classifiers",
@@ -134,32 +156,31 @@ class PathRegistry:
             (self.root / d).mkdir(parents=True, exist_ok=True)
         return self
 
-def setup_experiment_env(args, run_id: int | None) -> Tuple[PathRegistry, str]:
+def setup_experiment_env(args: Any, run_id: int | None) -> Tuple[PathRegistry, str]:
     """
-    Configures the execution environment, creating necessary directories and 
-    validating dataset metadata.
+    Initialize the experiment environment, including directory creation and metadata preparation.
 
-    This function constructs a deterministic path for the experiment based on 
-    arguments such as model type, dataset, seed, and partition strategy. It also 
-    performs a code snapshot for reproducibility.
+    This function constructs the output path based on model parameters, dataset details,
+    and random seeds. It also archives the current script to ensure reproducibility.
 
     Args:
-        args (Namespace): Parsed command-line arguments containing experiment configuration.
-        run_id (int | None): An optional identifier for the specific run (e.g., for 
-                             batch execution). If None, the timestamp is used.
+        args (Any): Parsed command-line arguments containing configuration parameters
+                    (dataset, model, seed, partition, etc.).
+        run_id (int | None): An explicit identifier for the run. If None, a timestamp is used.
 
     Returns:
         Tuple[PathRegistry, str]:
-            - An initialized PathRegistry object pointing to the run directory.
-            - The ISO 8601 timestamp string of the experiment start time.
+            - An initialized PathRegistry object pointing to the experiment root.
+            - The ISO 8601 string representing the experiment start time.
 
     Raises:
-        ValueError: If the specified dataset is not defined in the `DATASET_META` dictionary.
+        ValueError: If the specified dataset is not defined in the global DATASET_META.
     """
-    # Prepare metadata
+    # Isolate the base dataset key (e.g., remove parameters from 'dataset(param)')
     base_key = args.dataset.split("(", 1)[0].lower()
+
+    # Attempt to pre-calculate or load dataset metadata required for transforms
     try:
-        # Initialize or update dataset metadata (e.g., paths, properties)
         prime_dataset_meta_for_transform(args.dataset, args.data_dir)
     except Exception as e:
         logger.warning(f"[DATA] prime_dataset_meta_for_transform failed: {e}")
@@ -167,29 +188,25 @@ def setup_experiment_env(args, run_id: int | None) -> Tuple[PathRegistry, str]:
     if base_key not in DATASET_META:
         raise ValueError(f"Dataset '{args.dataset}' not present in DATASET_META.")
 
-    # Handle input size override
-    # If the user explicitly requests a different input size, update metadata globally
+    # Override the default input size in metadata if specified in arguments
     if getattr(args, "input_size", 0):
         new_sz = int(args.input_size)
-        # Update relevant keys including NICO variations
+        # Apply override to known dataset keys associated with this experiment
         for k in (base_key, "nico++", "nicopp", "nico"):
             if k in DATASET_META:
                 DATASET_META[k]["input_size"] = new_sz
         logger.info(f"[DATA] Overriding input_size -> {new_sz} for dataset '{args.dataset}'")
 
-    # Paths construction
+    # Construct hierarchical path components
     date_str, time_for_path, time_iso = _utc_now_parts()
     run_leaf = f"run{run_id}" if run_id is not None else time_for_path
-    
+
     partition_mode = getattr(args, "partition", "silos")
     aggregation_mode = getattr(args, "aggregation", "simple")
-    
-    # Determine folder naming based on partition strategy
+    # Determine display name for aggregation; "standard" implies basic FedAvg in Silos mode
     aggregation_display = "standard" if partition_mode == "silos" else aggregation_mode
     model_name = args.model.replace("baseline:", "") if args.model.startswith("baseline:") else args.model
 
-    # Construct the hierarchical path:
-    # out_dir / model / dataset / seed / inference_mode / partition_config / date / run_id
     run_root = (
             Path(args.out_dir)
             / model_name
@@ -201,71 +218,60 @@ def setup_experiment_env(args, run_id: int | None) -> Tuple[PathRegistry, str]:
             / run_leaf
     )
     P = PathRegistry(run_root).ensure()
-    
-    # Snapshot code
-    # Copies the current script file to the environment directory for reproducibility
+
+    # Archive the current script file to the environment directory for reproducibility
     try:
         src_self = Path(__file__)
         shutil.copy2(src_self, P.root / "environment" / src_self.name)
     except Exception:
-        # Fail silently if __file__ is not accessible or copy fails (e.g., interactive mode)
+        # Failure to copy the script should not halt the experiment
         pass
-        
+
     return P, time_iso
 
 
-def prepare_data(args, device) -> Tuple:
+def prepare_data(args: Any, device: torch.device) -> Tuple:
     """
-    Loads, transforms, and partitions the dataset according to the experimental configuration.
+    Load, transform, and partition the dataset for the experiment.
 
-    This function handles:
-    1. Construction of image transformation pipelines (resizing, grayscale).
-    2. Loading of the base training and test datasets.
-    3. Calculation of dataset statistics (number of classes, image shape).
-    4. Partitioning of the training data into client subsets (Skew, Dirichlet, or Silos).
-    5. Preparation of test sets tailored to the partitioning strategy.
+    This function handles the end-to-end data pipeline:
+    1. Configures transforms (resizing, grayscale, robustness noise).
+    2. Loads the raw training and canonical testing datasets.
+    3. Partitions the training data based on the selected mode (Silos, Skew, Dirichlet).
+    4. Prepares evaluation tensors and loaders.
 
     Args:
-        args (Namespace): Parsed command-line arguments containing data configuration.
-        device: The torch device (unused in this function but kept for signature compatibility).
+        args (Any): Configuration namespace containing dataset and partition settings.
+        device (torch.device): The target computation device (CPU/GPU).
 
     Returns:
-        Tuple: A tuple containing twelve elements:
-            1.  **base_train_set**: The complete training dataset object (Augmented).
-            2.  **test_set**: The complete test dataset object (Deterministic).
-            3.  **tfm**: The training torchvision transform.
-            4.  **num_classes** (int): Total number of unique classes.
-            5.  **img_shape** (Tuple[int, ...]): Shape of a single input image (C, H, W).
-            6.  **chans** (int): Number of image channels.
-            7.  **train_subsets_dict** (Dict): Map of client ID to dataset subset (for skew/dirichlet).
-            8.  **train_subsets** (List): List of dataset subsets (for silos).
-            9.  **present_classes** (List[int]): List of class indices present in the current partition.
-            10. **reserved_test_ld** (DataLoader): DataLoader for the full test set.
-            11. **reserved_test_imgs_list** (List[Tensor]): List of test tensors split by class or partition.
-            12. **test_imgs_tensor** (Tensor): The full test set as a single tensor.
+        Tuple containing:
+            - base_train_set (Dataset): The full, raw training dataset.
+            - test_set (Dataset): The canonical test dataset with transforms.
+            - tfm_train (T.Compose): Transform pipeline for training data.
+            - num_classes (int): Total number of unique classes.
+            - img_shape (Tuple[int, ...]): Dimensions of a single image sample.
+            - chans (int): Number of image channels.
+            - train_subsets_dict (Dict): Dictionary mapping clients to their data indices/subsets.
+            - train_subsets (List[Dataset]): List of dataset objects for each client.
+            - present_classes (List[int]): List of class indices present in the current partition.
+            - reserved_test_ld (DataLoader): DataLoader for the full canonical test set.
+            - reserved_test_imgs_list (List[Tensor]): List of test tensors per class.
+            - test_imgs_tensor (Tensor): Full test set as a single tensor.
     """
-
     base_key = args.dataset.split("(", 1)[0].lower()
     meta = DATASET_META[base_key]
     chans = meta["channels"]
 
-    # 1. Build distinct base transforms
-    base_key = args.dataset.split("(", 1)[0].lower()
-    meta = DATASET_META[base_key]
-    chans = meta["channels"]
-
-    # Check if robustness is requested in args (default to False if missing)
     use_robustness = getattr(args, "robustness", True)
-
     if use_robustness:
-        logger.info("[DATA] 🛡️ Robustness Enabled: Injecting Gaussian Noise for Sensor Heterogeneity")
+        logger.info("[DATA] 🛡️ Robustness Enabled: Injecting Gaussian Noise")
 
-    # 1. Build distinct base transforms
-    # Pass the flag to the train transform
+    # 1. Construct base transformation pipelines
     base_tfm_train = build_transform(args.dataset, train=True, robustness=use_robustness)
-    base_tfm_test = build_transform(args.dataset, train=False)  # Test data is usually kept clean
+    base_tfm_test = build_transform(args.dataset, train=False)
 
-    # 2. Apply explicit resize overrides to BOTH pipelines
+    # 2. Apply explicit input size overrides if specified
     if getattr(args, "input_size", 0):
         sz = int(args.input_size)
         resize_op = T.Resize((sz, sz), antialias=True)
@@ -275,38 +281,41 @@ def prepare_data(args, device) -> Tuple:
         tfm_train = base_tfm_train
         tfm_test = base_tfm_test
 
-    # 3. Apply Grayscale overrides to BOTH pipelines
+    # 3. Apply Grayscale conversion if requested for 3-channel images
     if bool(args.grayscale) and chans == 3:
+        # Enforce 3 output channels to maintain compatibility with model architectures
         gray_op = T.Grayscale(num_output_channels=3)
         tfm_train = T.Compose([gray_op, tfm_train])
         tfm_test = T.Compose([gray_op, tfm_test])
 
-    # NICO++ filter
-    # Filters the NICO dataset to only include specific classes if arguments are provided
+    # Handle NICO++ specific class filtering
     if args.dataset.lower() in ("nico++", "nicopp", "nico"):
         selected = [c.strip() for c in args.classes.split(",") if c.strip()] or None
         set_dataset_options("nico++", classes=selected)
 
+    # --- LOAD RAW DATASETS ---
+    # Load the full pool of training data; augmentation is applied via wrappers later
     base_train_set = get_dataset(args.dataset, args.data_dir, True, None)
 
-    # Num Classes logic
+    # Load the canonical test set (deterministic behavior required)
+    test_set = get_dataset(args.dataset, args.data_dir, False, tfm_test)
+    test_imgs_tensor = dataset_to_tensor(test_set)
+
+    # Determine the number of classes via introspection of the dataset object
     if hasattr(base_train_set, "classes") and len(getattr(base_train_set, "classes")) > 0:
         num_classes = len(base_train_set.classes)
     elif hasattr(base_train_set, "targets"):
         num_classes = int(len(set(map(int, base_train_set.targets))))
     else:
+        # Fallback: Iterate to find unique labels (computationally expensive but safe)
         labels_tmp = [int(lbl) for _, lbl in base_train_set]
         num_classes = int(len(set(labels_tmp)))
 
-    # Img shape
     sample_img, _ = base_train_set[0]
     img_shape = tuple(sample_img.shape)
 
-    # Test Set -> Uses Deterministic Transform
-    test_set = get_dataset(args.dataset, args.data_dir, False, tfm_test)
-    test_imgs_tensor = dataset_to_tensor(test_set)
-
-    # Extract labels from the test set for processing
+    # --- PREPARE TEST LABELS ---
+    # extract labels uniformly across different dataset implementations (targets vs labels)
     labels_src = None
     for attr in ("targets", "labels"):
         if hasattr(test_set, attr):
@@ -317,147 +326,94 @@ def prepare_data(args, device) -> Tuple:
 
     test_lbls_all = torch.as_tensor(labels_src, dtype=torch.long).reshape(-1)
 
-    # Normalize EMNIST labels to be zero-indexed if necessary
+    # Normalize EMNIST labels to be 0-indexed if they are offset
     if args.dataset.startswith("emnist") and test_lbls_all.min().item() != 0:
         test_lbls_all = test_lbls_all - test_lbls_all.min()
 
     reserved_test_ld = DataLoader(TensorDataset(test_imgs_tensor, test_lbls_all), batch_size=args.batch_size)
 
-    # Partition Logic
+    # --- PARTITION LOGIC ---
     partition_mode = getattr(args, "partition", "silos")
-    train_subsets_dict = {}  # For skew/dirichlet
-    train_subsets = []  # For silos
+    train_subsets_dict = {}
+    train_subsets = []
     reserved_test_imgs_list = []
-    reserved_test_lbls = []
     present_classes = []
 
-    if partition_mode == "skew":
-        # Create non-IID partitions based on client configuration
-        client_config = parse_client_config(getattr(args, "client_config", ""))
-        train_subsets_dict, _ = create_skew_partition(base_train_set, client_config, args.seed, num_classes)
+    # Unify access to test targets as a numpy array
+    if hasattr(test_set, "targets"):
+        test_targets_arr = np.asarray(test_set.targets)
+    elif hasattr(test_set, "labels"):
+        test_targets_arr = np.asarray(test_set.labels)
+    else:
+        test_targets_arr = np.array([lbl for _, lbl in test_set])
+
+    if test_targets_arr.ndim > 1: test_targets_arr = test_targets_arr[:, 0]
+
+    # Apply EMNIST offset correction to numpy array targets
+    if args.dataset.startswith("emnist") and test_targets_arr.min() != 0:
+        test_targets_arr = test_targets_arr - test_targets_arr.min()
+
+    if partition_mode in ["skew", "dirichlet"]:
+        # Logic for Synthetic Federated Partitions (Skew/Dirichlet)
+        # Note: These modes typically utilize the entire training set distributed among clients.
+        if partition_mode == "skew":
+            client_config = parse_client_config(getattr(args, "client_config", ""))
+            train_subsets_dict, _ = create_skew_partition(base_train_set, client_config, args.seed, num_classes)
+        else:
+            alpha = float(getattr(args, "alpha", 0.5))
+            n_clients = int(getattr(args, "num_clients", 10))
+            train_subsets_dict, _ = create_dirichlet_partition(base_train_set, n_clients, alpha, args.seed)
+
         present_classes = list(range(num_classes))
 
-        # Helper for test splitting (simplified)
-        if hasattr(test_set, "targets"):
-            targets_array = test_set.targets
-        elif hasattr(test_set, "labels"):
-            targets_array = test_set.labels
-        else:
-            targets_array = [lbl for _, lbl in test_set]
-
-        targets_array = np.asarray(targets_array)
-        if targets_array.ndim > 1: targets_array = targets_array[:, 0]
-
-        if args.dataset.startswith("emnist") and targets_array.min() != 0:
-            targets_array = targets_array - targets_array.min()
-
-        # Create a test tensor for each class individually
+        # Create evaluation tensors for every class using the CANONICAL TEST SET
         for d in range(num_classes):
-            idxs = np.flatnonzero(targets_array == d)
+            idxs = np.flatnonzero(test_targets_arr == d)
             if len(idxs) == 0:
                 reserved_test_imgs_list.append(torch.empty(0))
                 continue
+            # Note: test_set already has tfm_test applied
             sub = Subset(test_set, idxs)
             reserved_test_imgs_list.append(subset_to_tensor(sub))
 
-    elif partition_mode == "dirichlet":
-        # Create partitions using Latent Dirichlet Allocation (LDA) sampling
-        alpha = float(getattr(args, "alpha", 0.5))
-        n_clients = int(getattr(args, "num_clients", 10))
-        train_subsets_dict, _ = create_dirichlet_partition(base_train_set, n_clients, alpha, args.seed)
-        present_classes = list(range(num_classes))
+    else:
+        # Logic for "Silos" Mode (Natural/Domain Splits)
+        # This typically separates data by distinct classes or domains (e.g., DomainNet, PACS).
 
-        # Same test split logic as skew (separating by class)
-        if hasattr(test_set, "targets"):
-            targets_array = test_set.targets
-        elif hasattr(test_set, "labels"):
-            targets_array = test_set.labels
-        else:
-            targets_array = [lbl for _, lbl in test_set]
-
-        targets_array = np.asarray(targets_array)
-        if targets_array.ndim > 1: targets_array = targets_array[:, 0]
-
-        if args.dataset.startswith("emnist") and targets_array.min() != 0:
-            targets_array = targets_array - targets_array.min()
-
-        for d in range(num_classes):
-            idxs = np.flatnonzero(targets_array == d)
-            if len(idxs) == 0:
-                reserved_test_imgs_list.append(torch.empty(0))
-                continue
-            sub = Subset(test_set, idxs)
-            reserved_test_imgs_list.append(subset_to_tensor(sub))
-
-    else:  # silos
-        # 'Silos' partition mode: typically for disjoint class splits
+        # Access train targets
         if hasattr(base_train_set, "targets"):
-            targets_array = base_train_set.targets
+            train_targets_arr = np.asarray(base_train_set.targets)
         elif hasattr(base_train_set, "labels"):
-            targets_array = base_train_set.labels
+            train_targets_arr = np.asarray(base_train_set.labels)
         else:
-            targets_array = [lbl for _, lbl in base_train_set]
+            train_targets_arr = np.array([lbl for _, lbl in base_train_set])
 
-        targets_array = np.asarray(targets_array)
-        if targets_array.ndim > 1: targets_array = targets_array[:, 0]
-
-        if args.dataset.startswith("emnist") and targets_array.min() != 0:
-            targets_array = targets_array - targets_array.min()
+        if train_targets_arr.ndim > 1: train_targets_arr = train_targets_arr[:, 0]
+        if args.dataset.startswith("emnist") and train_targets_arr.min() != 0:
+            train_targets_arr = train_targets_arr - train_targets_arr.min()
 
         for d in range(num_classes):
-            idxs = np.flatnonzero(targets_array == d)
+            # Identify all training samples belonging to this specific class
+            idxs = np.flatnonzero(train_targets_arr == d)
             if len(idxs) == 0: continue
             present_classes.append(d)
 
-            # 1. Use all indices for training
-            train_idx = idxs
-
-            # 2. Create the Raw Subset
-            raw_train_subset = Subset(base_train_set, train_idx)
-
-            # 3. Wrap it with the training transform (Noise + Aug + Norm)
+            # 1. Assign 100% of these indices for Training
+            # Validation is performed strictly on the Canonical Test Set.
+            raw_train_subset = Subset(base_train_set, idxs)
             augmented_train_subset = TransformSubset(raw_train_subset, tfm_train)
-
-            # 4. Append the AUGMENTED subset, not the raw one
             train_subsets.append(augmented_train_subset)
 
-            # We need to find samples in the CANONICAL test_set that belong to class 'd'
-            # to keep the 'reserved_test_imgs_list' aligned with the silos structure.
-
-            if hasattr(test_set, "targets"):
-                test_targets = np.array(test_set.targets)
-            elif hasattr(test_set, "labels"):
-                test_targets = np.array(test_set.labels)
-            else:
-                test_targets = np.array([lbl for _, lbl in test_set])
-
-            # Normalize EMNIST if needed (same logic as before)
-            if args.dataset.startswith("emnist") and test_targets.min() != 0:
-                test_targets = test_targets - test_targets.min()
-
-            test_class_idxs = np.flatnonzero(test_targets == d)
-
+            # 2. Extract corresponding samples from the Canonical Test Set for evaluation
+            test_class_idxs = np.flatnonzero(test_targets_arr == d)
             if len(test_class_idxs) > 0:
-                test_sub_clean = Subset(test_set, test_class_idxs)
-                # Wrap with deterministic transform (though test_set usually has it already)
-                # We wrap to be safe and consistent with previous logic types
-                test_sub_final = TransformSubset(test_sub_clean, tfm_test)
+                # Wrap in TransformSubset for consistency, though test_set is already transformed
+                test_sub_final = TransformSubset(Subset(test_set, test_class_idxs), tfm_test)
                 reserved_test_imgs_list.append(subset_to_tensor(test_sub_final))
             else:
                 reserved_test_imgs_list.append(torch.empty(0))
 
-            # Create a "clean" training set for splitting purposes:
-            clean_train_set = get_dataset(args.dataset, args.data_dir, True, None)  # No transform
-
-            # Create subset from the CLEAN set
-            test_sub_clean = Subset(clean_train_set, test_idx)
-
-            # Wrap it with the deterministic transform
-            test_sub_final = TransformSubset(test_sub_clean, tfm_test)
-
-            reserved_test_imgs_list.append(subset_to_tensor(test_sub_final))
-
-    # Adjustment for Silos: if fewer classes are found than expected, update num_classes
+    # Adjust the number of classes if the partition resulted in a subset of the total classes
     if len(present_classes) != num_classes and partition_mode == 'silos':
         num_classes = len(present_classes)
 
@@ -471,41 +427,36 @@ def _export_client_class_distribution(
         num_classes: int
 ) -> None:
     """
-    Exports the distribution of classes per client to a CSV file.
+    Export the distribution of classes per client to a CSV file.
 
-    This is useful for visualizing the degree of data heterogeneity (skew)
-    assigned to each client in the experiment.
+    This function generates a matrix where rows correspond to clients and columns
+    correspond to classes, with values indicating the sample count.
 
     Args:
-        root (Path): The root directory of the experiment.
-        client_sample_counts (Dict[str, Dict[int, int]]): Mapping of client names 
-                                                          to a dictionary of class counts.
-        num_classes (int): The total number of classes in the dataset.
-
-    Returns:
-        None
+        root (Path): The root directory where the 'distributions' folder resides.
+        client_sample_counts (Dict[str, Dict[int, int]]): A mapping of client names to
+                                                         dictionaries of class counts.
+        num_classes (int): The total number of classes to include in the header.
     """
     distributions_dir = root / "distributions"
     distributions_dir.mkdir(parents=True, exist_ok=True)
     csv_file = distributions_dir / "client_class_distribution.csv"
-    
-    # Construct CSV header: client, class_0, class_1, ...
+
     header = ["client"] + [f"class_{i}" for i in range(num_classes)]
     client_names = sorted(client_sample_counts.keys())
-    
+
     rows = []
     for client_name in client_names:
         row = [client_name]
         class_counts = client_sample_counts[client_name]
         for class_id in range(num_classes):
-            # Fill count or 0 if class is missing for this client
             count = class_counts.get(class_id, 0)
             row.append(str(count))
         rows.append(row)
-        
+
     with open(csv_file, 'w') as f:
         f.write(",".join(header) + "\n")
         for row in rows:
             f.write(",".join(row) + "\n")
-            
+
     logger.info(f"[EXPORT] Client class distribution exported to: {csv_file}")

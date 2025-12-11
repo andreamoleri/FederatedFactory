@@ -9,18 +9,36 @@ partitioning based on the Dirichlet distribution.
 
 🧠 Purpose:
     To simulate Non-IID (Non-Independent and Identically Distributed) data
-    environments.
+    environments common in distributed machine learning research.
 
-    [CORRECTION - UPPER BOUND]:
-    This version allocates 100% of the assigned data to the training subset.
-    It returns empty test subsets. This ensures that in the baseline runner,
-    clients train on all available local data, while global evaluation happens
-    on the canonical central test set.
+    This version allocates 100% of the assigned data to the training subset
+    and returns empty test subsets. This design choice forces the baseline
+    runner to utilize all available local data for model training, while global
+    evaluation is deferred to a canonical central test set.
 
 🔧 Core Functionalities:
-    • Parse complex configuration strings for manual data allocation
-    • Create deterministic skewed partitions
-    • Generate partitions based on the Dirichlet distribution
+    • Parse complex configuration strings for granular data allocation
+    • Generate deterministic partitions with specific class-per-client counts
+    • Generate probabilistic partitions using the Dirichlet distribution to
+      simulate varying degrees of data heterogeneity
+
+🎯 Intended Use:
+    • Federated Learning research simulations
+    • Benchmarking aggregation algorithms under data skew
+    • Reproducible dataset splitting for distributed systems
+
+📁 Dependencies:
+    • numpy
+    • torch (for Subset)
+    • logging
+
+📝 Notes:
+    The module assumes the input `base_dataset` is array-like or compatible
+    with PyTorch dataset interfaces (specifically exposing `targets` or `labels`).
+
+Author: Andrea Moleri
+File Location: src/imports/data_partitions.py
+Last Modified: 23/04/2025
 """
 
 import logging
@@ -33,8 +51,26 @@ logger = logging.getLogger(__name__)
 
 def parse_client_config(config_str: str) -> Dict[str, Dict[int, int]]:
     """
-    Parses a client configuration string into a structured dictionary.
-    (Logic unchanged from original)
+    Parses a formatted client configuration string into a structured dictionary.
+
+    This function interprets a specifically formatted string to determine how many
+    samples of specific classes should be allocated to each client.
+
+    Format: "client_name:class_id:count,class_id:count;..."
+
+    Args:
+        config_str (str): The configuration string defining data distribution.
+                          Example: "c1:0:100,1:50;c2:0:50" means client 'c1' gets
+                          100 samples of class 0 and 50 of class 1.
+
+    Returns:
+        Dict[str, Dict[int, int]]: A nested dictionary mapping client names to
+                                   another dictionary of {class_id: sample_count}.
+                                   Returns an empty dictionary if input is empty.
+
+    Note:
+        A count of -1 indicates that the remaining samples for that class should
+        be auto-allocated evenly among clients requesting it.
     """
     if not config_str:
         return {}
@@ -44,9 +80,11 @@ def parse_client_config(config_str: str) -> Dict[str, Dict[int, int]]:
     clients = config_str.split(';')
 
     for client in clients:
+        # Skip empty segments resulting from trailing semicolons
         if not client.strip():
             continue
 
+        # Split client definition into name and class configuration
         parts = client.split(':', 1)
         if len(parts) < 2:
             continue
@@ -61,16 +99,19 @@ def parse_client_config(config_str: str) -> Dict[str, Dict[int, int]]:
                 continue
             try:
                 cp_parts = cp.strip().split(':')
+                # Case: Explicit count provided (class_id:count)
                 if len(cp_parts) == 2:
                     class_id = int(cp_parts[0].strip())
                     sample_count = int(cp_parts[1].strip())
                     class_config[class_id] = sample_count
+                # Case: Auto-allocation requested (class_id implies -1)
                 elif len(cp_parts) == 1:
                     class_id = int(cp_parts[0].strip())
                     class_config[class_id] = -1
                 else:
                     continue
             except (ValueError, IndexError):
+                # Gracefully skip malformed class definitions
                 continue
 
         if class_config:
@@ -86,25 +127,44 @@ def create_skew_partition(
         num_classes: int
 ) -> Tuple[Dict[str, Dict[int, Subset]], Dict[str, Dict[int, Subset]]]:
     """
-    Creates deterministic partitioning based on specific counts.
+    Creates a deterministic data partition based on specific class counts per client.
 
-    NOTE: Assigns 100% of selected data to 'train_subsets'.
-    'test_subsets' is returned empty to force the baseline runner
-    to use all data for training.
+    This function extracts indices from the base dataset and assigns them to clients
+    according to the provided configuration. It supports auto-allocation for counts
+    marked as -1.
+
+    Args:
+        base_dataset: The source dataset containing data and labels/targets.
+        client_config (Dict[str, Dict[int, int]]): The distribution map returned
+                                                   by `parse_client_config`.
+        seed (int): Random seed for reproducibility of index selection.
+        num_classes (int): The total number of unique classes in the dataset.
+
+    Returns:
+        Tuple[Dict, Dict]:
+            - train_subsets: Dictionary mapping client names to class-specific
+              PyTorch Subsets containing 100% of the allocated data.
+            - test_subsets: Dictionary mapping client names to empty Subsets.
+
+    Note:
+        This function strictly enforces a 100% training split. The test subsets
+        are returned as empty objects to signal to the consuming framework that
+        local testing should be skipped or handled globally.
     """
     logger.info(f"[SKEW] Creating skew partition with {len(client_config)} clients")
 
-    # Extract targets
+    # Extract targets from dataset using common attribute names (torchvision/custom)
     if hasattr(base_dataset, 'targets'):
         targets = base_dataset.targets
     elif hasattr(base_dataset, 'labels'):
         targets = base_dataset.labels
     else:
+        # Fallback for datasets that yield (data, label) tuples
         targets = [label for _, label in base_dataset]
 
     targets = np.array(targets)
 
-    # Map class indices
+    # Map class indices: Pre-calculate the location of every sample per class
     class_indices = {}
     class_counts = {}
     for class_id in range(num_classes):
@@ -112,7 +172,7 @@ def create_skew_partition(
         class_indices[class_id] = indices
         class_counts[class_id] = len(indices)
 
-    # Handle auto-allocation (-1)
+    # Handle auto-allocation (-1): Distribute available samples evenly among requesters
     auto_alloc_classes = {}
     for client_name, class_samples in client_config.items():
         for class_id, sample_count in class_samples.items():
@@ -121,6 +181,7 @@ def create_skew_partition(
                     auto_alloc_classes[class_id] = []
                 auto_alloc_classes[class_id].append(client_name)
 
+    # Calculate fair share for auto-allocated classes based on remaining global count
     for class_id, clients in auto_alloc_classes.items():
         if class_id in class_counts:
             available_samples = class_counts[class_id]
@@ -140,15 +201,18 @@ def create_skew_partition(
                 continue
 
             available_indices = class_indices[class_id]
+            # Cap request at available data size to prevent IndexErrors
             if total_samples > len(available_indices):
                 total_samples = len(available_indices)
 
-            # Deterministic Sampling
+            # Deterministic Sampling: Derive a unique seed per client/class pair
+            # to ensure consistency regardless of client iteration order.
             client_seed = abs(hash(f"{seed}_{client_name}_{class_id}")) % (2 ** 32)
             rng = np.random.RandomState(client_seed)
             selected_indices = rng.choice(available_indices, size=total_samples, replace=False)
 
-            # Update global pool (remove selected)
+            # Update global pool: Remove selected indices so they aren't reused
+            # using boolean indexing for efficiency.
             mask = np.isin(available_indices, selected_indices, invert=True)
             class_indices[class_id] = available_indices[mask]
 
@@ -171,12 +235,30 @@ def create_dirichlet_partition(
         min_require_size: int = 10
 ) -> Tuple[Dict[str, Dict[int, Subset]], Dict[str, Dict[int, Subset]]]:
     """
-    Robust Dirichlet partitioner.
+    Generates a probabilistic Non-IID data partition using the Dirichlet distribution.
 
-    NOTE: Assigns 100% of data to 'train_subsets'.
+    This method simulates heterogeneous data distributions where the proportion
+    of class labels varies across clients, controlled by the concentration
+    parameter alpha.
+
+    Args:
+        base_dataset: The source dataset containing data and labels.
+        num_clients (int): Total number of clients to partition data for.
+        alpha (float): Concentration parameter for the Dirichlet distribution.
+                       - alpha -> 0: High heterogeneity (one class dominates).
+                       - alpha -> infinity: Uniform distribution (IID).
+        seed (int): Random seed for reproducibility.
+        min_require_size (int, optional): Minimum number of samples required per client.
+                                          Defaults to 10.
+
+    Returns:
+        Tuple[Dict, Dict]:
+            - train_subsets: Dictionary mapping 'client{i}' to class-specific Subsets.
+            - test_subsets: Dictionary mapping 'client{i}' to empty Subsets.
     """
     logger.info(f"[PARTITION] Dirichlet partition (alpha={alpha})")
 
+    # Standardize target extraction
     if hasattr(base_dataset, 'targets'):
         y_train = np.array(base_dataset.targets)
     elif hasattr(base_dataset, 'labels'):
@@ -191,6 +273,7 @@ def create_dirichlet_partition(
     rng = np.random.RandomState(seed)
 
     min_size = 0
+    # Rejection sampling: Retry partitioning until every client meets the minimum size requirement
     while min_size < min_require_size:
         idx_batch = [[] for _ in range(num_clients)]
 
@@ -199,17 +282,20 @@ def create_dirichlet_partition(
             rng.shuffle(idx_k)
 
             try:
+                # Sample proportions from Dirichlet distribution
                 proportions = rng.dirichlet(np.repeat(alpha, num_clients))
             except ValueError:
+                # Fallback to uniform distribution if Dirichlet fails
                 proportions = np.array([1.0/num_clients] * num_clients)
 
-            # Handle NaN/Underflow
+            # Handle NaN/Underflow: Assign all to a random winner if calculation fails
             if np.isnan(proportions).any():
                 proportions = np.zeros(num_clients)
                 winner = rng.randint(0, num_clients)
                 proportions[winner] = 1.0
 
-            # Fix Floating Point Rounding
+            # Convert floating point proportions into integer split indices.
+            # cumsum() helps determine the cut points in the index array.
             split_points = (np.cumsum(proportions) * len(idx_k)).round().astype(int)[:-1]
             split_points = np.clip(split_points, 0, len(idx_k)).astype(int)
 
@@ -233,13 +319,13 @@ def create_dirichlet_partition(
         client_labels = y_train[client_indices]
 
         for class_id in range(num_classes):
+            # Filter indices belonging to the current class within the client's batch
             cls_mask = (client_labels == class_id)
             cls_indices = client_indices[cls_mask]
 
             if len(cls_indices) == 0:
                 continue
 
-            # --- FIX: NO SPLIT. USE 100% FOR TRAIN ---
             client_train_struct[class_id] = Subset(base_dataset, cls_indices)
             client_test_struct[class_id] = Subset(base_dataset, [])
 
