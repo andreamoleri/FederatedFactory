@@ -40,7 +40,7 @@ across simulated distributed clients using various federated algorithms.
 
 Author: Andrea Moleri
 File Location: src/jobs/baseline_runner.py
-Last Modified: 21/11/2025
+Last Modified: 11/12/2025
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional, Union, Any
 
 from imports.data_management import DATASET_META
 
@@ -205,28 +205,28 @@ def run_federated_baseline(
         baseline: FederatedBaseline,
         train_subsets_dict: Dict[str, Dict[int, Subset]],
         test_subsets_dict: Dict[str, Dict[int, Subset]],
-        base_train_set,
-        args,
-        device,
-        P,  # PathRegistry instance
+        base_train_set: Dataset,
+        args: Any,
+        device: torch.device,
+        P: Any,  # PathRegistry instance
         tracker: Optional[ExperimentCostTracker] = None,
-        # --- NEW ARGUMENTS ---
+        # --- NEW ARGUMENTS FOR CONSISTENCY ---
         train_transform_override: Optional[any] = None,
         eval_transform_override: Optional[any] = None,
+        test_loader_override: Optional[DataLoader] = None
 ) -> Tuple[float, Dict, Dict, np.ndarray, np.ndarray]:
     """
     Execute the complete federated learning baseline experiment lifecycle.
     """
     logger.info(f"[BASELINE] Starting {type(baseline).__name__} federated learning")
 
-    # 1. Resolve key
+    # 1. Resolve key (for fallback logic)
     base_key = args.dataset.split("(", 1)[0].lower()
     if base_key.startswith("medmnist"): base_key = "medmnist"
 
     # 2. Find metadata pointer
     meta_ptr = DATASET_META.get(base_key) or DATASET_META.get(args.dataset)
     if meta_ptr is None:
-        # Fallback search
         for k in DATASET_META:
             if k in args.dataset:
                 meta_ptr = DATASET_META[k]
@@ -238,25 +238,64 @@ def run_federated_baseline(
         meta_ptr["input_size"] = args.input_size
 
     # ---------------------------------------------------------------
-    # 0. Initialize Augmentation Strategies (NeurIPS Correction)
+    # 0. Initialize Augmentation Strategies & Test Loader
     # ---------------------------------------------------------------
-    # specific=True -> Random Augmentation (Crops/Flips)
-    # specific=False -> Deterministic (Resize/CenterCrop)
 
-    # CHECK: Did experiment_setup pass us a robust transform?
+    # A. Train Transforms
     if train_transform_override is not None:
-        logger.info("[BASELINE] Using provided TRAIN transform (preserving robustness/noise settings)")
+        logger.info("[BASELINE] Using provided TRAIN transform (Consistent with experiment setup)")
         train_transform = train_transform_override
     else:
-        # Fallback: Build it here (Note: might miss robustness flag if not passed in args)
+        logger.info("[BASELINE] Building TRAIN transform from scratch")
         use_robustness = getattr(args, "robustness", False)
         train_transform = build_transform(args.dataset, train=True, robustness=use_robustness)
 
-    # CHECK: Did experiment_setup pass us a deterministic eval transform?
-    if eval_transform_override is not None:
-        eval_transform = eval_transform_override
+    # B. Test Loader & Eval Transforms
+    if test_loader_override is not None:
+        logger.info("[BASELINE] Using provided Canonical Test Loader (Consistency Guaranteed)")
+        test_loader = test_loader_override
+        # Infer eval transform or build fallback
+        if eval_transform_override is not None:
+            eval_transform = eval_transform_override
+        else:
+            eval_transform = build_transform(args.dataset, train=False)
     else:
-        eval_transform = build_transform(args.dataset, train=False)
+        logger.warning(
+            "[BASELINE] ⚠️ Building Test Loader from scratch (Risk of inconsistency with Grayscale/Filtering)")
+        if eval_transform_override is not None:
+            eval_transform = eval_transform_override
+        else:
+            eval_transform = build_transform(args.dataset, train=False)
+
+        try:
+            test_set = get_dataset(args.dataset, args.data_dir, False, eval_transform)
+            test_imgs = dataset_to_tensor(test_set)
+
+            # Label Extraction
+            labels_src = None
+            for attr in ("targets", "labels"):
+                if hasattr(test_set, attr):
+                    labels_src = getattr(test_set, attr)
+                    break
+            if labels_src is None and hasattr(test_set, "imgs"):
+                labels_src = [t for _, t in test_set.imgs]
+
+            if labels_src is None:
+                test_lbls = torch.zeros(len(test_imgs), dtype=torch.long)
+            else:
+                test_lbls = torch.as_tensor(labels_src, dtype=torch.long).reshape(-1)
+
+            test_loader = DataLoader(
+                TensorDataset(test_imgs, test_lbls),
+                batch_size=args.batch_size,
+                shuffle=False,
+            )
+        except Exception as e:
+            logger.warning(f"[BASELINE] Could not create fallback test loader: {e}")
+            test_loader = DataLoader(
+                TensorDataset(torch.tensor([]), torch.tensor([])),
+                batch_size=args.batch_size,
+            )
 
     # ---------------------------------------------------------------
     # Initialize models
@@ -286,47 +325,6 @@ def run_federated_baseline(
         f"[BASELINE] Total clients: {total_clients}, "
         f"Clients per round: {clients_per_round}"
     )
-
-    # ---------------------------------------------------------------
-    # Official Test Loader Construction
-    # ---------------------------------------------------------------
-    try:
-        # Use deterministic eval_transform for the global test set
-        test_set = get_dataset(
-            args.dataset,
-            args.data_dir,
-            False,  # is_train=False
-            eval_transform,
-        )
-        test_imgs = dataset_to_tensor(test_set)
-
-        labels_src = None
-        for attr in ("targets", "labels"):
-            if hasattr(test_set, attr):
-                labels_src = getattr(test_set, attr)
-                break
-        if labels_src is None and hasattr(test_set, "imgs"):
-            labels_src = [t for _, t in test_set.imgs]
-
-        if labels_src is None:
-            test_lbls = torch.zeros(len(test_imgs), dtype=torch.long)
-        else:
-            test_lbls = torch.as_tensor(labels_src, dtype=torch.long).reshape(-1)
-
-        test_loader = DataLoader(
-            TensorDataset(test_imgs, test_lbls),
-            batch_size=args.batch_size,
-            shuffle=False,
-        )
-        logger.info(
-            f"[BASELINE] Created test loader with {len(test_imgs)} samples using deterministic transform."
-        )
-    except Exception as e:
-        logger.warning(f"[BASELINE] Could not create proper test loader: {e}")
-        test_loader = DataLoader(
-            TensorDataset(torch.tensor([]), torch.tensor([])),
-            batch_size=args.batch_size,
-        )
 
     # ---------------------------------------------------------------
     # Precompute Train/Val Splits for Each Client
@@ -376,14 +374,14 @@ def run_federated_baseline(
             total_len = len(full_client_dataset)
 
             # --- FIX: TRAIN ON 100% DATA ---
+            # We assume "Upper Bound" local behavior: use all data for training.
+            # Validation falls back to the canonical global test set.
             val_len = 0
             train_len = total_len
 
             if train_len > 0:
-                # No actual split needed if val_len is 0, but we keep the structure
                 train_ds = full_client_dataset
-
-                # Validation is empty -> Runner will fallback to Global Canonical Test Set
+                # Empty validation tensors -> triggers fallback
                 X_val, y_val = torch.empty(0), torch.empty(0)
 
                 client_train_data[client_name] = train_ds
@@ -420,9 +418,8 @@ def run_federated_baseline(
             f"[BASELINE] Global validation set size: {len(global_val_imgs)} samples"
         )
     else:
-        logger.warning(
-            "[BASELINE] No validation data available across clients, "
-            "falling back to test set as validation."
+        logger.info(
+            "[BASELINE] No local validation data available. Using Canonical Test Set for Round Evaluation."
         )
         val_loader_global = test_loader
 

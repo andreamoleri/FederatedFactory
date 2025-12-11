@@ -159,14 +159,20 @@ def run_experiment(
         baseline_type = args.model.split(":")[1]
         logger.info(f"[BASELINE] Detected baseline type: {baseline_type}")
 
-        if baseline_type == "fedavg": baseline = FedAvgBaseline(args, num_classes, chans, device)
-        elif baseline_type == "fedprox": baseline = FedProxBaseline(args, num_classes, chans, device)
-        elif baseline_type == "feddf": baseline = FedDFBaseline(args, num_classes, chans, device)
-        elif baseline_type == "feddyn": baseline = FedDynBaseline(args, num_classes, chans, device)
-        elif baseline_type == "scaffold": baseline = ScaffoldBaseline(args, num_classes, chans, device)
-        else: raise ValueError(f"Unknown baseline: {baseline_type}")
+        if baseline_type == "fedavg":
+            baseline = FedAvgBaseline(args, num_classes, chans, device)
+        elif baseline_type == "fedprox":
+            baseline = FedProxBaseline(args, num_classes, chans, device)
+        elif baseline_type == "feddf":
+            baseline = FedDFBaseline(args, num_classes, chans, device)
+        elif baseline_type == "feddyn":
+            baseline = FedDynBaseline(args, num_classes, chans, device)
+        elif baseline_type == "scaffold":
+            baseline = ScaffoldBaseline(args, num_classes, chans, device)
+        else:
+            raise ValueError(f"Unknown baseline: {baseline_type}")
 
-        # Map partitions to the expected client/class structure for baseline runner
+        # Map partitions
         if getattr(args, "partition", "silos") == "silos":
             ts_dict = {f"client{d}": {d: train_subsets[i]} for i, d in enumerate(present_classes)}
             test_dict = {f"client{d}": {} for d in present_classes}
@@ -174,18 +180,22 @@ def run_experiment(
             ts_dict = train_subsets_dict
             test_dict = {}
 
-        # --- Esecuzione Baseline ---
+        # --- UPDATED CALL ---
         acc, hist, baseline_metrics, y_true, y_pred = run_federated_baseline(
-            baseline, ts_dict, test_dict, base_train_set, args, device, P, tracker
+            baseline=baseline,
+            train_subsets_dict=ts_dict,
+            test_subsets_dict=test_dict,
+            base_train_set=base_train_set,
+            args=args,
+            device=device,
+            P=P,
+            tracker=tracker,
+            # Pass the loaders and transforms explicitly to ensure consistency
+            test_loader_override=reserved_test_ld,
+            # We use the transforms prepared in prepare_data
+            train_transform_override=tfm,  # tfm from prepare_data is tfm_train
+            eval_transform_override=None  # Will default to deterministic
         )
-
-        # Merge metrics
-        metrics.update(baseline_metrics)
-        metrics["accuracy"] = acc
-
-        # Salva metriche specifiche della baseline
-        with open(P.root / "metrics" / "baseline.json", "w") as f:
-            json.dump(baseline_metrics, f, indent=2)
 
     # =========================================================================
     # PATH B: GENERATIVE + CLASSIFIER (Hybrid)
