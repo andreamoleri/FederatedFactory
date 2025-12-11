@@ -607,6 +607,7 @@ def main():
     # Misc
     cli.add_argument("--classes", type=str, default="", help="(NICO++) Comma-separated classes")
     cli.add_argument("--save-datasets", action="store_true")
+    cli.add_argument("--robustness", type=str, default="true", help="Enable Gaussian noise (true/false)")
 
     args_raw, _unknown = cli.parse_known_args()
 

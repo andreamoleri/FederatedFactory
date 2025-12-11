@@ -170,6 +170,7 @@ for SEED in "${SEEDS[@]}"; do
         --baseline-patience $PATIENCE \
         --batch-size $BS \
         --data-dir \"$DATA_DIR\" \
+        --robustness true \
         $SPECIFIC_ARGS"
 
         # --- EXPERIMENT A: DIRICHLET ---
