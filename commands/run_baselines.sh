@@ -110,7 +110,7 @@ MODELS=(
     "baseline:fedavg|--learning-rate 0.1"
     "baseline:fedprox|--learning-rate 0.1 --fedprox-mu 0.01"
     "baseline:feddyn|--learning-rate 0.1 --feddyn-alpha 0.01"
-    "baseline:scaffold|--learning-rate 0.1 --baseline-momentum 0.9"
+    "baseline:scaffold|--learning-rate 0.1 --baseline-momentum 0.0"
 )
 
 ALPHAS=("0.1" "0.5")
