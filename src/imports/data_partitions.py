@@ -38,7 +38,7 @@ partitioning based on the Dirichlet distribution.
 
 Author: Andrea Moleri
 File Location: src/imports/data_partitions.py
-Last Modified: 23/04/2025
+Last Modified: 11/12/2025
 """
 
 import logging
@@ -216,7 +216,7 @@ def create_skew_partition(
             mask = np.isin(available_indices, selected_indices, invert=True)
             class_indices[class_id] = available_indices[mask]
 
-            # --- FIX: NO SPLIT. USE 100% FOR TRAIN ---
+            # --- 100% Training Allocation ---
             client_train_subsets[class_id] = Subset(base_dataset, selected_indices)
             # Empty subset for local test to signal "use everything for training"
             client_test_subsets[class_id] = Subset(base_dataset, [])
@@ -253,7 +253,7 @@ def create_dirichlet_partition(
 
     Returns:
         Tuple[Dict, Dict]:
-            - train_subsets: Dictionary mapping 'client{i}' to class-specific Subsets.
+            - train_subsets: Dictionary mapping 'client{i}' to class-specific Subsets (100% of data).
             - test_subsets: Dictionary mapping 'client{i}' to empty Subsets.
     """
     logger.info(f"[PARTITION] Dirichlet partition (alpha={alpha})")
@@ -326,6 +326,10 @@ def create_dirichlet_partition(
             if len(cls_indices) == 0:
                 continue
 
+            # --- FIX: NO SPLIT. USE 100% FOR TRAIN ---
+            # Previously this did an 80/20 split. Now it assigns everything to train.
+            # The baseline_runner will detect empty test subsets and fallback to
+            # the global test set for validation.
             client_train_struct[class_id] = Subset(base_dataset, cls_indices)
             client_test_struct[class_id] = Subset(base_dataset, [])
 
