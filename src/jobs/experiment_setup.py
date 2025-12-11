@@ -407,8 +407,7 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
             # 2. Extract corresponding samples from the Canonical Test Set for evaluation
             test_class_idxs = np.flatnonzero(test_targets_arr == d)
             if len(test_class_idxs) > 0:
-                # Wrap in TransformSubset for consistency, though test_set is already transformed
-                test_sub_final = TransformSubset(Subset(test_set, test_class_idxs), tfm_test)
+                test_sub_final = Subset(test_set, test_class_idxs)
                 reserved_test_imgs_list.append(subset_to_tensor(test_sub_final))
             else:
                 reserved_test_imgs_list.append(torch.empty(0))
