@@ -373,7 +373,6 @@ def run_federated_baseline(
         else:
             total_len = len(full_client_dataset)
 
-            # --- FIX: TRAIN ON 100% DATA ---
             # We assume "Upper Bound" local behavior: use all data for training.
             # Validation falls back to the canonical global test set.
             val_len = 0
@@ -464,7 +463,6 @@ def run_federated_baseline(
                     logger.warning(f"[BASELINE] No training data for client {client_name}")
                     continue
 
-                # APPLIED CORRECTION: Wrap training set with Augmentation pipeline
                 # This ensures every epoch yields different random crops/flips
                 augmented_train_ds = TransformSubset(train_ds, train_transform)
 
