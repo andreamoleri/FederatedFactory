@@ -326,10 +326,6 @@ def create_dirichlet_partition(
             if len(cls_indices) == 0:
                 continue
 
-            # --- FIX: NO SPLIT. USE 100% FOR TRAIN ---
-            # Previously this did an 80/20 split. Now it assigns everything to train.
-            # The baseline_runner will detect empty test subsets and fallback to
-            # the global test set for validation.
             client_train_struct[class_id] = Subset(base_dataset, cls_indices)
             client_test_struct[class_id] = Subset(base_dataset, [])
 
