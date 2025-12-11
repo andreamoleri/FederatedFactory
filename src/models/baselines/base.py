@@ -178,26 +178,14 @@ class FederatedBaseline:
         self.history: Dict[str, Dict] = {"train_loss": {}, "val_acc": {}}
 
     def initialize_models(self, client_names):
-        """
-        Initializes the global model and instantiates a local model for each client.
+        input_res = getattr(self.args, "input_size", 32)
+        self.global_model = SimpleCNN(self.chans, self.num_classes, input_resolution=input_res)
 
-        This method ensures synchronization by copying the state dictionary
-        of the newly created global model to all client models, effectively
-        starting the federation with identical weights (standard FedAvg behavior).
-
-        Parameters
-        ----------
-        client_names : Iterable[str]
-            A list or iterable of unique identifiers for the participating clients.
-        """
-        # Instantiate (or reset) the global model architecture.
-        self.global_model = SimpleCNN(self.chans, self.num_classes)
         global_state = self.global_model.state_dict()
 
-        # Iterate through each client to create their local model instance.
-        # Critical: Load the global state dict to ensure identical starting points.
         for client_name in client_names:
-            m = SimpleCNN(self.chans, self.num_classes)
+            # Match here as well
+            m = SimpleCNN(self.chans, self.num_classes, input_resolution=input_res)
             m.load_state_dict(global_state)
             self.client_models[client_name] = m
 
