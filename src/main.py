@@ -571,6 +571,8 @@ def main():
     cli.add_argument("--learning-rate", type=float, default=0.1, help="Global/Local Learning Rate")
     cli.add_argument("--baseline-momentum", type=float, default=0.9, help="SGD Momentum")
     cli.add_argument("--baseline-weight-decay", type=float, default=1e-4, help="SGD Weight Decay")
+    cli.add_argument("--baseline-clip-grad-norm", type=float, default=5.0, help="Max L2 norm for gradient clipping")
+
 
     # Method Specific
     cli.add_argument("--fedprox-mu", type=float, default=0.01, help="FedProx proximal term")
@@ -686,6 +688,7 @@ def main():
                 # --- Static Args (passed from args_raw) ---
                 baseline_momentum=args_raw.baseline_momentum,
                 baseline_weight_decay=args_raw.baseline_weight_decay,
+                baseline_clip_grad_norm=args_raw.baseline_clip_grad_norm,
                 client_config=args_raw.client_config,
                 aggregation=args_raw.aggregation,
                 samples_per_class=args_raw.samples_per_class,
