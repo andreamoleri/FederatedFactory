@@ -626,6 +626,7 @@ def main():
         "learning_rate": parse_csv_or_single(args_raw.learning_rate, float),
         "fedprox_mu": parse_csv_or_single(args_raw.fedprox_mu, float),
         "feddyn_alpha": parse_csv_or_single(args_raw.feddyn_alpha, float),
+        "robustness": parse_csv_or_single(args_raw.robustness, lambda x: x.lower() in ("1", "true", "yes")),
     }
 
     multiple_values = any(len(v) > 1 for v in list_params.values())
