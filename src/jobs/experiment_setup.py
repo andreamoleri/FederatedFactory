@@ -401,8 +401,7 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
             # 1. Assign 100% of these indices for Training
             # Validation is performed strictly on the Canonical Test Set.
             raw_train_subset = Subset(base_train_set, idxs)
-            augmented_train_subset = TransformSubset(raw_train_subset, tfm_train)
-            train_subsets.append(augmented_train_subset)
+            train_subsets.append(raw_train_subset)
 
             # 2. Extract corresponding samples from the Canonical Test Set for evaluation
             test_class_idxs = np.flatnonzero(test_targets_arr == d)
