@@ -5,42 +5,39 @@
 ---------------------------
 
 This module orchestrates the complete lifecycle of a centralised deep learning
-training pipeline, encompassing data loading, stratified partitioning,
-model optimisation, and artifact serialization.
+training pipeline, encompassing data loading, model optimisation, and
+artifact serialization.
 
 🧠 Purpose:
     To provide a reproducible and robust reference implementation for image
-    classification tasks, ensuring rigorous separation of training and testing
-    distributions through stratified splitting and decoupled data transformations.
+    classification tasks, serving as a topological upper bound by utilizing
+    the full pooled training data and the canonical test set.
 
 🔧 Core Functionalities:
     • Dynamic dataset loading with automatic input channel and class detection
-    • Stratified train/test splitting to preserve class distribution
-    • Decoupled augmentation logic to prevent data leakage between splits
+    • Utilization of full training set and canonical test set (Upper Bound)
+    • Decoupled augmentation logic (Augmented Train vs Deterministic Test)
     • Deterministic seeding for reproducibility across worker processes
     • Cosine annealing learning rate scheduling for convergence stability
 
 🎯 Intended Use:
     • Benchmarking deep learning architectures (e.g., SimpleCNN, ResNet)
-    • Academic research requiring strictly reproducible experiments
+    • Establishing Centralized Upper Bounds for Federated Learning experiments
     • Pedagogical demonstrations of PyTorch best practices
 
 📁 Dependencies:
     • torch
     • numpy
-    • sklearn
     • models.cnn (local)
     • imports (local)
 
 📝 Notes:
     This script assumes that the dataset is locally available or can be
-    downloaded via the `data_management` interface. It leverages `scikit-learn`
-    for stratification, which is often more robust than random sampling for
-    imbalanced datasets.
+    downloaded via the `data_management` interface.
 
 Author: Andrea Moleri
 File Location: src/central_main.py
-Last Modified: 06/12/2025
+Last Modified: 11/12/2025
 """
 
 import argparse
@@ -58,7 +55,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, Subset
-from sklearn.model_selection import train_test_split
 
 # --- Project Imports ---
 from models.cnn import SimpleCNN
@@ -77,12 +73,10 @@ logger = logging.getLogger(__name__)
 
 class TransformedSubset(Dataset):
     """
-    A dataset wrapper designed to decouple data splitting from data transformation.
+    A dataset wrapper designed to decouple data loading from data transformation.
 
     This class enables the application of distinct transformations (e.g., augmentation
-    vs. deterministic normalization) to subsets of a dataset *after* the split has
-    occurred. This prevents 'data leakage' where training augmentations might
-    accidentally be applied to validation or test data.
+    vs. deterministic normalization) to subsets of a dataset.
     """
 
     def __init__(self, subset: Subset, transform: Optional[Callable]):
@@ -155,7 +149,7 @@ def run_centralized(args: argparse.Namespace):
 
     This function orchestrates the end-to-end workflow:
     1. Environment setup and reproducibility seeding.
-    2. Data loading, stratified splitting, and transformation pipeline creation.
+    2. Data loading (Full Train + Canonical Test).
     3. Model initialization and optimization configuration.
     4. Execution of the training loop with metric tracking.
     5. Final evaluation and artifact serialization.
@@ -219,21 +213,29 @@ def run_centralized(args: argparse.Namespace):
         logger.warning(f"Could not find metadata entry for {args.dataset}. Transforms may fail.")
     # =========================================================================
 
-    # Step A: Load the Raw Dataset
-    # We deliberately load with `transform=None` to access the raw data first.
-    # This allows us to perform stratification based on the raw labels before
-    # any tensor conversions or augmentations mask the data properties.
-    raw_dataset = get_dataset(
+    # Step A: Load Raw Datasets (Train and Test)
+    # We load both the full training pool (for the upper bound) and the
+    # canonical test set (for valid comparison against FL results).
+    logger.info("Loading full training pool and canonical test set...")
+
+    train_dataset_raw = get_dataset(
         name=args.dataset,
         root=args.data_dir,
         train=True,
         transform=None
     )
 
+    test_dataset_raw = get_dataset(
+        name=args.dataset,
+        root=args.data_dir,
+        train=False,
+        transform=None
+    )
+
     # Step B: Dynamic Input Analysis
-    # Attempt to infer input channel dimensionality (e.g., 1 for MNIST, 3 for CIFAR).
+    # Analyze the training set to infer channels and class counts.
     try:
-        sample_img, _ = raw_dataset[0]
+        sample_img, _ = train_dataset_raw[0]
         if isinstance(sample_img, torch.Tensor):
             in_ch = sample_img.shape[0]
         else:
@@ -243,46 +245,38 @@ def run_centralized(args: argparse.Namespace):
         logger.warning(f"Could not auto-detect channels ({e}), defaulting to 3.")
         in_ch = 3
 
-    # Target Extraction for Stratification
-    # To perform a stratified split, we must access all targets (labels) in advance.
-    # Different dataset implementations expose these differently.
-    targets: Optional[np.ndarray] = None
-    if hasattr(raw_dataset, 'targets'):
+    # Target Extraction for Class Counting
+    # We scan the training targets to dynamically determine the number of output neurons.
+    if hasattr(train_dataset_raw, 'targets'):
         # Standard TorchVision convention (e.g., CIFAR, MNIST)
-        targets = np.array(raw_dataset.targets)
-    elif hasattr(raw_dataset, 'labels'):
+        targets = np.array(train_dataset_raw.targets)
+    elif hasattr(train_dataset_raw, 'labels'):
         # Common convention in medical datasets (e.g., MedMNIST)
-        targets = np.array(raw_dataset.labels)
+        targets = np.array(train_dataset_raw.labels)
     else:
-        # Fallback: Iterative extraction (computationally expensive but robust)
-        logger.info("Extracting targets manually for stratification...")
-        targets = np.array([y for _, y in raw_dataset])
+        # Fallback: Iterative extraction
+        logger.info("Extracting targets manually for class counting...")
+        targets = np.array([y for _, y in train_dataset_raw])
 
     # Determine class cardinality dynamically
     num_classes = len(np.unique(targets))
     logger.info(f"Detected: {in_ch} Channels, {num_classes} Classes")
 
-    # Step C: Stratified Partitioning (80% Train / 20% Test)
-    # Using sklearn's `stratify` parameter ensures that the class distribution
-    # in the test set mirrors the training set, which is critical for imbalanced data.
-    indices = np.arange(len(raw_dataset))
-    train_idx, test_idx = train_test_split(
-        indices,
-        test_size=0.2,
-        stratify=targets,
-        random_state=args.seed
-    )
+    # Step C: Prepare Subsets (Full Data)
+    # Unlike federated splits, the centralized baseline uses 100% of the training data.
+    # We wrap them in Subset objects covering the full range to maintain compatibility
+    # with the TransformedSubset wrapper logic used downstream.
+    train_idx = list(range(len(train_dataset_raw)))
+    test_idx = list(range(len(test_dataset_raw)))
 
-    # Create PyTorch Subsets based on the stratified indices
-    train_subset_raw = Subset(raw_dataset, train_idx)
-    test_subset_raw = Subset(raw_dataset, test_idx)
+    train_subset_raw = Subset(train_dataset_raw, train_idx)
+    test_subset_raw = Subset(test_dataset_raw, test_idx)
 
     # Step D: Pipeline Assembly
     logger.info("Building separate transforms for Train (Augmented) and Test (Deterministic)...")
 
     # Construct context-aware transformation pipelines
     # Train: Includes random augmentations (flips, noise) to improve generalization.
-    # NOTE: These now use the updated DATASET_META['input_size'] set above.
     train_transform = build_transform(args.dataset, train=True, robustness=True)
     # Test: Strictly deterministic (resize/crop + normalization) for valid evaluation.
     test_transform = build_transform(args.dataset, train=False, robustness=False)
@@ -291,7 +285,8 @@ def run_centralized(args: argparse.Namespace):
     train_subset = TransformedSubset(train_subset_raw, train_transform)
     test_subset = TransformedSubset(test_subset_raw, test_transform)
 
-    logger.info(f"Final Data Split (Stratified): {len(train_subset)} Train / {len(test_subset)} Test")
+    logger.info(
+        f"Final Data Configuration: {len(train_subset)} Training (Full Pool) / {len(test_subset)} Test (Canonical)")
 
     # Initialize a Generator for the main process to govern DataLoader shuffling
     g = torch.Generator()
@@ -402,7 +397,7 @@ def run_centralized(args: argparse.Namespace):
 
     # Compute scalar accuracy
     final_acc = (y_pred == y_true).mean()
-    logger.info(f"Final Test Accuracy (20% split - Stratified/Deterministic): {final_acc:.4f}")
+    logger.info(f"Final Test Accuracy (Canonical Test Set): {final_acc:.4f}")
 
     # --- Phase 7: Serialization ---
     # Save raw predictions and probabilities for detailed post-hoc analysis

@@ -409,8 +409,8 @@ def prepare_data(args, device) -> Tuple:
             if len(idxs) == 0: continue
             present_classes.append(d)
 
-            # 1. Calculate indices (unchanged)
-            train_idx, test_idx = train_test_split(idxs, test_size=0.20, random_state=args.seed, shuffle=True)
+            # 1. Use all indices for training
+            train_idx = idxs
 
             # 2. Create the Raw Subset
             raw_train_subset = Subset(base_train_set, train_idx)
@@ -420,6 +420,31 @@ def prepare_data(args, device) -> Tuple:
 
             # 4. Append the AUGMENTED subset, not the raw one
             train_subsets.append(augmented_train_subset)
+
+            # We need to find samples in the CANONICAL test_set that belong to class 'd'
+            # to keep the 'reserved_test_imgs_list' aligned with the silos structure.
+
+            if hasattr(test_set, "targets"):
+                test_targets = np.array(test_set.targets)
+            elif hasattr(test_set, "labels"):
+                test_targets = np.array(test_set.labels)
+            else:
+                test_targets = np.array([lbl for _, lbl in test_set])
+
+            # Normalize EMNIST if needed (same logic as before)
+            if args.dataset.startswith("emnist") and test_targets.min() != 0:
+                test_targets = test_targets - test_targets.min()
+
+            test_class_idxs = np.flatnonzero(test_targets == d)
+
+            if len(test_class_idxs) > 0:
+                test_sub_clean = Subset(test_set, test_class_idxs)
+                # Wrap with deterministic transform (though test_set usually has it already)
+                # We wrap to be safe and consistent with previous logic types
+                test_sub_final = TransformSubset(test_sub_clean, tfm_test)
+                reserved_test_imgs_list.append(subset_to_tensor(test_sub_final))
+            else:
+                reserved_test_imgs_list.append(torch.empty(0))
 
             # Create a "clean" training set for splitting purposes:
             clean_train_set = get_dataset(args.dataset, args.data_dir, True, None)  # No transform

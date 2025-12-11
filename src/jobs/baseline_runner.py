@@ -374,49 +374,27 @@ def run_federated_baseline(
         # Case B: Implicit Hold-out Split
         else:
             total_len = len(full_client_dataset)
-            if total_len > 1:
-                val_len = int(total_len * 0.2)
-                train_len = total_len - val_len
 
-                # Random split (labels not easily accessible for stratification without loading)
-                train_ds, val_ds = torch.utils.data.random_split(
-                    full_client_dataset,
-                    [train_len, val_len],
-                    generator=torch.Generator().manual_seed(int(getattr(args, "seed", 42)))
-                )
+            # --- FIX: TRAIN ON 100% DATA ---
+            val_len = 0
+            train_len = total_len
 
-                # APPLIED CORRECTION: Wrap implicit validation split with deterministic transform
-                val_wrapped = TransformSubset(val_ds, eval_transform)
+            if train_len > 0:
+                # No actual split needed if val_len is 0, but we keep the structure
+                train_ds = full_client_dataset
 
-                # Freeze validation set
-                X_val = subset_to_tensor(val_wrapped)
-
-                # Extract labels for validation tensor
-                # We reuse the wrapped loader to ensure consistency
-                val_loader_temp = DataLoader(val_wrapped, batch_size=1024, shuffle=False)
-                val_xs, val_ys = [], []
-                for x, y in val_loader_temp:
-                    # x is already transformed by TransformSubset/subset_to_tensor call implies similar
-                    # But here we are iterating directly.
-                    # Note: subset_to_tensor re-iterates. We optimize by capturing here if needed.
-                    # But subset_to_tensor is efficient. We just need Ys.
-                    val_ys.append(y)
-
-                if X_val.numel() > 0:
-                    y_val = torch.cat(val_ys)
-                else:
-                    X_val, y_val = torch.empty(0), torch.empty(0)
+                # Validation is empty -> Runner will fallback to Global Canonical Test Set
+                X_val, y_val = torch.empty(0), torch.empty(0)
 
                 client_train_data[client_name] = train_ds
                 client_val_data[client_name] = (X_val, y_val)
 
                 logger.info(
-                    f"[BASELINE] Client {client_name}: created dynamic train ({train_len}) / static val ({val_len}) split")
+                    f"[BASELINE] Client {client_name}: using 100% data for training ({train_len} samples). Val fallback to Global Test.")
             else:
                 # Not enough data
                 client_train_data[client_name] = full_client_dataset
                 client_val_data[client_name] = (torch.empty(0), torch.empty(0))
-                logger.warning(f"[BASELINE] Client {client_name}: insufficient data for split.")
 
     # ---------------------------------------------------------------
     # Global Validation Loader Assembly
