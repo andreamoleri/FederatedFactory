@@ -53,6 +53,8 @@ from models.baselines.base import (
     ensemble_accuracy,
 )
 
+import math
+
 logger = logging.getLogger(__name__)
 
 
@@ -211,42 +213,17 @@ class FedDynBaseline(FederatedBaseline):
         acc = total_correct / total_examples
         return float(avg_loss), float(acc)
 
+    # Inside FedAvgBaseline class
     def _effective_lr(self, round_num: int) -> Tuple[float, float, float]:
-        """
-        Calculates the effective learning rate for the current training round.
-
-        Formula: LR_t = base_lr * (round_decay ** round_num)
-
-        Args:
-            round_num (int): The current federated learning round (0-based).
-
-        Returns:
-            Tuple[float, float, float]: A tuple containing:
-                - The calculated effective learning rate.
-                - The base learning rate.
-                - The effective round decay factor.
-        """
         base_lr = float(getattr(self.args, "learning_rate", 0.1))
-        round_decay = float(getattr(self.args, "baseline_round_lr_decay", 1.0))
+        max_rounds = int(getattr(self.args, "baseline_max_rounds", 200))
 
-        # Clamp decay factor to standard range [0.0, 1.0].
-        if round_decay > 1.0:
-            logger.warning(
-                "[FedDyn] baseline_round_lr_decay=%.4f > 1.0; "
-                "clamping to 1.0 to prevent increasing LR.",
-                round_decay,
-            )
-            round_decay = 1.0
-        if round_decay < 0.0:
-            logger.warning(
-                "[FedDyn] baseline_round_lr_decay=%.4f < 0.0; "
-                "clamping to 0.0.",
-                round_decay,
-            )
-            round_decay = 0.0
+        # Cosine Annealing Logic
+        # eta_t = eta_min + 0.5 * (eta_max - eta_min) * (1 + cos(pi * t / T_max))
+        # Assuming eta_min = 0
+        lr = 0.5 * base_lr * (1 + math.cos(math.pi * round_num / max_rounds))
 
-        lr = base_lr * (round_decay ** round_num)
-        return float(lr), base_lr, round_decay
+        return float(lr), base_lr, 0.0
 
     @staticmethod
     def _has_non_finite_params(model: nn.Module) -> bool:

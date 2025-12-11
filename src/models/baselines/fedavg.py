@@ -56,6 +56,7 @@ from models.baselines.base import (
     evaluate_single_classifier,
     ensemble_accuracy,
 )
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -172,44 +173,17 @@ class FedAvgBaseline(FederatedBaseline):
         acc = total_correct / total_examples
         return float(avg_loss), float(acc)
 
+    # Inside FedAvgBaseline class
     def _effective_lr(self, round_num: int) -> Tuple[float, float, float]:
-        """
-        Calculates the effective learning rate for the specified round.
-
-        The formula applied is:
-        $$ lr_t = lr_{base} \times \gamma^{round\_num} $$
-
-        Args:
-            round_num (int): The current federated training round (0-based).
-
-        Returns:
-            Tuple[float, float, float]: A tuple containing:
-                - The effective learning rate for the round.
-                - The base learning rate.
-                - The effective decay factor used.
-        """
         base_lr = float(getattr(self.args, "learning_rate", 0.1))
-        round_decay = float(getattr(self.args, "baseline_round_lr_decay", 1.0))
+        max_rounds = int(getattr(self.args, "baseline_max_rounds", 200))
 
-        # Enforce safety clamps on the decay factor
-        if round_decay > 1.0:
-            logger.warning(
-                "[FedAvg] baseline_round_lr_decay=%.4f > 1.0 detected; "
-                "clamping to 1.0 to prevent learning rate growth over time.",
-                round_decay,
-            )
-            round_decay = 1.0
-        if round_decay < 0.0:
-            logger.warning(
-                "[FedAvg] baseline_round_lr_decay=%.4f < 0.0 detected; "
-                "clamping to 0.0.",
-                round_decay,
-            )
-            round_decay = 0.0
+        # Cosine Annealing Logic
+        # eta_t = eta_min + 0.5 * (eta_max - eta_min) * (1 + cos(pi * t / T_max))
+        # Assuming eta_min = 0
+        lr = 0.5 * base_lr * (1 + math.cos(math.pi * round_num / max_rounds))
 
-        # Round indexing is 0-based: round 0 uses base_lr, round 1 uses base_lr * decay, etc.
-        lr = base_lr * (round_decay ** round_num)
-        return float(lr), base_lr, round_decay
+        return float(lr), base_lr, 0.0
 
     @staticmethod
     def _has_non_finite_params(model: nn.Module) -> bool:

@@ -66,6 +66,7 @@ from models.baselines.base import (
 
 logger = logging.getLogger(__name__)
 
+import math
 
 class ScaffoldBaseline(FederatedBaseline):
     """
@@ -178,29 +179,19 @@ class ScaffoldBaseline(FederatedBaseline):
         acc = total_correct / total_examples
         return float(avg_loss), float(acc)
 
-    def _effective_lr(self, round_num: int) -> float:
-        """
-        Calculate the effective learning rate for the current training round.
+    import math
 
-        Applies an exponential decay factor based on the round number.
-
-        Parameters
-        ----------
-        round_num : int
-            The current federated learning round.
-
-        Returns
-        -------
-        float
-            The calculated learning rate.
-        """
+    # Inside FedAvgBaseline class
+    def _effective_lr(self, round_num: int) -> Tuple[float, float, float]:
         base_lr = float(getattr(self.args, "learning_rate", 0.1))
-        round_decay = float(getattr(self.args, "baseline_round_lr_decay", 1.0))
+        max_rounds = int(getattr(self.args, "baseline_max_rounds", 200))
 
-        # Clamp the decay factor to ensure it remains within the valid range [0.0, 1.0].
-        round_decay = max(0.0, min(1.0, round_decay))
+        # Cosine Annealing Logic
+        # eta_t = eta_min + 0.5 * (eta_max - eta_min) * (1 + cos(pi * t / T_max))
+        # Assuming eta_min = 0
+        lr = 0.5 * base_lr * (1 + math.cos(math.pi * round_num / max_rounds))
 
-        return base_lr * (round_decay ** round_num)
+        return float(lr), base_lr, 0.0
 
     @staticmethod
     def _has_non_finite_params(model: nn.Module) -> bool:
