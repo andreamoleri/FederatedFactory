@@ -477,11 +477,11 @@ class ScaffoldBaseline(FederatedBaseline):
             state_dict_copy = {k: v.clone() for k, v in initial_weights.items()}
             return state_dict_copy, 0  # num_samples=0 → client ignored.
 
-        # --- Update Local Control Variate (c_i) ---
-        # c_i_new = c_i - c + (1 / (K * eta)) * (x - y_i)
+        # Prevent division by zero or small LR in control variate update
+        safe_lr = max(lr, 1e-4)  # Use a floor for the division factor only
         factor = (
-            1.0 / (steps_performed * lr)
-            if steps_performed > 0 and lr > 0.0
+            1.0 / (steps_performed * safe_lr)
+            if steps_performed > 0
             else 0.0
         )
 
