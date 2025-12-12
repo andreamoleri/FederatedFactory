@@ -260,14 +260,14 @@ def run_federated_baseline(
         if eval_transform_override is not None:
             eval_transform = eval_transform_override
         else:
-            eval_transform = build_transform(args.dataset, train=False)
+            eval_transform = build_transform(args.dataset, train=False, robustness=True)
     else:
         logger.warning(
             "[BASELINE] ⚠️ Building Test Loader from scratch (Risk of inconsistency with Grayscale/Filtering)")
         if eval_transform_override is not None:
             eval_transform = eval_transform_override
         else:
-            eval_transform = build_transform(args.dataset, train=False)
+            eval_transform = build_transform(args.dataset, train=False, robustness=True)
 
         try:
             test_set = get_dataset(args.dataset, args.data_dir, False, eval_transform)
