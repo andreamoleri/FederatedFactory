@@ -38,7 +38,7 @@ synthetic data generated via Variational Autoencoders (VAEs) or Diffusion Models
 
 Author: Andrea Moleri
 File Location: src/jobs/classifier_phase.py
-Last Modified: 07/12/2025
+Last Modified: 12/12/2025
 """
 
 from __future__ import annotations
@@ -194,31 +194,50 @@ def ensemble_accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float((y_true == y_pred).mean())
 
 @torch.no_grad()
-def ensemble_preds_poexp(classifiers: List[SimpleCNN], test_ld: DataLoader, device: torch.device) -> Tuple[np.ndarray, np.ndarray]:
+def ensemble_preds_poexp(classifiers: List[SimpleCNN], test_ld: DataLoader, device: torch.device) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Product of Experts Ensemble. Returns (y_true, y_pred, y_probs).
+    """
     for c in classifiers: c.to(device).eval()
-    y_true, y_pred = [], []
+    y_true, y_pred, y_probs = [], [], []
 
     for x, y in test_ld:
         x, y = x.to(device), y.to(device)
         log_probs = None
         for c in classifiers:
+            # We work in log space for stability
             lp = torch.log_softmax(c(x), dim=1).clamp(min=np.log(1e-12))
             log_probs = lp if log_probs is None else log_probs + lp
+
+        # Aggregate log_probs -> actual probabilities
+        # Normalize: exp(log_probs) / sum(exp(log_probs))
+        # But since we just summed logs, we can just softmax the result to get a valid distribution
+        final_probs = torch.softmax(log_probs, dim=1)
+
         y_pred.append(log_probs.argmax(1).cpu())
         y_true.append(y.cpu())
+        y_probs.append(final_probs.cpu())
 
     for c in classifiers: c.cpu()
-    return torch.cat(y_true).numpy(), torch.cat(y_pred).numpy()
+    return torch.cat(y_true).numpy(), torch.cat(y_pred).numpy(), torch.cat(y_probs).numpy()
 
 @torch.no_grad()
-def evaluate_single_classifier(model: SimpleCNN, ld: DataLoader, device: torch.device) -> Tuple[np.ndarray, np.ndarray]:
+def evaluate_single_classifier(model: SimpleCNN, ld: DataLoader, device: torch.device) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Returns (y_true, y_pred, y_probs).
+    """
     model.to(device).eval()
-    y_true, y_pred = [], []
+    y_true, y_pred, y_probs = [], [], []
     for x, y in ld:
+        x = x.to(device)
+        logits = model(x)
+
         y_true.append(y)
-        y_pred.append(model(x.to(device)).argmax(1).cpu())
+        y_pred.append(logits.argmax(1).cpu())
+        y_probs.append(torch.softmax(logits, dim=1).cpu())
+
     model.cpu()
-    return torch.cat(y_true).numpy(), torch.cat(y_pred).numpy()
+    return torch.cat(y_true).numpy(), torch.cat(y_pred).numpy(), torch.cat(y_probs).numpy()
 
 # =============================================================================
 # Main Training Orchestrator
@@ -240,7 +259,7 @@ def run_classifier_training(
     client_gen_models: Dict[str, Dict[int, Any]],
     client_sample_counts: Dict[str, Dict[int, int]],
     reserved_test_ld: DataLoader
-) -> Tuple[int, int, float, np.ndarray, np.ndarray, List[Any], Optional[Any]]:
+) -> Tuple[int, int, float, np.ndarray, np.ndarray, np.ndarray, List[Any], Optional[Any]]:
 
     classifier_steps = 0
     synth_images_total = 0
@@ -252,7 +271,8 @@ def run_classifier_training(
 
     trained_clfs = []
     single_clf = None
-    y_true, y_pred = np.array([]), np.array([])
+    # Initialize empty arrays for 3 returns
+    y_true, y_pred, y_probs = np.array([]), np.array([]), np.array([])
 
     logger.info(f"[CLF-PHASE] Partition: {partition_mode}, Local Inference: {is_local}")
 
@@ -266,17 +286,15 @@ def run_classifier_training(
             # -----------------------------------------------------------------
             for cname, subsets in train_subsets_dict.items():
 
-                # 1. Define Transforms: Robust for Train, Clean for Val
+                # 1. Define Transforms
                 train_tf = build_transform(args.dataset, train=True, robustness=True)
                 eval_tf  = build_transform(args.dataset, train=False, robustness=False)
 
                 # --- A. Prepare Real Data ---
-                # Combine class subsets into one raw dataset
                 real_subsets = list(subsets.values())
                 if not real_subsets: continue
                 real_ds_raw = ConcatDataset(real_subsets)
 
-                # Split RAW indices first
                 val_len_real = int(len(real_ds_raw) * 0.2)
                 tr_len_real = len(real_ds_raw) - val_len_real
 
@@ -285,7 +303,6 @@ def run_classifier_training(
                     generator=torch.Generator().manual_seed(42)
                 )
 
-                # Wrap with Transforms
                 r_train_ds = TransformSubset(r_train_raw, train_tf)
                 r_val_ds   = TransformSubset(r_val_raw, eval_tf)
 
@@ -316,9 +333,7 @@ def run_classifier_training(
                     s_y = torch.cat(synth_ys)
                     synth_images_total += len(s_X)
 
-                    # Create raw TensorDataset
                     s_raw_ds = TensorDataset(s_X, s_y)
-
                     val_len_s = int(len(s_raw_ds) * 0.2)
                     tr_len_s = len(s_raw_ds) - val_len_s
 
@@ -349,7 +364,8 @@ def run_classifier_training(
                 torch.save(clf.state_dict(), P.root / "models" / "classifiers" / f"client-{cname}.pt")
 
             if tracker: tracker.start_phase("ensemble_evaluation")
-            y_true, y_pred = ensemble_preds_poexp(trained_clfs, reserved_test_ld, device)
+            # UPDATED: Returns 3 values now
+            y_true, y_pred, y_probs = ensemble_preds_poexp(trained_clfs, reserved_test_ld, device)
             if tracker: tracker.end_phase("ensemble_evaluation")
 
         else:
@@ -393,11 +409,9 @@ def run_classifier_training(
                     raw_ds, [tr_len, val_len], generator=torch.Generator().manual_seed(42)
                 )
 
-                # Define Transforms
                 train_tf = build_transform(args.dataset, train=True, robustness=True)
                 eval_tf  = build_transform(args.dataset, train=False, robustness=False)
 
-                # Wrap
                 train_ds = TransformSubset(train_raw, train_tf)
                 val_ds   = TransformSubset(val_raw, eval_tf)
 
@@ -427,10 +441,20 @@ def run_classifier_training(
                     filt_lbls = torch.tensor([label_map[l.item()] for l in all_lbls[mask]], dtype=torch.long)
                     test_ld_mapped = DataLoader(TensorDataset(filt_imgs, filt_lbls), batch_size=args.batch_size)
 
-                    yt_map, yp_map = evaluate_single_classifier(clf, test_ld_mapped, device)
+                    # UPDATED: Returns 3 values
+                    yt_map, yp_map, yprobs_map = evaluate_single_classifier(clf, test_ld_mapped, device)
+
                     rev_map = {v: k for k, v in label_map.items()}
                     y_true = np.array([rev_map[v] for v in yt_map])
                     y_pred = np.array([rev_map[v] for v in yp_map])
+
+                    # For probs, we need to map back to full class space
+                    # Initialize full probs array with zeros
+                    y_probs = np.zeros((len(yprobs_map), num_classes), dtype=np.float32)
+                    for i, mapped_idx in enumerate(present_in_synth):
+                        # Map column 'i' in reduced output to column 'mapped_idx' in full output
+                        y_probs[:, mapped_idx] = yprobs_map[:, i]
+
                 if tracker: tracker.end_phase("server_evaluation")
 
     # =========================================================================
@@ -442,14 +466,10 @@ def run_classifier_training(
             # Case 3: Local Inference within Data Silos
             # -----------------------------------------------------------------
             for i, d in enumerate(present_classes):
-
-                # Define Transforms
                 train_tf = build_transform(args.dataset, train=True, robustness=True)
                 eval_tf  = build_transform(args.dataset, train=False, robustness=False)
 
-                # --- A. Real Data (Silo) ---
                 real_subset = train_subsets[i]
-
                 val_len_real = int(len(real_subset) * 0.2)
                 tr_len_real = len(real_subset) - val_len_real
 
@@ -461,7 +481,6 @@ def run_classifier_training(
                 r_train_ds = TransformSubset(r_train_raw, train_tf)
                 r_val_ds   = TransformSubset(r_val_raw, eval_tf)
 
-                # --- B. Synthetic Data (Others) ---
                 n_synth = args.samples_per_class if args.samples_per_class > 0 else 2000
                 s_xs, s_ys = [], []
 
@@ -494,7 +513,6 @@ def run_classifier_training(
                     train_ds = r_train_ds
                     val_ds   = r_val_ds
 
-                # Train
                 tr_ld = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
                 val_ld = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
@@ -507,7 +525,8 @@ def run_classifier_training(
                 torch.save(clf.state_dict(), P.root / "models" / "classifiers" / f"client-{d:03d}.pt")
 
             if tracker: tracker.start_phase("ensemble_evaluation")
-            y_true, y_pred = ensemble_preds_poexp(trained_clfs, reserved_test_ld, device)
+            # UPDATED: Returns 3 values
+            y_true, y_pred, y_probs = ensemble_preds_poexp(trained_clfs, reserved_test_ld, device)
             if tracker: tracker.end_phase("ensemble_evaluation")
 
         else:
@@ -530,21 +549,17 @@ def run_classifier_training(
             synth_images_total = len(X)
             if tracker: tracker.end_phase("server_generation")
 
-            # --- Strict Split-Then-Transform Logic ---
             val_len = int(len(X) * 0.1)
             tr_len = len(X) - val_len
 
-            # Split raw tensors
             raw_ds = TensorDataset(X, y)
             train_raw, val_raw = random_split(
                 raw_ds, [tr_len, val_len], generator=torch.Generator().manual_seed(42)
             )
 
-            # Define Transforms
             train_tf = build_transform(args.dataset, train=True, robustness=True)
             eval_tf  = build_transform(args.dataset, train=False, robustness=False)
 
-            # Wrap
             train_ds = TransformSubset(train_raw, train_tf)
             val_ds   = TransformSubset(val_raw, eval_tf)
 
@@ -560,7 +575,8 @@ def run_classifier_training(
             single_clf = clf
 
             if tracker: tracker.start_phase("server_evaluation")
-            y_true, y_pred = evaluate_single_classifier(clf, reserved_test_ld, device)
+            # UPDATED: Returns 3 values
+            y_true, y_pred, y_probs = evaluate_single_classifier(clf, reserved_test_ld, device)
             if tracker: tracker.end_phase("server_evaluation")
 
-    return classifier_steps, synth_images_total, clf_start, y_true, y_pred, trained_clfs, single_clf
+    return classifier_steps, synth_images_total, clf_start, y_true, y_pred, y_probs, trained_clfs, single_clf

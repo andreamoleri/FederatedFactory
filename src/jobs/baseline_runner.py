@@ -40,7 +40,7 @@ across simulated distributed clients using various federated algorithms.
 
 Author: Andrea Moleri
 File Location: src/jobs/baseline_runner.py
-Last Modified: 11/12/2025
+Last Modified: 12/12/2025
 """
 
 from __future__ import annotations
@@ -162,30 +162,40 @@ def dataset_to_tensor(
 @torch.no_grad()
 def evaluate_single_classifier(
         model: torch.nn.Module, ld: DataLoader, device: torch.device
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Perform inference using a specific model on a given DataLoader.
+    Returns: (y_true, y_pred, y_probs)
     """
     model.to(device).eval()
-    y_true, y_pred = [], []
+    y_true, y_pred, y_probs = [], [], []
 
     with torch.no_grad():
         for x, y in ld:
             x = x.to(device)
             # Forward pass
             logits = model(x)
-            preds = logits.argmax(1).cpu()
 
-            y_true.append(y)
-            y_pred.append(preds)
+            # Calculate Probabilities (Softmax)
+            probs = torch.softmax(logits, dim=1)
+            # Calculate Hard Labels
+            preds = logits.argmax(1)
+
+            y_true.append(y.cpu())
+            y_pred.append(preds.cpu())
+            y_probs.append(probs.cpu())
 
             # MEMORY FIX: Delete intermediates immediately
-            del x, logits, preds
+            del x, logits, preds, probs
 
     model.cpu()
     torch.cuda.empty_cache()
 
-    return torch.cat(y_true).numpy(), torch.cat(y_pred).numpy()
+    return (
+        torch.cat(y_true).numpy(),
+        torch.cat(y_pred).numpy(),
+        torch.cat(y_probs).numpy()
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -205,9 +215,10 @@ def run_federated_baseline(
         train_transform_override: Optional[any] = None,
         eval_transform_override: Optional[any] = None,
         test_loader_override: Optional[DataLoader] = None
-) -> Tuple[float, Dict, Dict, np.ndarray, np.ndarray]:
+) -> Tuple[float, Dict, Dict, np.ndarray, np.ndarray, np.ndarray]:
     """
     Execute the complete federated learning baseline experiment lifecycle.
+    Returns: accuracy, history, metrics, y_true, y_pred, y_probs
     """
     logger.info(f"[BASELINE] Starting {type(baseline).__name__} federated learning")
 
@@ -552,6 +563,7 @@ def run_federated_baseline(
 
     final_y_true = np.array([])
     final_y_pred = np.array([])
+    final_y_probs = np.array([])
 
     if model_path.exists() and baseline.global_model is not None:
         try:
@@ -560,7 +572,7 @@ def run_federated_baseline(
             torch.cuda.empty_cache()
             final_test_accuracy = baseline.evaluate(test_loader)
 
-            final_y_true, final_y_pred = evaluate_single_classifier(
+            final_y_true, final_y_pred, final_y_probs = evaluate_single_classifier(
                 baseline.global_model, test_loader, device
             )
 
@@ -615,4 +627,4 @@ def run_federated_baseline(
         f"Final test accuracy {final_test_accuracy:.4f}"
     )
 
-    return final_test_accuracy, baseline.history, metrics, final_y_true, final_y_pred
+    return final_test_accuracy, baseline.history, metrics, final_y_true, final_y_pred, final_y_probs

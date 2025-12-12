@@ -32,7 +32,7 @@ File Interactions:
 
 Author: Andrea Moleri
 File Location: src/jobs/experiment_runner.py
-Last Modified: 21/11/2025
+Last Modified: 12/12/2025
 """
 from __future__ import annotations
 import logging
@@ -68,38 +68,35 @@ logger = logging.getLogger(__name__)
 # HELPER FUNCTIONS
 # =============================================================================
 
-def save_predictions_artifact(y_true: np.ndarray, y_pred: np.ndarray, test_set: Any, output_path: Path):
+def save_predictions_artifact(y_true: np.ndarray, y_pred: np.ndarray, y_probs: np.ndarray, test_set: Any,
+                              output_path: Path):
     """
-    Salva le previsioni in formato .npy con struttura:
-    array strutturato con campi: ['image_name', 'actual_label', 'predicted_label']
+    Saves predictions AND probabilities to a compressed .npz file.
+    Output Path should end in .npz
     """
-    if len(y_true) == 0:
-        np.save(output_path, np.zeros(0, dtype=[('image_name', 'U100'), ('actual_label', 'i4'), ('predicted_label', 'i4')]))
-        return output_path
-
+    # Create valid image names map if possible
     image_names = []
     if hasattr(test_set, 'imgs'):
         image_names = [Path(fp).name for fp, _ in test_set.imgs]
     elif hasattr(test_set, 'samples'):
         image_names = [Path(fp).name for fp, _ in test_set.samples]
+
+    # Ensure lengths match (handling subsetting/lazy loading)
+    limit = len(y_true)
+    # Handle case where test set might be empty or lazy loaded differently
+    if len(image_names) >= limit:
+        image_names = np.array(image_names[:limit])
     else:
-        # Fallback: usa indici numerici
-        image_names = [f"image_{i:06d}" for i in range(len(y_true))]
+        image_names = np.array([f"img_{i}" for i in range(limit)])
 
-    image_names = image_names[:len(y_true)]
-
-    dtype = [
-        ('image_name', 'U100'),
-        ('actual_label', 'i4'),
-        ('predicted_label', 'i4')
-    ]
-
-    predictions_array = np.zeros(len(y_true), dtype=dtype)
-    predictions_array['image_name'] = image_names
-    predictions_array['actual_label'] = y_true
-    predictions_array['predicted_label'] = y_pred
-
-    np.save(output_path, predictions_array)
+    # Save exactly like the reference code so the notebook can parse it
+    np.savez_compressed(
+        output_path,
+        y_true=y_true,
+        y_pred=y_pred,
+        y_probs=y_probs,  # Critical for AUROC
+        image_names=image_names
+    )
     return output_path
 
 
@@ -146,11 +143,14 @@ def run_experiment(
     synth_total = 0
     clf_time = 0.0
     gen_time = 0.0
-    
+
     # Calcolo totale immagini reali usate
     total_real_images = sum(
         len(subset) for client_subsets in train_subsets_dict.values() for subset in client_subsets.values()) \
         if getattr(args, "partition", "silos") in ["skew", "dirichlet"] else sum(len(s) for s in train_subsets)
+
+    # Initialize empty arrays to prevent UnboundLocalError
+    y_true, y_pred, y_probs = np.array([]), np.array([]), np.array([])
 
     # =========================================================================
     # PATH A: BASELINE FEDERATED LEARNING
@@ -180,8 +180,8 @@ def run_experiment(
             ts_dict = train_subsets_dict
             test_dict = {}
 
-        ## --- UPDATED CALL ---
-        acc, hist, baseline_metrics, y_true, y_pred = run_federated_baseline(
+        ## --- UPDATED CALL: Expecting y_probs ---
+        acc, hist, baseline_metrics, y_true, y_pred, y_probs = run_federated_baseline(
             baseline=baseline,
             train_subsets_dict=ts_dict,
             test_subsets_dict=test_dict,
@@ -190,11 +190,9 @@ def run_experiment(
             device=device,
             P=P,
             tracker=tracker,
-            # Pass the loaders and transforms explicitly to ensure consistency
             test_loader_override=reserved_test_ld,
-            # We use the transforms prepared in prepare_data
-            train_transform_override=tfm,  # tfm from prepare_data is tfm_train
-            eval_transform_override=None  # Will default to deterministic
+            train_transform_override=tfm,
+            eval_transform_override=None
         )
 
         # ✅ Update the main metrics dictionary with baseline results
@@ -217,7 +215,8 @@ def run_experiment(
         metrics["vae_steps"] = gen_step_total
 
         # 4. Classifier Phase
-        clf_steps, synth_total, clf_start, y_true, y_pred, trained_clfs, single_clf = run_classifier_training(
+        # Note: run_classifier_training must also return y_probs (6th position)
+        clf_steps, synth_total, clf_start, y_true, y_pred, y_probs, trained_clfs, single_clf = run_classifier_training(
             args, device, P, train_subsets_dict, train_subsets, present_classes, num_classes,
             chans, img_shape, tracker, hist,
             gen_models, client_gen_models, client_sample_counts, reserved_test_ld
@@ -234,7 +233,7 @@ def run_experiment(
             train_subsets_dict, train_subsets, base_train_set, chans
         )
         metrics["gen_metrics"] = gen_metrics
-        
+
         if args.model == "vae" and len(gen_models) > 0 and gen_models[0] is not None:
             from jobs.generative_phase import _module_size_mb
             metrics.setdefault("decoder_mb", _module_size_mb(gen_models[0]))
@@ -275,7 +274,7 @@ def run_experiment(
         "test_images": int(metrics["test_images"]),
         "total_training_time_sec": float(metrics["total_training_time_sec"]),
     }
-    
+
     if args.model.startswith("baseline:"):
         clf_metrics_data["baseline_type"] = args.model.split(":")[1]
         if "best_round" in metrics:
@@ -308,28 +307,27 @@ def run_experiment(
     else:
         np.savetxt(P.root / "metrics" / "confusion-matrix.csv", np.array([[0]]), delimiter=",", fmt="%d")
 
-    # 4. Test Predictions (.npy)
+    # 4. Test Predictions (.npz) - UPDATED
     if len(y_true) > 0:
-        predictions_path = P.root / "artifacts" / "test_predictions.npy"
-        save_predictions_artifact(y_true, y_pred, test_set, predictions_path)
+        # Changed to .npz to reflect that it contains multiple arrays
+        predictions_path = P.root / "artifacts" / "predictions.npz"
+        # Passing y_probs here
+        save_predictions_artifact(y_true, y_pred, y_probs, test_set, predictions_path)
         logger.info(f"[EXPORT] Test predictions saved to: {predictions_path}")
 
     # 5. Args.json
     with open(P.root / "args.json", "w") as f:
         json.dump(vars(args), f, indent=2)
 
-    # 6. Client Class Distribution CSV (NECESSARIO PER VISUALIZZAZIONE)
-    # Questo blocco converte il dizionario 'client_class_distribution' creato in baseline_runner
-    # nel formato CSV richiesto: colonne "client", "class_0", "class_1"...
+    # 6. Client Class Distribution CSV
     if "client_class_distribution" in metrics:
         try:
             dist_dir = P.root / "distributions"
             dist_dir.mkdir(parents=True, exist_ok=True)
             csv_path = dist_dir / "client_class_distribution.csv"
 
-            dist_data = metrics["client_class_distribution"]  # dict[client, dict[class, count]]
+            dist_data = metrics["client_class_distribution"]
 
-            # Trova tutte le classi uniche per creare l'header corretto (ordinato)
             all_classes_int = set()
             for c_counts in dist_data.values():
                 for k in c_counts.keys():
@@ -347,14 +345,14 @@ def run_experiment(
                 for client_name, counts in dist_data.items():
                     row = [client_name]
                     for c in sorted_classes:
-                        # Le chiavi nel JSON sono stringhe
                         row.append(counts.get(str(c), 0))
                     writer.writerow(row)
-            
+
             logger.info(f"[EXPORT] Class distribution CSV saved to: {csv_path}")
         except Exception as e:
             logger.warning(f"[EXPORT] Failed to export class distribution CSV: {e}")
 
     logger.info(logmsg.EXPERIMENT_SAVED.format(out_dir=str(P.root)))
-    
+
+    # Returning y_probs as well
     return acc, P.root, hist, metrics, y_true, y_pred, num_classes
