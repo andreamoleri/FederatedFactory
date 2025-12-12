@@ -275,9 +275,9 @@ def run_centralized(args: argparse.Namespace):
 
     # Construct context-aware transformation pipelines
     # Train: Includes random augmentations (flips, noise) to improve generalization.
-    train_transform = build_transform(args.dataset, train=True, robustness=True)
+    train_transform = build_transform(args.dataset, train=True, robustness=False)
     # Test: Strictly deterministic (resize/crop + normalization) for valid evaluation.
-    test_transform = build_transform(args.dataset, train=False, robustness=True)
+    test_transform = build_transform(args.dataset, train=False, robustness=False)
 
     # Wrap raw subsets with the appropriate transform logic
     train_subset = TransformedSubset(train_subset_raw, train_transform)

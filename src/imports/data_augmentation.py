@@ -310,8 +310,6 @@ def build_transform(dataset_name: str, train: bool = False, robustness: bool = F
     # 4. Finalize
     # Convert PIL images or ndarrays to PyTorch Tensors [C, H, W] in range [0, 1].
     ops.append(transforms.ToTensor())
-    if channels == 1:
-        ops.append(transforms.Grayscale(num_output_channels=3))
 
     # 5. Normalization (Scientifically Accurate)
     # Apply statistical normalization based on the dataset domain.
