@@ -275,7 +275,7 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
 
     # 1. Construct base transformation pipelines
     base_tfm_train = build_transform(args.dataset, train=True, robustness=use_robustness)
-    base_tfm_test = build_transform(args.dataset, train=False)
+    base_tfm_test = build_transform(args.dataset, train=False, robustness=use_robustness)
 
     # 2. Apply explicit input size overrides if specified
     # MEMORY OPTIMIZATION CHECK: Large inputs (Camelyon/NICO)

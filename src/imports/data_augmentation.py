@@ -349,7 +349,7 @@ def build_transform(dataset_name: str, train: bool = False, robustness: bool = F
 
     # 6. Robustness (Noise) - Applied AFTER Normalization
     # Noise is added in the normalized feature space to ensure consistent magnitude relative to the signal.
-    if train and robustness:
+    if robustness:
         ops.append(AddGaussianNoise(std=0.05))
 
     return transforms.Compose(ops)
