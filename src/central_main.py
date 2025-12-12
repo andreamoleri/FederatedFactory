@@ -277,7 +277,7 @@ def run_centralized(args: argparse.Namespace):
     # Train: Includes random augmentations (flips, noise) to improve generalization.
     train_transform = build_transform(args.dataset, train=True, robustness=True)
     # Test: Strictly deterministic (resize/crop + normalization) for valid evaluation.
-    test_transform = build_transform(args.dataset, train=False, robustness=False)
+    test_transform = build_transform(args.dataset, train=False, robustness=True)
 
     # Wrap raw subsets with the appropriate transform logic
     train_subset = TransformedSubset(train_subset_raw, train_transform)

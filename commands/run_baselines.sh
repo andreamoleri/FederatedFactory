@@ -88,14 +88,14 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 > "$CMD_FILE"
 
 # --- HYPERPARAMETERS (UNCHANGED) ---
-SEEDS=(1 2 3 4 5)
+SEEDS=(1 2 3) # TODO: CAMBIARE A (1, 2, 3, 4, 5)!!!!!
 BS=128
 LATENT=128
-ROUNDS=200
+ROUNDS=2 # TODO: CAMBIARE A 200!!!!!
 PATIENCE=15
-CLIENTS=10
+CLIENTS=2 # TODO: CAMBIARE A 10!!!!!
 FRACTION=1.0
-EPOCHS_LIST=(5)
+EPOCHS_LIST=(2) # TODO: CAMBIARE A 5!!!!!
 
 DATASETS=(
   "cifar"
@@ -128,16 +128,16 @@ for SEED in "${SEEDS[@]}"; do
     # --- 1. SCIENTIFIC RESOLUTION ENFORCEMENT ---
     L_DATASET=$(echo "$DATASET" | tr '[:upper:]' '[:lower:]')
     INPUT_SIZE=""
-    HAS_NATURAL_SPLIT=false
+    HAS_NATURAL_SPLIT=true
 
     case "$L_DATASET" in
         *"cifar"*)
             INPUT_SIZE=32
-            HAS_NATURAL_SPLIT=false
+            HAS_NATURAL_SPLIT=true
             ;;
         *"medmnist"*)
             INPUT_SIZE=28
-            HAS_NATURAL_SPLIT=false
+            HAS_NATURAL_SPLIT=true
             ;;
         *"camelyon"*|*"isic"*|*"nico"*)
             INPUT_SIZE=224
@@ -170,7 +170,7 @@ for SEED in "${SEEDS[@]}"; do
         --baseline-patience $PATIENCE \
         --batch-size $BS \
         --data-dir \"$DATA_DIR\" \
-        --robustness true \
+        --robustness false \
         $SPECIFIC_ARGS"
 
         # --- EXPERIMENT A: DIRICHLET ---

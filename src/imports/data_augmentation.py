@@ -118,41 +118,20 @@ def denormalize(t: torch.Tensor, dataset_name: str = "imagenet") -> torch.Tensor
 
 class AddGaussianNoise:
     """
-    A callable transformation that injects additive Gaussian noise into a tensor.
-
-    This is frequently used in Federated Learning and robust optimization to:
-    1. Simulate sensor heterogeneity or transmission noise.
-    2. Regularize the model by destabilizing batch normalization statistics.
-    3. Mitigate overfitting in low-data regimes.
-
-    Attributes:
-        mean (float): The mean ($\mu$) of the Gaussian distribution.
-        std (float): The standard deviation ($\sigma$) of the Gaussian distribution.
+    (Deactivated) A callable transformation that passes the tensor through unchanged.
     """
 
     def __init__(self, mean: float = 0.0, std: float = 0.05):
-        """
-        Initialize the noise injector.
-
-        Args:
-            mean (float): The center of the noise distribution. Defaults to 0.0.
-            std (float): The spread of the noise distribution. Defaults to 0.05.
-        """
         self.mean = mean
         self.std = std
 
     def __call__(self, tensor: torch.Tensor) -> torch.Tensor:
         """
-        Apply Gaussian noise to the input tensor.
-
-        Args:
-            tensor (torch.Tensor): The input image tensor.
-
-        Returns:
-            torch.Tensor: The noisy tensor, calculated as $tensor + \mathcal{N}(\mu, \sigma)$.
+        DEACTIVATED: Returns original tensor without noise.
         """
-        # Generates noise of the same shape as the input tensor on the correct device.
-        return tensor + torch.randn_like(tensor) * self.std + self.mean
+        # ORIGINAL CODE (Commented out):
+        # return tensor + torch.randn_like(tensor) * self.std + self.mean
+        return tensor
 
 
 # ============================ Granular Pipeline Logic ============================
@@ -219,6 +198,9 @@ def build_transform(dataset_name: str, train: bool = False, robustness: bool = F
     Raises:
         ValueError: If the dataset metadata cannot be resolved from the global registry.
     """
+    # force deactivate
+    robustness = False
+
     # 1. Resolve Metadata
     # distinct MedMNIST subsets need to map back to the 'medmnist' base key for metadata lookup.
     base_key = dataset_name.split("(", 1)[0].lower()
