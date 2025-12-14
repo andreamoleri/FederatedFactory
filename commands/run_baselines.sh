@@ -112,10 +112,10 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 > "$CMD_FILE"
 
 # --- HYPERPARAMETERS ---
-SEEDS=(1) # TODO: Turn back to 1 2 3 4 5
+SEEDS=(1) # TODO: (1 2 3 4 5)
 BS=128
 LATENT=128
-ROUNDS=50 # TODO: Turn back to 200
+ROUNDS=200
 PATIENCE=15
 CLIENTS=10
 FRACTION=1.0
@@ -123,8 +123,8 @@ EPOCHS_LIST=(5)
 
 DATASETS=(
   # "cifar"
-  "medmnist:retinamnist"
-  # "medmnist:bloodmnist"
+  # "medmnist:retinamnist"
+  "medmnist:bloodmnist"
   # "fed_camelyon16"
   # "fed_isic2019"
 )
@@ -132,8 +132,8 @@ DATASETS=(
 # Format: "model_name|args"
 MODELS=(
     "baseline:fedavg|--learning-rate 0.1"
-    "baseline:fedprox|--learning-rate 0.1 --fedprox-mu 0.01"
-    "baseline:feddyn|--learning-rate 0.1 --feddyn-alpha 0.01"
+    "baseline:fedprox|--learning-rate 0.1 --fedprox-mu 0.1"
+    "baseline:feddyn|--learning-rate 0.1 --feddyn-alpha 0.1"
     "baseline:scaffold|--learning-rate 0.1 --baseline-momentum 0.0"
 )
 
