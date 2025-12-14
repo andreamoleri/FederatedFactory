@@ -295,10 +295,12 @@ class ScaffoldBaseline(FederatedBaseline):
         c_global, c_local = self._get_or_init_control(client_name, model)
 
         # Configure optimizer parameters.
-        lr = self._effective_lr(round_num)
+        # Unpack the tuple! We only need the first value.
+        lr, _, _ = self._effective_lr(round_num)
+
         optimizer = optim.SGD(
             model.parameters(),
-            lr=lr,
+            lr=lr,  # Now this is a float
             momentum=self._momentum,
             weight_decay=self._weight_decay,
         )

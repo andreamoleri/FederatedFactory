@@ -60,7 +60,7 @@ export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=4
 
 # Adjust based on your GPU VRAM.
-JOBS_PER_GPU=5
+JOBS_PER_GPU=2
 
 # ==============================================================================
 # EXPERIMENT CONFIG & SMART RESUME FILES

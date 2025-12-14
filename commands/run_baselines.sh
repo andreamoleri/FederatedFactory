@@ -55,7 +55,7 @@ export PYTHONPATH="$PROJECT_ROOT/src:${PYTHONPATH:-}"
 # ==============================================================================
 # GPU & UTILIZATION CONFIGURATION
 # ==============================================================================
-# Optimization flags for Cluster/H100
+# Optimization flags
 export PYTHONUNBUFFERED=1
 export MAX_WORKERS=0
 export OMP_NUM_THREADS=4
@@ -63,16 +63,40 @@ export MKL_NUM_THREADS=4
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export CUDA_MODULE_LOADING=LAZY
 
-# Robust GPU List Generation (Mimicking Code A's explicit list logic but dynamic)
-# This creates a space-separated list of GPU indices (e.g. "0 1 2 3")
-TARGET_GPU_LIST=$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ' ')
-if [[ -z "$TARGET_GPU_LIST" ]]; then TARGET_GPU_LIST="0"; fi
+# ------------------------------------------------------------------------------
+# [CONFIG] SELECT YOUR GPUS HERE
+# ------------------------------------------------------------------------------
+# Option A: Set specific GPUs (space-separated string), e.g., "0" or "0 1" or "1 3"
+# Option B: Leave empty "" to automatically detect ALL available GPUs using nvidia-smi.
+MANUAL_GPU_IDS="0"
 
-# Count them automatically
+# ------------------------------------------------------------------------------
+# LOGIC: DETERMINE TARGET LIST
+# ------------------------------------------------------------------------------
+if [[ -n "$MANUAL_GPU_IDS" ]]; then
+    echo ">>> ⚙️  User manually selected GPUs: $MANUAL_GPU_IDS"
+    TARGET_GPU_LIST="$MANUAL_GPU_IDS"
+else
+    echo ">>> 🤖 Auto-detecting all available GPUs..."
+    TARGET_GPU_LIST=$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ' ')
+
+    # Fallback if nvidia-smi fails
+    if [[ -z "$TARGET_GPU_LIST" ]]; then
+        echo ">>> ⚠️  Auto-detect failed, defaulting to GPU 0"
+        TARGET_GPU_LIST="0"
+    fi
+fi
+
+# Clean up whitespace (ensure single spaces)
+TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
+
+# Calculate Counts
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
-
-JOBS_PER_GPU=1
+JOBS_PER_GPU=15
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
+
+echo ">>> 📊 Configuration: Using $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
+echo ">>> 🚀 Concurrency:   $JOBS_PER_GPU jobs/GPU = $TOTAL_CONCURRENCY total parallel jobs"
 
 export NUM_GPUS
 export TARGET_GPU_LIST
@@ -88,21 +112,21 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 > "$CMD_FILE"
 
 # --- HYPERPARAMETERS ---
-SEEDS=(1 2 3 4 5)
+SEEDS=(1) # TODO: Turn back to 1 2 3 4 5
 BS=128
 LATENT=128
-ROUNDS=200
+ROUNDS=50 # TODO: Turn back to 200
 PATIENCE=15
 CLIENTS=10
 FRACTION=1.0
 EPOCHS_LIST=(5)
 
 DATASETS=(
-  "cifar"
+  # "cifar"
   "medmnist:retinamnist"
-  "medmnist:bloodmnist"
-  "fed_camelyon16"
-  "fed_isic2019"
+  # "medmnist:bloodmnist"
+  # "fed_camelyon16"
+  # "fed_isic2019"
 )
 
 # Format: "model_name|args"
