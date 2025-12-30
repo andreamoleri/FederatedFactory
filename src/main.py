@@ -557,6 +557,7 @@ def main():
     cli.add_argument("--epochs", type=int, default=20)
     cli.add_argument("--clf-epochs", type=int, default=5)
     cli.add_argument("--batch-size", type=int, default=128)
+    cli.add_argument("--workers", type=int, default=4, help="Number of DataLoader workers")
     cli.add_argument("--data-dir", default="./data")
     cli.add_argument("--out-dir", default="../output")
 
@@ -698,6 +699,7 @@ def main():
                 epochs=args_raw.epochs,
                 clf_epochs=args_raw.clf_epochs,
                 batch_size=args_raw.batch_size,
+                workers=args_raw.workers,
                 data_dir=args_raw.data_dir,
                 out_dir=args_raw.out_dir,
                 dp_clip=args_raw.dp_clip,

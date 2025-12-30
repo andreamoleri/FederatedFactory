@@ -43,10 +43,12 @@ from typing import Dict, List, Any, Tuple, Optional
 
 from torch.utils.data import DataLoader, TensorDataset, Subset
 from torchvision.utils import save_image
+import torchvision.transforms as T
 from tqdm.auto import tqdm
 
 from jobs.classifier_phase import synth_from_decoder, synth_from_diffusion, generate_weighted_samples
 from jobs.baseline_runner import subset_to_tensor
+from imports.data_augmentation import build_transform
 
 from metrics.evaluation import (
     FeatureExtractor, fid_from_feats, kid_unbiased, precision_recall_knn,
@@ -62,6 +64,24 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # Helper Functions (Reintroduced from Monolithic)
 # =============================================================================
+
+class TransformSubset(torch.utils.data.Dataset):
+    """
+    Wraps a subset and applies a transform on the fly.
+    Used here to convert raw PIL images from base_train_set to Tensors.
+    """
+    def __init__(self, subset, transform):
+        self.subset = subset
+        self.transform = transform
+
+    def __getitem__(self, index):
+        x, y = self.subset[index]
+        if self.transform:
+            x = self.transform(x)
+        return x, y
+
+    def __len__(self):
+        return len(self.subset)
 
 def _class_dirname(i: int, base_train_set) -> str:
     """Generates a directory name for a class, sanitizing the label if available."""
@@ -139,7 +159,7 @@ def _convert_dict_keys_to_int(d):
 # =============================================================================
 
 def run_evaluation(
-    args, device, P, present_classes, reserved_test_imgs_list, 
+    args, device, P, present_classes, reserved_test_imgs_list,
     gen_models, client_gen_models, client_sample_counts, img_shape,
     trained_clfs, single_clf, y_true, y_pred,
     # ADDED: Arguments required for full dataset reconstruction and stats
@@ -151,12 +171,12 @@ def run_evaluation(
     logger.info("[Metrics] Computing FID, KID, Precision/Recall, IS, pairwise distances and t-SNE...")
     feat_extractor = FeatureExtractor(device)
     partition_mode = getattr(args, "partition", "silos")
-    
+
     # -------------------------------------------------------------------------
     # Phase 1: Synthetic Data Generation (For Metrics)
     # -------------------------------------------------------------------------
     eval_synth_by_class = []
-    
+
     for i, d in enumerate(present_classes):
         n_eval = args.eval_samples_per_class
         if args.samples_per_class > 0: n_eval = min(n_eval, args.samples_per_class)
@@ -177,7 +197,7 @@ def run_evaluation(
                  else: synth_eval = synth_from_diffusion(m, n_eval, device, img_shape)
              else:
                  synth_eval = torch.tensor([])
-        
+
         eval_synth_by_class.append(synth_eval)
 
     # -------------------------------------------------------------------------
@@ -185,13 +205,18 @@ def run_evaluation(
     # -------------------------------------------------------------------------
     fid, kid, prec, rec, recog = {}, {}, {}, {}, {}
     min_nn, min_rr, div = {}, {}, {}
-    
+
     def _predict(imgs, exp_lbl):
         ld = DataLoader(TensorDataset(imgs, exp_lbl), batch_size=args.batch_size)
         from jobs.classifier_phase import evaluate_single_classifier, ensemble_preds_poexp
-        if trained_clfs: _, yp = ensemble_preds_poexp(trained_clfs, ld, device)
-        elif single_clf: _, yp = evaluate_single_classifier(single_clf, ld, device)
-        else: yp = np.full(len(exp_lbl), -1)
+
+        # FIX: Unpack 3 values (y_true, y_pred, y_probs) but ignore y_probs
+        if trained_clfs:
+            _, yp, _ = ensemble_preds_poexp(trained_clfs, ld, device)
+        elif single_clf:
+            _, yp, _ = evaluate_single_classifier(single_clf, ld, device)
+        else:
+            yp = np.full(len(exp_lbl), -1)
         return yp
 
     f_real_map, f_fake_map = {}, {}
@@ -200,9 +225,9 @@ def run_evaluation(
     for i, d in enumerate(present_classes):
         real_c = reserved_test_imgs_list[i]
         fake_c = eval_synth_by_class[i]
-        
+
         if len(real_c) == 0 or len(fake_c) == 0: continue
-        
+
         fr, _ = feat_extractor.features_and_logits(real_c)
         ff, pf = feat_extractor.features_and_logits(fake_c)
         f_real_map[d] = fr
@@ -213,21 +238,21 @@ def run_evaluation(
         kid[d] = kid_unbiased(fr, ff)
         p, r = precision_recall_knn(fr, ff, k=args.pr_knn_k)
         prec[d] = p; rec[d] = r
-        
+
         expected = torch.full((fake_c.size(0),), d, dtype=torch.long)
         yp = _predict(fake_c, expected)
         recog[d] = float((yp == expected.numpy()).mean())
-        
+
         save_pairwise_outputs(P.root, d, ff, fr, topk=5)
-        
+
         # Calculate simple diversity metrics based on feature distance
         D_gr = np.sqrt(np.maximum(0.0, np.sum(ff ** 2, axis=1, keepdims=True) + np.sum(fr ** 2, axis=1, keepdims=True).T - 2.0 * (ff @ fr.T)))
         min_nn[d] = np.min(D_gr, axis=1).astype(np.float32).tolist()
-        
+
         D_rr = np.sqrt(np.maximum(0.0, np.sum(fr ** 2, axis=1, keepdims=True) + np.sum(fr ** 2, axis=1, keepdims=True).T - 2.0 * (fr @ fr.T)))
         np.fill_diagonal(D_rr, np.inf)
         min_rr[d] = np.min(D_rr, axis=1).astype(np.float32).tolist()
-        
+
         D_ff = np.sqrt(np.maximum(0.0, np.sum(ff ** 2, axis=1, keepdims=True) + np.sum(ff ** 2, axis=1, keepdims=True).T - 2.0 * (ff @ ff.T)))
         np.fill_diagonal(D_ff, np.inf)
         div[d] = float(np.min(D_ff, axis=1).mean())
@@ -255,7 +280,7 @@ def run_evaluation(
         if d in min_nn:
             gr = np.array(min_nn[d], dtype=np.float32)
             copy_rate_per_class[d] = float(np.mean(gr <= tau)) if gr.size > 0 else float("nan")
-    
+
     sota = None
     if args.sota_json and Path(args.sota_json).exists():
         try:
@@ -269,7 +294,7 @@ def run_evaluation(
     # Phase 4: T-SNE
     # -------------------------------------------------------------------------
     tsne2_payload = None
-    tsne3_payload = None  
+    tsne3_payload = None
     try:
         X_tsne, y_tsne, dom_tsne = [], [], []
         for d in list(present_classes)[:10]:
@@ -345,18 +370,40 @@ def run_evaluation(
     # -------------------------------------------------------------------------
     gaussian_overlay_per_class = {}
     real_full_by_class = []
-    
+
+    # --- Reconstruct Transform for Real Data ---
+    # We need to convert PIL images from base_train_set to Tensors [-1, 1]
+    # matching the model's expected input.
+    base_tfm = build_transform(args.dataset, train=False, robustness=False)
+
+    ops = []
+    # Input Size Override
+    if getattr(args, "input_size", 0) > 0:
+        sz = int(args.input_size)
+        ops.append(T.Resize((sz, sz), antialias=True))
+
+    # Grayscale Override
+    if bool(getattr(args, "grayscale", False)) and chans == 3:
+        ops.append(T.Grayscale(num_output_channels=3))
+
+    ops.append(base_tfm)
+    eval_tf = T.Compose(ops)
+
     for i, d in enumerate(present_classes):
         t0 = time.perf_counter()
         if partition_mode in ["skew", "dirichlet"]:
             real_train_imgs_list = []
             for client_subsets in train_subsets_dict.values():
                 if d in client_subsets:
-                    imgs = subset_to_tensor(client_subsets[d])
+                    # FIX: Wrap PIL subset with TransformSubset
+                    subset_clean = TransformSubset(client_subsets[d], eval_tf)
+                    imgs = subset_to_tensor(subset_clean)
                     real_train_imgs_list.append(imgs)
             real_train_imgs = torch.cat(real_train_imgs_list) if real_train_imgs_list else torch.tensor([])
         else:
-            real_train_imgs = subset_to_tensor(train_subsets[i])
+            # FIX: Wrap PIL subset with TransformSubset
+            subset_clean = TransformSubset(train_subsets[i], eval_tf)
+            real_train_imgs = subset_to_tensor(subset_clean)
 
         real_all = torch.cat([real_train_imgs, reserved_test_imgs_list[i]], dim=0) if len(real_train_imgs) > 0 else reserved_test_imgs_list[i]
         real_full_by_class.append(real_all)
@@ -385,7 +432,7 @@ def run_evaluation(
                 else: xs = synth_from_diffusion(m, target_count, device, img_shape)
             else:
                 xs = torch.tensor([])
-        
+
         synth_full_by_class.append(xs)
         logger.info(f"[DATASET EXPORT] Class {d}: generated {len(xs)} synthetic samples (target: {target_count})")
 
@@ -439,11 +486,11 @@ def run_evaluation(
     # -------------------------------------------------------------------------
     recon_metrics = None
     recon_dists = None
-    
+
     if args.model == "vae":
         logger.info("[Metrics] Evaluating reconstructions (MSE/PSNR/SSIM/Perceptual VGG) on reserved test...")
         perc_loss = VGGPerceptualLoss().to(device) if (chans == 3 and not bool(args.grayscale)) else None
-        
+
         vae_recon_mse, vae_recon_psnr, vae_recon_ssim, vae_recon_vgg = [], [], [], []
 
         with torch.no_grad():
@@ -493,7 +540,7 @@ def run_evaluation(
 
                         ssim_val = ssim_simple(rec, xb).item()
                         vae_recon_ssim.append(np.full(xb.size(0), ssim_val))
-                    
+
                     vae_tmp.cpu() # unload
 
         if vae_recon_mse:
@@ -540,18 +587,18 @@ def run_evaluation(
         "gaussian_overlay_per_class": _convert_dict_keys_to_int(gaussian_overlay_per_class),
         "sota": sota
     }
-    
+
     if recon_metrics is not None:
         gen_metrics["reconstruction"] = recon_metrics
     if recon_dists is not None:
         gen_metrics["reconstruction_dists"] = recon_dists
     if tsne2_payload:
         gen_metrics["tsne2"] = tsne2_payload
-    if tsne3_payload:  
+    if tsne3_payload:
         gen_metrics["tsne3"] = tsne3_payload
 
     # Persist metrics to disk.
     with open(P.root / "metrics" / "generative.json", "w") as f:
         json.dump(gen_metrics, f, indent=2)
-        
+
     return gen_metrics

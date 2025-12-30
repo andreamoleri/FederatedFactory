@@ -49,6 +49,8 @@ from typing import List, Dict, Optional, Tuple, Any, Set, Union
 import torch
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset, ConcatDataset, Dataset, random_split, Subset
+import torchvision.transforms.functional as TF
+from tqdm.auto import tqdm  # Added for progress bars
 
 # Internal Imports
 from models.cnn import SimpleCNN
@@ -68,9 +70,10 @@ class TransformSubset(Dataset):
     Wraps a standard Subset or Dataset and forces a specific transform
     to be applied on __getitem__.
 
-    CRITICAL: This allows us to apply 'Noisy' transforms to the training split
-    and 'Clean' transforms to the validation split, even if they come from the
-    same source dataset.
+    CRITICAL FIX: This class now automatically handles Synthetic Tensors.
+    If the input data is a Tensor (e.g., from Diffusion), it converts it back
+    to a PIL image so that standard torchvision transforms (which often include
+    ToTensor) work correctly without crashing.
     """
     def __init__(self, subset, transform):
         self.subset = subset
@@ -78,6 +81,16 @@ class TransformSubset(Dataset):
 
     def __getitem__(self, index):
         x, y = self.subset[index]
+
+        # --- SYNTHETIC DATA ADAPTER ---
+        # If input is a Tensor (Synthetic), transform to PIL first
+        if isinstance(x, torch.Tensor):
+            # Synthetic data is typically [-1, 1]. Shift to [0, 1]
+            x = (x + 1.0) / 2.0
+            x = x.clamp(0, 1)
+            # Convert to PIL Image to be compatible with transforms.ToTensor()
+            x = TF.to_pil_image(x)
+
         if self.transform:
             x = self.transform(x)
         return x, y
@@ -99,6 +112,13 @@ class TensorTransformDataset(Dataset):
     def __getitem__(self, index):
         x = self.data[index]
         y = self.targets[index]
+
+        # --- SYNTHETIC DATA ADAPTER ---
+        if isinstance(x, torch.Tensor):
+            x = (x + 1.0) / 2.0
+            x = x.clamp(0, 1)
+            x = TF.to_pil_image(x)
+
         if self.transform:
             x = self.transform(x)
         return x, y
@@ -117,9 +137,18 @@ def synth_from_decoder(dec: Decoder, latent: int, n: int, device: torch.device) 
     Returns tensors on CPU.
     """
     dec.to(device).eval()
-    imgs = dec(torch.randn(n, latent, device=device)).cpu()
+    # Batch generation if n is large to avoid VRAM OOM
+    batch_size = 200 # Safe batch size
+    imgs_list = []
+
+    for i in range(0, n, batch_size):
+        curr_batch = min(batch_size, n - i)
+        z = torch.randn(curr_batch, latent, device=device)
+        batch_imgs = dec(z).cpu()
+        imgs_list.append(batch_imgs)
+
     dec.cpu()
-    return imgs
+    return torch.cat(imgs_list, dim=0)
 
 @torch.no_grad()
 def synth_from_diffusion(model: DiT, n: int, device: torch.device, img_shape: Tuple[int, int, int]) -> torch.Tensor:
@@ -129,6 +158,8 @@ def synth_from_diffusion(model: DiT, n: int, device: torch.device, img_shape: Tu
     """
     C, H, W = img_shape
     model.to(device).eval()
+    # rectified_flow_sampler already handles batching internally (max_batch=64)
+    # steps=50 is standard, reduced for speed if necessary, but kept at 50 for quality
     x = rectified_flow_sampler(model, n=n, shape=(C, H, W), steps=50, device=device).cpu()
     model.cpu()
     return x.cpu()
@@ -154,7 +185,10 @@ def generate_weighted_samples(
             all_classes.add(cid)
             total_samples_per_class[cid] = total_samples_per_class.get(cid, 0) + c
 
-    for cid in sorted(all_classes):
+    # Add progress bar for weighted generation
+    pbar = tqdm(sorted(all_classes), desc="Weighted Synth Gen", unit="class")
+
+    for cid in pbar:
         target = samples_per_class if samples_per_class > 0 else total_samples_per_class.get(cid, 0)
         if target == 0:
             weighted_samples[cid] = torch.tensor([])
@@ -184,6 +218,7 @@ def generate_weighted_samples(
             remaining -= n
 
         weighted_samples[cid] = torch.cat(cls_samples) if cls_samples else torch.tensor([])
+
     return weighted_samples
 
 # =============================================================================
@@ -210,8 +245,6 @@ def ensemble_preds_poexp(classifiers: List[SimpleCNN], test_ld: DataLoader, devi
             log_probs = lp if log_probs is None else log_probs + lp
 
         # Aggregate log_probs -> actual probabilities
-        # Normalize: exp(log_probs) / sum(exp(log_probs))
-        # But since we just summed logs, we can just softmax the result to get a valid distribution
         final_probs = torch.softmax(log_probs, dim=1)
 
         y_pred.append(log_probs.argmax(1).cpu())
@@ -271,7 +304,6 @@ def run_classifier_training(
 
     trained_clfs = []
     single_clf = None
-    # Initialize empty arrays for 3 returns
     y_true, y_pred, y_probs = np.array([]), np.array([]), np.array([])
 
     logger.info(f"[CLF-PHASE] Partition: {partition_mode}, Local Inference: {is_local}")
@@ -285,12 +317,11 @@ def run_classifier_training(
             # Case 1: Local Inference with Skewed Data
             # -----------------------------------------------------------------
             for cname, subsets in train_subsets_dict.items():
+                logger.info(f"[SKEW-LOCAL] Preparing Client {cname}...")
 
-                # 1. Define Transforms
                 train_tf = build_transform(args.dataset, train=True, robustness=True)
                 eval_tf  = build_transform(args.dataset, train=False, robustness=False)
 
-                # --- A. Prepare Real Data ---
                 real_subsets = list(subsets.values())
                 if not real_subsets: continue
                 real_ds_raw = ConcatDataset(real_subsets)
@@ -306,28 +337,30 @@ def run_classifier_training(
                 r_train_ds = TransformSubset(r_train_raw, train_tf)
                 r_val_ds   = TransformSubset(r_val_raw, eval_tf)
 
-                # --- B. Prepare Synthetic Data ---
                 target = args.samples_per_class if args.samples_per_class > 0 else 2000
                 synth_xs, synth_ys = [], []
 
-                for cid in range(num_classes):
-                    if cid in subsets: continue # Skip existing classes
+                gen_desc = f"Client {cname} Generation ({args.model})"
+                missing_classes = [cid for cid in range(num_classes) if cid not in subsets]
 
-                    if getattr(args, "aggregation", "simple") == "weighted":
-                         w_samps = generate_weighted_samples(client_gen_models, client_sample_counts, target, args.model, args.latent_dim, device, img_shape)
-                         s_imgs = w_samps.get(cid, torch.tensor([]))
-                    else:
-                         if cid < len(gen_models) and gen_models[cid] is not None:
-                             m = gen_models[cid]
-                             if args.model == "vae": s_imgs = synth_from_decoder(m, args.latent_dim, target, device)
-                             else: s_imgs = synth_from_diffusion(m, target, device, img_shape)
-                         else: s_imgs = torch.tensor([])
+                if missing_classes:
+                    logger.info(f"  Generating {target} synthetic images for {len(missing_classes)} missing classes...")
 
-                    if len(s_imgs) > 0:
-                        synth_xs.append(s_imgs)
-                        synth_ys.append(torch.full((len(s_imgs),), cid, dtype=torch.long))
+                    for cid in tqdm(missing_classes, desc=gen_desc):
+                        if getattr(args, "aggregation", "simple") == "weighted":
+                             w_samps = generate_weighted_samples(client_gen_models, client_sample_counts, target, args.model, args.latent_dim, device, img_shape)
+                             s_imgs = w_samps.get(cid, torch.tensor([]))
+                        else:
+                             if cid < len(gen_models) and gen_models[cid] is not None:
+                                 m = gen_models[cid]
+                                 if args.model == "vae": s_imgs = synth_from_decoder(m, args.latent_dim, target, device)
+                                 else: s_imgs = synth_from_diffusion(m, target, device, img_shape)
+                             else: s_imgs = torch.tensor([])
 
-                # --- C. Combine & Split Synthetic ---
+                        if len(s_imgs) > 0:
+                            synth_xs.append(s_imgs)
+                            synth_ys.append(torch.full((len(s_imgs),), cid, dtype=torch.long))
+
                 if synth_xs:
                     s_X = torch.cat(synth_xs)
                     s_y = torch.cat(synth_ys)
@@ -351,7 +384,6 @@ def run_classifier_training(
                     final_train_ds = r_train_ds
                     final_val_ds   = r_val_ds
 
-                # D. Train
                 tr_ld = DataLoader(final_train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
                 val_ld = DataLoader(final_val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
@@ -364,7 +396,6 @@ def run_classifier_training(
                 torch.save(clf.state_dict(), P.root / "models" / "classifiers" / f"client-{cname}.pt")
 
             if tracker: tracker.start_phase("ensemble_evaluation")
-            # UPDATED: Returns 3 values now
             y_true, y_pred, y_probs = ensemble_preds_poexp(trained_clfs, reserved_test_ld, device)
             if tracker: tracker.end_phase("ensemble_evaluation")
 
@@ -374,12 +405,13 @@ def run_classifier_training(
             # -----------------------------------------------------------------
             if tracker: tracker.start_phase("server_generation")
             target = args.samples_per_class if args.samples_per_class > 0 else 2000
+            logger.info(f"[SERVER] Generating {target} synthetic images per class...")
 
             if getattr(args, "aggregation", "simple") == "weighted":
                  synth_samples = generate_weighted_samples(client_gen_models, client_sample_counts, target, args.model, args.latent_dim, device, img_shape)
             else:
                  synth_samples = {}
-                 for cid in range(num_classes):
+                 for cid in tqdm(range(num_classes), desc="Server Gen"):
                      if cid < len(gen_models) and gen_models[cid]:
                          if args.model == "vae": synth_samples[cid] = synth_from_decoder(gen_models[cid], args.latent_dim, target, device)
                          else: synth_samples[cid] = synth_from_diffusion(gen_models[cid], target, device, img_shape)
@@ -395,12 +427,10 @@ def run_classifier_training(
             if xs:
                 X, y = torch.cat(xs), torch.cat(ys)
 
-                # Label Remapping
                 present_in_synth = sorted(list(set(y.tolist())))
                 label_map = {old: new for new, old in enumerate(present_in_synth)}
                 y_mapped = torch.tensor([label_map[v.item()] for v in y], dtype=torch.long)
 
-                # --- Strict Split-Then-Transform Logic ---
                 val_len = int(len(X) * 0.1)
                 tr_len = len(X) - val_len
 
@@ -426,7 +456,6 @@ def run_classifier_training(
                 torch.save(clf.state_dict(), P.root / "models" / "classifiers" / "central.pt")
                 single_clf = clf
 
-                # Evaluation with Remapping
                 if tracker: tracker.start_phase("server_evaluation")
                 all_imgs, all_lbls = [], []
                 for x, lbl in reserved_test_ld:
@@ -441,18 +470,14 @@ def run_classifier_training(
                     filt_lbls = torch.tensor([label_map[l.item()] for l in all_lbls[mask]], dtype=torch.long)
                     test_ld_mapped = DataLoader(TensorDataset(filt_imgs, filt_lbls), batch_size=args.batch_size)
 
-                    # UPDATED: Returns 3 values
                     yt_map, yp_map, yprobs_map = evaluate_single_classifier(clf, test_ld_mapped, device)
 
                     rev_map = {v: k for k, v in label_map.items()}
                     y_true = np.array([rev_map[v] for v in yt_map])
                     y_pred = np.array([rev_map[v] for v in yp_map])
 
-                    # For probs, we need to map back to full class space
-                    # Initialize full probs array with zeros
                     y_probs = np.zeros((len(yprobs_map), num_classes), dtype=np.float32)
                     for i, mapped_idx in enumerate(present_in_synth):
-                        # Map column 'i' in reduced output to column 'mapped_idx' in full output
                         y_probs[:, mapped_idx] = yprobs_map[:, i]
 
                 if tracker: tracker.end_phase("server_evaluation")
@@ -466,6 +491,8 @@ def run_classifier_training(
             # Case 3: Local Inference within Data Silos
             # -----------------------------------------------------------------
             for i, d in enumerate(present_classes):
+                logger.info(f"[SILOS-LOCAL] Preparing Client {d} (Class {d})...")
+
                 train_tf = build_transform(args.dataset, train=True, robustness=True)
                 eval_tf  = build_transform(args.dataset, train=False, robustness=False)
 
@@ -484,11 +511,15 @@ def run_classifier_training(
                 n_synth = args.samples_per_class if args.samples_per_class > 0 else 2000
                 s_xs, s_ys = [], []
 
-                for od, gm in enumerate(gen_models):
-                    if od == d or gm is None: continue
-                    if args.model == "vae": im = synth_from_decoder(gm, args.latent_dim, n_synth, device)
-                    else: im = synth_from_diffusion(gm, n_synth, device, img_shape)
-                    s_xs.append(im); s_ys.append(torch.full((len(im),), od, dtype=torch.long))
+                if n_synth > 0:
+                    valid_gen_models = [(od, gm) for od, gm in enumerate(gen_models) if od != d and gm is not None]
+
+                    if valid_gen_models:
+                        logger.info(f"  Generating {n_synth} synthetic images from {len(valid_gen_models)} external models...")
+                        for od, gm in tqdm(valid_gen_models, desc=f"Client {d} Synth Gen"):
+                            if args.model == "vae": im = synth_from_decoder(gm, args.latent_dim, n_synth, device)
+                            else: im = synth_from_diffusion(gm, n_synth, device, img_shape)
+                            s_xs.append(im); s_ys.append(torch.full((len(im),), od, dtype=torch.long))
 
                 if s_xs:
                     s_X = torch.cat(s_xs)
@@ -525,7 +556,6 @@ def run_classifier_training(
                 torch.save(clf.state_dict(), P.root / "models" / "classifiers" / f"client-{d:03d}.pt")
 
             if tracker: tracker.start_phase("ensemble_evaluation")
-            # UPDATED: Returns 3 values
             y_true, y_pred, y_probs = ensemble_preds_poexp(trained_clfs, reserved_test_ld, device)
             if tracker: tracker.end_phase("ensemble_evaluation")
 
@@ -539,8 +569,12 @@ def run_classifier_training(
             else:
                 n_synth = max(len(s) for s in train_subsets) if train_subsets else 1000
 
+            logger.info(f"[SERVER] Generating {n_synth} synthetic images per silo model...")
+
             xs, ys = [], []
-            for d, gm in zip(present_classes, gen_models):
+            valid_models_zip = [(d, gm) for d, gm in zip(present_classes, gen_models) if gm is not None]
+
+            for d, gm in tqdm(valid_models_zip, desc="Server Gen"):
                 if args.model == "vae": im = synth_from_decoder(gm, args.latent_dim, n_synth, device)
                 else: im = synth_from_diffusion(gm, n_synth, device, img_shape)
                 xs.append(im); ys.append(torch.full((len(im),), d, dtype=torch.long))
@@ -575,7 +609,6 @@ def run_classifier_training(
             single_clf = clf
 
             if tracker: tracker.start_phase("server_evaluation")
-            # UPDATED: Returns 3 values
             y_true, y_pred, y_probs = evaluate_single_classifier(clf, reserved_test_ld, device)
             if tracker: tracker.end_phase("server_evaluation")
 

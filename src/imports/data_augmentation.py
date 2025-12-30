@@ -75,7 +75,7 @@ def denormalize(t: torch.Tensor, dataset_name: str = "imagenet") -> torch.Tensor
     Reverses the normalization operation to restore tensors to the [0, 1] range.
 
     This function applies the inverse transformation:
-    $x_{orig} = x_{norm} \\times \\sigma + \\mu$
+    $x_{orig} = x_{norm} \times \sigma + \mu$
     It is primarily used for visualization, logging, or debugging purposes where
     human-interpretable images are required.
 
@@ -313,16 +313,18 @@ def build_transform(dataset_name: str, train: bool = False, robustness: bool = F
 
     # 5. Normalization (Scientifically Accurate)
     # Apply statistical normalization based on the dataset domain.
-    effective_channels = 3 if channels == 1 else channels
+    # FIX: Use actual channel count, do not force 3 channels if input is 1.
+    effective_channels = channels
 
     if "cifar" in dataset_name.lower():
         norm = transforms.Normalize(CIFAR_MEAN, CIFAR_STD)
     elif strategy == "natural_high_res" and effective_channels == 3:
         norm = transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
     elif effective_channels == 3:
-        # This now correctly catches converted Grayscale->RGB data
+        # This catch-all applies to RGB datasets
         norm = transforms.Normalize(NEUTRAL_MEAN, NEUTRAL_STD)
     else:
+        # This handles Grayscale datasets (MNIST, etc.)
         norm = transforms.Normalize(NEUTRAL_MEAN_1CH, NEUTRAL_STD_1CH)
 
     ops.append(norm)
