@@ -75,10 +75,8 @@ from imports.data_management import DATASET_META, get_dataset
 from utils import grid_from_tensors
 
 # Data Augmentation Imports
-from imports.data_augmentation import (
-    NoisyCleanDataset,  # noqa: F401 (imported for potential side-effects or type availability)
-    build_transform,
-)
+# NEW CODE (Fixed)
+from imports.data_augmentation import build_transform
 
 # Graph Generation Modules
 # These functions are responsible for rendering specific pages within the PDF report.

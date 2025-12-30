@@ -151,7 +151,7 @@ class PathRegistry:
                 "environment", "metrics", "models/generators", "models/classifiers",
                 "artifacts/samples", "artifacts/pairwise", "artifacts/tsne",
                 "datasets/real", "datasets/synthetic",
-                "costs", "distributions"
+                "costs", "distributions", "checkpoints"
         ):
             (self.root / d).mkdir(parents=True, exist_ok=True)
         return self

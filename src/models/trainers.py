@@ -62,6 +62,8 @@ from models.diffusion import DiT, rectified_flow_loss
 
 from metrics.costs import ExperimentCostTracker
 
+from pathlib import Path
+
 # Enable TF32 (TensorFloat-32) on Ampere/Hopper GPUs to improve matrix multiplication
 # and convolution performance while maintaining sufficient precision for deep learning.
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -76,12 +78,14 @@ def train_diffusion(
         device: torch.device,
         epochs: int,
         hist: Dict,
-        cid: int,
+        cid: int | str,  # Updated type hint to allow 'server'
         dp: bool = False,
         dp_clip: float = 1.0,
         dp_noise_mult: float = 1.1,
         dp_microbatch: int = 8,
         tracker: Optional[ExperimentCostTracker] = None,
+        checkpoint_every: int = 0,
+        checkpoint_dir: Optional[Path] = None
 ) -> Tuple[DiT, int]:
     """
     Train a Diffusion Transformer using the Rectified Flow objective.
@@ -272,6 +276,20 @@ def train_diffusion(
                 loss=avg_loss,
             )
         )
+
+        # === CHECKPOINT LOGIC ===
+        if checkpoint_every > 0 and (ep + 1) % checkpoint_every == 0 and checkpoint_dir is not None:
+            # EDM2-style naming convention adapted for Epochs
+            # Format: checkpoint-client-{cid}-epoch-{epoch}.pt
+            ckpt_name = f"checkpoint-client-{cid}-epoch-{ep + 1:04d}.pt"
+            ckpt_path = checkpoint_dir / ckpt_name
+
+            try:
+                # Save state dictionary (compatible with DiT wrapper)
+                torch.save(model.state_dict(), ckpt_path)
+                logger.info(f"[CHECKPOINT] Saved model to {ckpt_path}")
+            except Exception as e:
+                logger.warning(f"[CHECKPOINT] Failed to save checkpoint: {e}")
 
     model.cpu()
     if tracker is not None:

@@ -612,6 +612,8 @@ def main():
     cli.add_argument("--save-datasets", action="store_true")
     cli.add_argument("--robustness", type=str, default="false", help="Enable Gaussian noise (true/false)")
 
+    cli.add_argument("--checkpoint-every", type=int, default=0, help="Save generative model checkpoints every N epochs (0 = disabled)")
+
     args_raw, _unknown = cli.parse_known_args()
 
     # Parse list params
@@ -721,6 +723,7 @@ def main():
                 clients_per_round=args_raw.clients_per_round,
                 num_clients=args_raw.num_clients,
                 carbon_intensity_kg_per_kwh=args_raw.carbon_intensity_kg_per_kwh,
+                checkpoint_every=args_raw.checkpoint_every,
             )
 
             if _is_experiment_done(args_raw.out_dir, ns):

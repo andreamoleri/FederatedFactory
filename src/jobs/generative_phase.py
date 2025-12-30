@@ -139,11 +139,6 @@ def sample_grid_diffusion(model: DiT, out_path: Path, n: int, device: torch.devi
     This function utilizes a Rectified Flow sampler to generate samples from
     noise, denormalizes the output, and saves the resulting grid to disk.
 
-
-
-[Image of Diffusion Model sampling process]
-
-
     Parameters
     ----------
     model : DiT
@@ -182,11 +177,6 @@ def aggregate_models_simple(client_models: Dict[str, Dict[int, torch.nn.Module]]
     arithmetic mean of their parameters (state dictionaries). It handles dynamic
     reconstruction of model architectures (VAE Decoder or DiT) to load the
     aggregated weights.
-
-
-
-[Image of Federated Learning architecture]
-
 
     Parameters
     ----------
@@ -358,9 +348,14 @@ def run_generative_training(
                 else:
                     cfg = DiffusionConfig(in_ch=chans, embed_dim=int(args.dit_embed), depth=int(args.dit_depth),
                                           num_heads=int(args.dit_heads), mlp_ratio=4.0, patch_size=int(args.dit_patch))
+
+                    # Fix: Pass checkpoint args to train_diffusion
                     dit, steps = train_diffusion(
                         DiT(cfg), ld, device, args.epochs, hist, f"{client_name}_class_{class_id}",
-                        dp=args.dp, dp_clip=args.dp_clip, dp_noise_mult=args.dp_noise, dp_microbatch=args.dp_microbatch, tracker=tracker
+                        dp=args.dp, dp_clip=args.dp_clip, dp_noise_mult=args.dp_noise, dp_microbatch=args.dp_microbatch,
+                        tracker=tracker,
+                        checkpoint_every=args.checkpoint_every,
+                        checkpoint_dir=P.root / "checkpoints"
                     )
                     model_to_save = dit
                     full_model = dit
@@ -419,9 +414,14 @@ def run_generative_training(
             else:
                 cfg = DiffusionConfig(in_ch=chans, embed_dim=int(args.dit_embed), depth=int(args.dit_depth),
                                       num_heads=int(args.dit_heads), mlp_ratio=4.0, patch_size=int(args.dit_patch))
+
+                # Fix: Pass checkpoint args to train_diffusion
                 dit, steps = train_diffusion(
                     DiT(cfg), ld, device, args.epochs, hist, d,
-                    dp=args.dp, dp_clip=args.dp_clip, dp_noise_mult=args.dp_noise, dp_microbatch=args.dp_microbatch, tracker=tracker
+                    dp=args.dp, dp_clip=args.dp_clip, dp_noise_mult=args.dp_noise, dp_microbatch=args.dp_microbatch,
+                    tracker=tracker,
+                    checkpoint_every=args.checkpoint_every,
+                    checkpoint_dir=P.root / "checkpoints"
                 )
                 model_to_save = dit
                 full_model = dit
