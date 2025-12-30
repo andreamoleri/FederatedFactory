@@ -2,14 +2,14 @@
 💾 Data Management Module
 -------------------------
 
-This module provides a unified interface for loading, configuring, and managing diverse 
-datasets used in machine learning pipelines. It abstracts the complexities of different 
-backend sources—including TorchVision, Hugging Face (FLamby), and custom local 
+This module provides a unified interface for loading, configuring, and managing diverse
+datasets used in machine learning pipelines. It abstracts the complexities of different
+backend sources—including TorchVision, Hugging Face (FLamby), and custom local
 directories (ImageFolder, .npz)—into a standardized retrieval mechanism.
 
 🧠 Purpose:
-    To serve as a centralized factory and registry for dataset ingestion, ensuring 
-    consistency in data preprocessing, augmentation application, and metadata retrieval 
+    To serve as a centralized factory and registry for dataset ingestion, ensuring
+    consistency in data preprocessing, augmentation application, and metadata retrieval
     across experimental setups.
 
 🔧 Core Functionalities:
@@ -34,7 +34,7 @@ directories (ImageFolder, .npz)—into a standardized retrieval mechanism.
     • huggingface_hub (optional/lazy-loaded)
 
 📝 Notes:
-    The module implements lazy loading for Hugging Face dependencies to minimize 
+    The module implements lazy loading for Hugging Face dependencies to minimize
     overhead in environments where they are not required.
 
 Author: Andrea Moleri
@@ -404,7 +404,7 @@ for _name, _info in _FLAMBY_INFO.items():
         num_classes=_info["num_classes"],
         channels=_info["channels"],
         default_split={},
-        input_size=32,
+        input_size=224,
     )
 
 
@@ -489,8 +489,8 @@ def _domainnet_build(
     """
     Constructs a unified DomainNet dataset by concatenating chosen domains.
 
-    Crucially, this function ensures intersectional consistency: it identifies 
-    classes common to ALL specified domains and retains only those, limited to 
+    Crucially, this function ensures intersectional consistency: it identifies
+    classes common to ALL specified domains and retains only those, limited to
     `k_classes`.
 
     Expected Layout:
