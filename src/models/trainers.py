@@ -498,17 +498,18 @@ def train_classifier(
         tracker: Optional[ExperimentCostTracker] = None,
 ) -> Tuple[nn.Module, int]:
     """
-    Train a standard classifier model (e.g., SimpleCNN).
-
-    This function performs a standard supervised training loop with CrossEntropy loss,
-    while also tracking validation metrics (accuracy, loss) and computational costs.
+    Train a standard classifier model (e.g., SimpleCNN) according to strict specifications:
+    - Optimizer: SGD
+    - LR: 0.1 (decayed via Cosine Annealing to 0)
+    - Momentum: 0.9
+    - Weight Decay: 1e-4
 
     Args:
-        model (nn.Module): The classifier model (e.g., SimpleCNN or similar).
+        model (nn.Module): The classifier model.
         train_ld (DataLoader): DataLoader for training data.
         val_ld (DataLoader): DataLoader for validation data.
         device (torch.device): Execution device.
-        epochs (int): Number of training epochs.
+        epochs (int): Number of training epochs (Spec requires 300).
         hist (Dict): Dictionary to store accuracy and loss history.
         cid (int | str): Client identifier.
         tracker (Optional[ExperimentCostTracker], optional): FLOPs and time tracker.
@@ -517,8 +518,20 @@ def train_classifier(
         Tuple[nn.Module, int]: The trained model and the number of training steps.
     """
     model.to(device)
-    opt = optim.Adam(model.parameters(), lr=1e-3)
-    ce = nn.CrossEntropyLoss(label_smoothing=0.1)
+
+    # Specification 5: SGD, Momentum 0.9, Weight Decay 1e-4, Initial LR 0.1
+    opt = optim.SGD(
+        model.parameters(),
+        lr=0.1,
+        momentum=0.9,
+        weight_decay=1e-4
+    )
+
+    # Specification 5: Cosine Annealing Scheduler (decays to 0 over 'epochs')
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=0.0)
+
+    # Standard CrossEntropy (removed label_smoothing to adhere to standard ResNet baseline specs)
+    ce = nn.CrossEntropyLoss()
 
     # Initialize history structure for accuracy and loss tracking
     for k in ("clf_train_acc", "clf_val_acc", "clf_train_loss", "clf_val_loss"):
@@ -550,11 +563,14 @@ def train_classifier(
         loss_sum = 0.0
         correct = 0
         total = 0
+
         for x, y in train_ld:
             x, y = x.to(device), y.to(device)
             opt.zero_grad()
+
             out = model(x)
             loss = ce(out, y)
+
             loss.backward()
             opt.step()
 
@@ -565,6 +581,9 @@ def train_classifier(
 
             if tracker is not None:
                 tracker.count_train_step(1)
+
+        # Step the scheduler after every epoch
+        scheduler.step()
 
         tr_acc = correct / total if total > 0 else 0.0
         tr_loss = loss_sum / len(train_ld) if len(train_ld) > 0 else 0.0
@@ -591,14 +610,12 @@ def train_classifier(
         hist["clf_train_loss"][cid].append(tr_loss)
         hist["clf_val_loss"][cid].append(val_loss)
 
+        # Retrieve current LR for logging
+        current_lr = scheduler.get_last_lr()[0]
+
         logger.info(
-            logmsg.CLF_EPOCH.format(
-                cid=cid,
-                epoch=ep + 1,
-                epochs=epochs,
-                tr_acc=tr_acc,
-                val_acc=val_acc,
-            )
+            f"[CLF] Client {cid} | Epoch {ep + 1}/{epochs} | "
+            f"LR: {current_lr:.6f} | Train Acc: {tr_acc:.4f} | Val Acc: {val_acc:.4f}"
         )
 
     model.cpu()
