@@ -159,11 +159,11 @@ def _convert_dict_keys_to_int(d):
 # =============================================================================
 
 def run_evaluation(
-    args, device, P, present_classes, reserved_test_imgs_list,
-    gen_models, client_gen_models, client_sample_counts, img_shape,
-    trained_clfs, single_clf, y_true, y_pred,
-    # ADDED: Arguments required for full dataset reconstruction and stats
-    train_subsets_dict, train_subsets, base_train_set, chans
+        args, device, P, present_classes, reserved_test_imgs_list,
+        gen_models, client_gen_models, client_sample_counts, img_shape,
+        trained_clfs, single_clf, y_true, y_pred,
+        train_subsets_dict, train_subsets, base_train_set, chans,
+        pre_generated_data: Optional[Dict[int, torch.Tensor]] = None  # <--- NEW ARGUMENT
 ):
     """
     Executes the full evaluation suite for generative models.
@@ -182,21 +182,59 @@ def run_evaluation(
         if args.samples_per_class > 0: n_eval = min(n_eval, args.samples_per_class)
         n_eval = max(1, n_eval)
 
-        if partition_mode in ["skew", "dirichlet"] and getattr(args, "aggregation", "simple") == "weighted":
-            can_gen = d in [cid for models in client_gen_models.values() for cid in models.keys()]
-            if can_gen:
-                w = generate_weighted_samples(client_gen_models, client_sample_counts, n_eval, args.model, args.latent_dim, device, img_shape)
-                synth_eval = w.get(d, torch.tensor([]))
+        # NEW LOGIC: Check cache first
+        synth_eval = None
+        if pre_generated_data is not None and d in pre_generated_data:
+            cached_data = pre_generated_data[d]
+            if len(cached_data) >= n_eval:
+                # We have enough data, slice it
+                synth_eval = cached_data[:n_eval]
             else:
-                synth_eval = torch.tensor([])
-        else:
-             if d < len(gen_models) and gen_models[d] is not None:
-                 m = gen_models[d]
-                 if hasattr(m, "decoder"): m = m.decoder
-                 if args.model == "vae": synth_eval = synth_from_decoder(m, args.latent_dim, n_eval, device)
-                 else: synth_eval = synth_from_diffusion(m, n_eval, device, img_shape)
-             else:
-                 synth_eval = torch.tensor([])
+                # We have data, but not enough for the full metric evaluation count.
+                # Use what we have, and generate the delta.
+                # NOTE: For consistency with the user request ("same image used to train"),
+                # we prioritize the cached data.
+                needed = n_eval - len(cached_data)
+                logger.info(f"[Metrics] Class {d}: Cached {len(cached_data)}, generating {needed} more for eval.")
+
+                # ... Generation Logic for Delta ...
+                if partition_mode in ["skew", "dirichlet"] and getattr(args, "aggregation", "simple") == "weighted":
+                    w = generate_weighted_samples(client_gen_models, client_sample_counts, needed, args.model,
+                                                  args.latent_dim, device, img_shape)
+                    delta = w.get(d, torch.tensor([]))
+                else:
+                    if d < len(gen_models) and gen_models[d] is not None:
+                        m = gen_models[d]
+                        if hasattr(m, "decoder"): m = m.decoder
+                        if args.model == "vae":
+                            delta = synth_from_decoder(m, args.latent_dim, needed, device)
+                        else:
+                            delta = synth_from_diffusion(m, needed, device, img_shape)
+                    else:
+                        delta = torch.tensor([])
+
+                synth_eval = torch.cat([cached_data, delta.cpu()])
+
+        # If still None (not in cache), generate fully
+        if synth_eval is None:
+            if partition_mode in ["skew", "dirichlet"] and getattr(args, "aggregation", "simple") == "weighted":
+                can_gen = d in [cid for models in client_gen_models.values() for cid in models.keys()]
+                if can_gen:
+                    w = generate_weighted_samples(client_gen_models, client_sample_counts, n_eval, args.model,
+                                                  args.latent_dim, device, img_shape)
+                    synth_eval = w.get(d, torch.tensor([]))
+                else:
+                    synth_eval = torch.tensor([])
+            else:
+                if d < len(gen_models) and gen_models[d] is not None:
+                    m = gen_models[d]
+                    if hasattr(m, "decoder"): m = m.decoder
+                    if args.model == "vae":
+                        synth_eval = synth_from_decoder(m, args.latent_dim, n_eval, device)
+                    else:
+                        synth_eval = synth_from_diffusion(m, n_eval, device, img_shape)
+                else:
+                    synth_eval = torch.tensor([])
 
         eval_synth_by_class.append(synth_eval)
 
@@ -411,30 +449,77 @@ def run_evaluation(
 
     synth_full_by_class = []
     for i, d in enumerate(present_classes):
-        if args.samples_per_class > 0: target_count = args.samples_per_class
-        else: target_count = real_full_by_class[i].size(0)
+        if args.samples_per_class > 0:
+            target_count = args.samples_per_class
+        else:
+            target_count = real_full_by_class[i].size(0)
 
         if target_count == 0:
             synth_full_by_class.append(torch.tensor([]))
             continue
 
-        if partition_mode in ["skew", "dirichlet"] and getattr(args, "aggregation", "simple") == "weighted":
-            if d in [cid for models in client_gen_models.values() for cid in models.keys()]:
-                w = generate_weighted_samples(client_gen_models, client_sample_counts, target_count, args.model, args.latent_dim, device, img_shape)
-                xs = w.get(d, torch.tensor([]))
+        # NEW LOGIC: Use Cache for Export
+        # NEW LOGIC: Use Cache for Export
+        xs = None
+        used_cache = False  # <--- Flag to track cache usage
+
+        if pre_generated_data is not None and d in pre_generated_data:
+            cached_data = pre_generated_data[d]
+            if len(cached_data) >= target_count:
+                xs = cached_data[:target_count]
+                used_cache = True  # <--- Set flag
+                # logger.info(f"[DATASET EXPORT] Class {d}: Using {len(xs)} cached training samples.") <--- Removed redundant log
             else:
-                xs = torch.tensor([])
-        else:
-            if d < len(gen_models) and gen_models[d] is not None:
-                m = gen_models[d]
-                if hasattr(m, "decoder"): m = m.decoder
-                if args.model == "vae": xs = synth_from_decoder(m, args.latent_dim, target_count, device)
-                else: xs = synth_from_diffusion(m, target_count, device, img_shape)
+                # Not enough in cache
+                needed = target_count - len(cached_data)
+
+                # ... (Generation logic for delta) ...
+                if partition_mode in ["skew", "dirichlet"] and getattr(args, "aggregation", "simple") == "weighted":
+                    w = generate_weighted_samples(client_gen_models, client_sample_counts, needed, args.model,
+                                                  args.latent_dim, device, img_shape)
+                    delta = w.get(d, torch.tensor([]))
+                else:
+                    if d < len(gen_models) and gen_models[d] is not None:
+                        m = gen_models[d]
+                        if hasattr(m, "decoder"): m = m.decoder
+                        if args.model == "vae":
+                            delta = synth_from_decoder(m, args.latent_dim, needed, device)
+                        else:
+                            delta = synth_from_diffusion(m, needed, device, img_shape)
+                    else:
+                        delta = torch.tensor([])
+                xs = torch.cat([cached_data, delta.cpu()])
+                # Note: Mixed source, so we can consider it partially generated.
+                # We won't set used_cache=True to keep the "generated" log for transparency on the extra compute.
+
+        if xs is None:
+            # Full generation fallback (Logic remains unchanged)
+            if partition_mode in ["skew", "dirichlet"] and getattr(args, "aggregation", "simple") == "weighted":
+                if d in [cid for models in client_gen_models.values() for cid in models.keys()]:
+                    w = generate_weighted_samples(client_gen_models, client_sample_counts, target_count, args.model,
+                                                  args.latent_dim, device, img_shape)
+                    xs = w.get(d, torch.tensor([]))
+                else:
+                    xs = torch.tensor([])
             else:
-                xs = torch.tensor([])
+                if d < len(gen_models) and gen_models[d] is not None:
+                    m = gen_models[d]
+                    if hasattr(m, "decoder"): m = m.decoder
+                    if args.model == "vae":
+                        xs = synth_from_decoder(m, args.latent_dim, target_count, device)
+                    else:
+                        xs = synth_from_diffusion(m, target_count, device, img_shape)
+                else:
+                    xs = torch.tensor([])
 
         synth_full_by_class.append(xs)
-        logger.info(f"[DATASET EXPORT] Class {d}: generated {len(xs)} synthetic samples (target: {target_count})")
+
+        # --- FIXED LOGGING MESSAGE ---
+        if used_cache:
+            # Was "Locally saved", now "Retrieved" to avoid confusion with disk write
+            logger.info(f"[DATASET EXPORT] Class {d}: Retrieved {len(xs)} cached samples (target: {target_count})")
+        else:
+            logger.info(f"[DATASET EXPORT] Class {d}: Generated {len(xs)} synthetic samples (target: {target_count})")
 
     num_bins = 20
     bins_edges = np.linspace(-1.0, 1.0, num_bins + 1)

@@ -272,27 +272,29 @@ def evaluate_single_classifier(model: SimpleCNN, ld: DataLoader, device: torch.d
     model.cpu()
     return torch.cat(y_true).numpy(), torch.cat(y_pred).numpy(), torch.cat(y_probs).numpy()
 
+
 # =============================================================================
 # Main Training Orchestrator
 # =============================================================================
 
 def run_classifier_training(
-    args: Any,
-    device: torch.device,
-    P: Any,
-    train_subsets_dict: Dict[str, Dict[int, Any]],
-    train_subsets: List[Any],
-    present_classes: List[int],
-    num_classes: int,
-    chans: int,
-    img_shape: Tuple[int, int, int],
-    tracker: Optional[Any],
-    hist: Any,
-    gen_models: List[Optional[Any]],
-    client_gen_models: Dict[str, Dict[int, Any]],
-    client_sample_counts: Dict[str, Dict[int, int]],
-    reserved_test_ld: DataLoader
-) -> Tuple[int, int, float, np.ndarray, np.ndarray, np.ndarray, List[Any], Optional[Any]]:
+        args: Any,
+        device: torch.device,
+        P: Any,
+        train_subsets_dict: Dict[str, Dict[int, Any]],
+        train_subsets: List[Any],
+        present_classes: List[int],
+        num_classes: int,
+        chans: int,
+        img_shape: Tuple[int, int, int],
+        tracker: Optional[Any],
+        hist: Any,
+        gen_models: List[Optional[Any]],
+        client_gen_models: Dict[str, Dict[int, Any]],
+        client_sample_counts: Dict[str, Dict[int, int]],
+        reserved_test_ld: DataLoader
+) -> Tuple[int, int, float, np.ndarray, np.ndarray, np.ndarray, List[Any], Optional[Any], Dict[int, torch.Tensor]]:
+    # ^ CHANGED Return Type hint to include Dict[int, torch.Tensor]
 
     classifier_steps = 0
     synth_images_total = 0
@@ -305,6 +307,9 @@ def run_classifier_training(
     trained_clfs = []
     single_clf = None
     y_true, y_pred, y_probs = np.array([]), np.array([]), np.array([])
+
+    # NEW: Cache for synthetic data to prevent re-generation in evaluation phase
+    synthetic_cache: Dict[int, torch.Tensor] = {}
 
     logger.info(f"[CLF-PHASE] Partition: {partition_mode}, Local Inference: {is_local}")
 
@@ -320,7 +325,7 @@ def run_classifier_training(
                 logger.info(f"[SKEW-LOCAL] Preparing Client {cname}...")
 
                 train_tf = build_transform(args.dataset, train=True, robustness=True)
-                eval_tf  = build_transform(args.dataset, train=False, robustness=False)
+                eval_tf = build_transform(args.dataset, train=False, robustness=False)
 
                 real_subsets = list(subsets.values())
                 if not real_subsets: continue
@@ -335,7 +340,7 @@ def run_classifier_training(
                 )
 
                 r_train_ds = TransformSubset(r_train_raw, train_tf)
-                r_val_ds   = TransformSubset(r_val_raw, eval_tf)
+                r_val_ds = TransformSubset(r_val_raw, eval_tf)
 
                 target = args.samples_per_class if args.samples_per_class > 0 else 2000
                 synth_xs, synth_ys = [], []
@@ -348,16 +353,29 @@ def run_classifier_training(
 
                     for cid in tqdm(missing_classes, desc=gen_desc):
                         if getattr(args, "aggregation", "simple") == "weighted":
-                             w_samps = generate_weighted_samples(client_gen_models, client_sample_counts, target, args.model, args.latent_dim, device, img_shape)
-                             s_imgs = w_samps.get(cid, torch.tensor([]))
+                            w_samps = generate_weighted_samples(client_gen_models, client_sample_counts, target,
+                                                                args.model, args.latent_dim, device, img_shape)
+                            s_imgs = w_samps.get(cid, torch.tensor([]))
                         else:
-                             if cid < len(gen_models) and gen_models[cid] is not None:
-                                 m = gen_models[cid]
-                                 if args.model == "vae": s_imgs = synth_from_decoder(m, args.latent_dim, target, device)
-                                 else: s_imgs = synth_from_diffusion(m, target, device, img_shape)
-                             else: s_imgs = torch.tensor([])
+                            if cid < len(gen_models) and gen_models[cid] is not None:
+                                m = gen_models[cid]
+                                if args.model == "vae":
+                                    s_imgs = synth_from_decoder(m, args.latent_dim, target, device)
+                                else:
+                                    s_imgs = synth_from_diffusion(m, target, device, img_shape)
+                            else:
+                                s_imgs = torch.tensor([])
 
                         if len(s_imgs) > 0:
+                            # CACHE DATA: Only if we haven't cached this class yet or if we have a strategy to merge
+                            # In local inference, different clients might generate the same class.
+                            # For simplicity in evaluation, we cache the first generation or append.
+                            # Here we simply overwrite or append for the global cache.
+                            if cid not in synthetic_cache:
+                                synthetic_cache[cid] = s_imgs.cpu()
+                            else:
+                                synthetic_cache[cid] = torch.cat([synthetic_cache[cid], s_imgs.cpu()])
+
                             synth_xs.append(s_imgs)
                             synth_ys.append(torch.full((len(s_imgs),), cid, dtype=torch.long))
 
@@ -376,19 +394,20 @@ def run_classifier_training(
                     )
 
                     s_train_ds = TransformSubset(s_train_raw, train_tf)
-                    s_val_ds   = TransformSubset(s_val_raw, eval_tf)
+                    s_val_ds = TransformSubset(s_val_raw, eval_tf)
 
                     final_train_ds = ConcatDataset([r_train_ds, s_train_ds])
-                    final_val_ds   = ConcatDataset([r_val_ds, s_val_ds])
+                    final_val_ds = ConcatDataset([r_val_ds, s_val_ds])
                 else:
                     final_train_ds = r_train_ds
-                    final_val_ds   = r_val_ds
+                    final_val_ds = r_val_ds
 
                 tr_ld = DataLoader(final_train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
                 val_ld = DataLoader(final_val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
                 if tracker: tracker.start_phase(f"client_{cname}_clf")
-                clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs, hist, cname, tracker=tracker)
+                clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs,
+                                              hist, cname, tracker=tracker)
                 if tracker: tracker.end_phase(f"client_{cname}_clf")
 
                 trained_clfs.append(clf)
@@ -408,18 +427,23 @@ def run_classifier_training(
             logger.info(f"[SERVER] Generating {target} synthetic images per class...")
 
             if getattr(args, "aggregation", "simple") == "weighted":
-                 synth_samples = generate_weighted_samples(client_gen_models, client_sample_counts, target, args.model, args.latent_dim, device, img_shape)
+                synth_samples = generate_weighted_samples(client_gen_models, client_sample_counts, target, args.model,
+                                                          args.latent_dim, device, img_shape)
             else:
-                 synth_samples = {}
-                 for cid in tqdm(range(num_classes), desc="Server Gen"):
-                     if cid < len(gen_models) and gen_models[cid]:
-                         if args.model == "vae": synth_samples[cid] = synth_from_decoder(gen_models[cid], args.latent_dim, target, device)
-                         else: synth_samples[cid] = synth_from_diffusion(gen_models[cid], target, device, img_shape)
+                synth_samples = {}
+                for cid in tqdm(range(num_classes), desc="Server Gen"):
+                    if cid < len(gen_models) and gen_models[cid]:
+                        if args.model == "vae":
+                            synth_samples[cid] = synth_from_decoder(gen_models[cid], args.latent_dim, target, device)
+                        else:
+                            synth_samples[cid] = synth_from_diffusion(gen_models[cid], target, device, img_shape)
             if tracker: tracker.end_phase("server_generation")
 
             xs, ys = [], []
             for cid, imgs in synth_samples.items():
                 if len(imgs) > 0:
+                    # CACHE DATA
+                    synthetic_cache[cid] = imgs.cpu()
                     xs.append(imgs)
                     ys.append(torch.full((len(imgs),), cid, dtype=torch.long))
                     synth_images_total += len(imgs)
@@ -440,16 +464,17 @@ def run_classifier_training(
                 )
 
                 train_tf = build_transform(args.dataset, train=True, robustness=True)
-                eval_tf  = build_transform(args.dataset, train=False, robustness=False)
+                eval_tf = build_transform(args.dataset, train=False, robustness=False)
 
                 train_ds = TransformSubset(train_raw, train_tf)
-                val_ds   = TransformSubset(val_raw, eval_tf)
+                val_ds = TransformSubset(val_raw, eval_tf)
 
                 tr_ld = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
                 val_ld = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
                 if tracker: tracker.start_phase("server_classifier")
-                clf, steps = train_classifier(SimpleCNN(chans, len(present_in_synth)), tr_ld, val_ld, device, args.clf_epochs, hist, "server", tracker=tracker)
+                clf, steps = train_classifier(SimpleCNN(chans, len(present_in_synth)), tr_ld, val_ld, device,
+                                              args.clf_epochs, hist, "server", tracker=tracker)
                 if tracker: tracker.end_phase("server_classifier")
 
                 classifier_steps += steps
@@ -494,7 +519,7 @@ def run_classifier_training(
                 logger.info(f"[SILOS-LOCAL] Preparing Client {d} (Class {d})...")
 
                 train_tf = build_transform(args.dataset, train=True, robustness=True)
-                eval_tf  = build_transform(args.dataset, train=False, robustness=False)
+                eval_tf = build_transform(args.dataset, train=False, robustness=False)
 
                 real_subset = train_subsets[i]
                 val_len_real = int(len(real_subset) * 0.2)
@@ -506,7 +531,7 @@ def run_classifier_training(
                 )
 
                 r_train_ds = TransformSubset(r_train_raw, train_tf)
-                r_val_ds   = TransformSubset(r_val_raw, eval_tf)
+                r_val_ds = TransformSubset(r_val_raw, eval_tf)
 
                 n_synth = args.samples_per_class if args.samples_per_class > 0 else 2000
                 s_xs, s_ys = [], []
@@ -515,11 +540,21 @@ def run_classifier_training(
                     valid_gen_models = [(od, gm) for od, gm in enumerate(gen_models) if od != d and gm is not None]
 
                     if valid_gen_models:
-                        logger.info(f"  Generating {n_synth} synthetic images from {len(valid_gen_models)} external models...")
+                        logger.info(
+                            f"  Generating {n_synth} synthetic images from {len(valid_gen_models)} external models...")
                         for od, gm in tqdm(valid_gen_models, desc=f"Client {d} Synth Gen"):
-                            if args.model == "vae": im = synth_from_decoder(gm, args.latent_dim, n_synth, device)
-                            else: im = synth_from_diffusion(gm, n_synth, device, img_shape)
-                            s_xs.append(im); s_ys.append(torch.full((len(im),), od, dtype=torch.long))
+                            if args.model == "vae":
+                                im = synth_from_decoder(gm, args.latent_dim, n_synth, device)
+                            else:
+                                im = synth_from_diffusion(gm, n_synth, device, img_shape)
+
+                            # CACHE DATA: Map external class ID to generated images
+                            if od not in synthetic_cache:
+                                synthetic_cache[od] = im.cpu()
+                            # else: we rely on the first generation for evaluation to save time/space
+
+                            s_xs.append(im);
+                            s_ys.append(torch.full((len(im),), od, dtype=torch.long))
 
                 if s_xs:
                     s_X = torch.cat(s_xs)
@@ -536,19 +571,20 @@ def run_classifier_training(
                     )
 
                     s_train_ds = TransformSubset(s_train_raw, train_tf)
-                    s_val_ds   = TransformSubset(s_val_raw, eval_tf)
+                    s_val_ds = TransformSubset(s_val_raw, eval_tf)
 
                     train_ds = ConcatDataset([r_train_ds, s_train_ds])
-                    val_ds   = ConcatDataset([r_val_ds, s_val_ds])
+                    val_ds = ConcatDataset([r_val_ds, s_val_ds])
                 else:
                     train_ds = r_train_ds
-                    val_ds   = r_val_ds
+                    val_ds = r_val_ds
 
                 tr_ld = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
                 val_ld = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
                 if tracker: tracker.start_phase(f"client_{d:03d}_clf")
-                clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs, hist, d, tracker=tracker)
+                clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs,
+                                              hist, d, tracker=tracker)
                 if tracker: tracker.end_phase(f"client_{d:03d}_clf")
 
                 trained_clfs.append(clf)
@@ -575,9 +611,16 @@ def run_classifier_training(
             valid_models_zip = [(d, gm) for d, gm in zip(present_classes, gen_models) if gm is not None]
 
             for d, gm in tqdm(valid_models_zip, desc="Server Gen"):
-                if args.model == "vae": im = synth_from_decoder(gm, args.latent_dim, n_synth, device)
-                else: im = synth_from_diffusion(gm, n_synth, device, img_shape)
-                xs.append(im); ys.append(torch.full((len(im),), d, dtype=torch.long))
+                if args.model == "vae":
+                    im = synth_from_decoder(gm, args.latent_dim, n_synth, device)
+                else:
+                    im = synth_from_diffusion(gm, n_synth, device, img_shape)
+
+                # CACHE DATA
+                synthetic_cache[d] = im.cpu()
+
+                xs.append(im);
+                ys.append(torch.full((len(im),), d, dtype=torch.long))
 
             X, y = torch.cat(xs), torch.cat(ys)
             synth_images_total = len(X)
@@ -592,16 +635,17 @@ def run_classifier_training(
             )
 
             train_tf = build_transform(args.dataset, train=True, robustness=True)
-            eval_tf  = build_transform(args.dataset, train=False, robustness=False)
+            eval_tf = build_transform(args.dataset, train=False, robustness=False)
 
             train_ds = TransformSubset(train_raw, train_tf)
-            val_ds   = TransformSubset(val_raw, eval_tf)
+            val_ds = TransformSubset(val_raw, eval_tf)
 
             tr_ld = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
             val_ld = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
             if tracker: tracker.start_phase("server_classifier")
-            clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs, hist, "server", tracker=tracker)
+            clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs, hist,
+                                          "server", tracker=tracker)
             if tracker: tracker.end_phase("server_classifier")
 
             classifier_steps += steps
@@ -612,4 +656,5 @@ def run_classifier_training(
             y_true, y_pred, y_probs = evaluate_single_classifier(clf, reserved_test_ld, device)
             if tracker: tracker.end_phase("server_evaluation")
 
-    return classifier_steps, synth_images_total, clf_start, y_true, y_pred, y_probs, trained_clfs, single_clf
+    # Pass the populated synthetic_cache back to the experiment runner
+    return classifier_steps, synth_images_total, clf_start, y_true, y_pred, y_probs, trained_clfs, single_clf, synthetic_cache

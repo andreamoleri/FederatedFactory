@@ -202,6 +202,9 @@ def run_experiment(
     # =========================================================================
     # PATH B: GENERATIVE + CLASSIFIER (Hybrid)
     # =========================================================================
+    # =========================================================================
+    # PATH B: GENERATIVE + CLASSIFIER (Hybrid)
+    # =========================================================================
     else:
         # 3. Generative Phase
         perc_loss = VGGPerceptualLoss().to(device) if (chans == 3 and not bool(args.grayscale)) else None
@@ -215,8 +218,8 @@ def run_experiment(
         metrics["vae_steps"] = gen_step_total
 
         # 4. Classifier Phase
-        # Note: run_classifier_training must also return y_probs (6th position)
-        clf_steps, synth_total, clf_start, y_true, y_pred, y_probs, trained_clfs, single_clf = run_classifier_training(
+        # UPDATED: Capture synthetic_cache from return values
+        clf_steps, synth_total, clf_start, y_true, y_pred, y_probs, trained_clfs, single_clf, synthetic_cache = run_classifier_training(
             args, device, P, train_subsets_dict, train_subsets, present_classes, num_classes,
             chans, img_shape, tracker, hist,
             gen_models, client_gen_models, client_sample_counts, reserved_test_ld
@@ -226,11 +229,13 @@ def run_experiment(
         # 5. Metrics & Evaluation
         acc = ensemble_accuracy(y_true, y_pred)
 
+        # UPDATED: Pass synthetic_cache as pre_generated_data
         gen_metrics = run_evaluation(
             args, device, P, present_classes, reserved_test_imgs_list,
             gen_models, client_gen_models, client_sample_counts, img_shape,
             trained_clfs, single_clf, y_true, y_pred,
-            train_subsets_dict, train_subsets, base_train_set, chans
+            train_subsets_dict, train_subsets, base_train_set, chans,
+            pre_generated_data=synthetic_cache  # <--- NEW ARGUMENT
         )
         metrics["gen_metrics"] = gen_metrics
 
