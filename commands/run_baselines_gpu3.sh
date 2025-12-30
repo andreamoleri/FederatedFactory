@@ -43,7 +43,7 @@ export CUDA_MODULE_LOADING=LAZY
 # ------------------------------------------------------------------------------
 # Option A: Set specific GPUs (space-separated string), e.g., "0" or "0 1" or "1 3"
 # Option B: Leave empty "" to automatically detect ALL available GPUs using nvidia-smi.
-MANUAL_GPU_IDS="0 1"
+MANUAL_GPU_IDS="0 1 2 3"
 
 # ------------------------------------------------------------------------------
 # LOGIC: DETERMINE TARGET LIST
@@ -79,7 +79,7 @@ export TARGET_GPU_LIST
 # ==============================================================================
 # ORGANIZATION
 # ==============================================================================
-LOG_WORK_DIR="$SCRIPT_DIR/run_federated_baselines"
+LOG_WORK_DIR="$SCRIPT_DIR/run_federated_baselines_gpu3"
 LOG_STORAGE_DIR="$LOG_WORK_DIR/logs"
 
 mkdir -p "$LOG_STORAGE_DIR"
@@ -126,8 +126,9 @@ DATASETS=(
   # "cifar"
   # "medmnist:retinamnist"
   # "medmnist:bloodmnist"
+  "medmnist:pathmnist"
   # "fed_camelyon16"
-  "fed_isic2019"
+  # "fed_isic2019"
 )
 
 # ==============================================================================
@@ -139,16 +140,16 @@ DATASETS=(
 # ------------------------------------------------------------------------------
 ALPHAS=("0.1") # Dirichlet Partition Alpha
 
-PROX_MUS_DIR=("0.01")
-DYN_ALPHAS_DIR=("0.001")
+PROX_MUS_DIR=("0.001")
+DYN_ALPHAS_DIR=("0.0001")
 MOMS_DIR=("0.0")
 
 # ------------------------------------------------------------------------------
 # 2. DEFINE PARAMETER GRIDS FOR SILOS (Partition = Silos)
 # ------------------------------------------------------------------------------
 # You can now change these independently of the Dirichlet parameters
-PROX_MUS_SILOS=("0.1")    # e.g., change to "0.01" for Silos
-DYN_ALPHAS_SILOS=("0.001")  # e.g., change to "0.1" for Silos
+PROX_MUS_SILOS=("0.001")    # e.g., change to "0.01" for Silos
+DYN_ALPHAS_SILOS=("0.0001")  # e.g., change to "0.1" for Silos
 MOMS_SILOS=("0.0")          # e.g., change to "0.9" for Silos
 
 # ==============================================================================
@@ -258,7 +259,7 @@ for SEED in "${SEEDS[@]}"; do
             $SPECIFIC_ARGS"
 
             for ALPHA in "${ALPHAS[@]}"; do
-                OUT_DIR="$PROJECT_ROOT/output/main_experiments/baselines_dirichlet/epochs_${EPS}/${SAFE_DATASET_NAME}/${MODEL}${ARG_SUFFIX}/alpha_${ALPHA}/seed_${SEED}"
+                OUT_DIR="$PROJECT_ROOT/output/main_experiments_gpu3/baselines_dirichlet/epochs_${EPS}/${SAFE_DATASET_NAME}/${MODEL}${ARG_SUFFIX}/alpha_${ALPHA}/seed_${SEED}"
 
                 LOG_FILENAME="job${JOB_COUNT}_${SAFE_DATASET_NAME}_${MODEL}${ARG_SUFFIX}_dirichlet_${ALPHA}.log"
                 LOG_FILE="$LOG_STORAGE_DIR/$LOG_FILENAME"
@@ -296,7 +297,7 @@ for SEED in "${SEEDS[@]}"; do
                 --robustness false \
                 $SPECIFIC_ARGS"
 
-                OUT_DIR="$PROJECT_ROOT/output/main_experiments/baselines_silos/epochs_${EPS}/${SAFE_DATASET_NAME}/${MODEL}${ARG_SUFFIX}/seed_${SEED}"
+                OUT_DIR="$PROJECT_ROOT/output/main_experiments_gpu3/baselines_silos/epochs_${EPS}/${SAFE_DATASET_NAME}/${MODEL}${ARG_SUFFIX}/seed_${SEED}"
 
                 LOG_FILENAME="job${JOB_COUNT}_${SAFE_DATASET_NAME}_${MODEL}${ARG_SUFFIX}_silos.log"
                 LOG_FILE="$LOG_STORAGE_DIR/$LOG_FILENAME"

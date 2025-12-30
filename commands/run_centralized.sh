@@ -79,11 +79,12 @@ LR=0.1
 SEEDS=(1 2 3 4 5)
 
 DATASETS=(
-  "cifar"
-  "medmnist:retinamnist"
-  "medmnist:bloodmnist"
-  "fed_camelyon16"
-  "fed_isic2019"
+  # "cifar"
+  # "medmnist:retinamnist"
+  # "medmnist:bloodmnist"
+  "medmnist:pathmnist"
+  # "fed_camelyon16"
+  # "fed_isic2019"
 )
 
 # ==============================================================================
