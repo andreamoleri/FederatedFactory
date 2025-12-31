@@ -85,7 +85,8 @@ def train_diffusion(
         dp_microbatch: int = 8,
         tracker: Optional[ExperimentCostTracker] = None,
         checkpoint_every: int = 0,
-        checkpoint_dir: Optional[Path] = None
+        checkpoint_dir: Optional[Path] = None,
+        lr: float = 1e-3,  # [FIX] Added missing lr parameter
 ) -> Tuple[DiT, int]:
     """
     Train a Diffusion Transformer using the Rectified Flow objective.
@@ -111,13 +112,19 @@ def train_diffusion(
             step in DP mode to manage memory. Defaults to 8.
         tracker (Optional[ExperimentCostTracker], optional): An object to track
             computational costs (FLOPs) and training time. Defaults to None.
+        checkpoint_every (int): Epoch interval for saving checkpoints.
+        checkpoint_dir (Path): Directory to save checkpoints.
+        lr (float): Learning rate for the optimizer.
 
     Returns:
         Tuple[DiT, int]: A tuple containing the trained model and the total number
         of optimizer steps performed.
     """
     model.to(device)
+
+    # [FIX] Now 'lr' refers to the function argument
     opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4, betas=(0.9, 0.99))
+
     hist.setdefault("vae_loss", {})
     hist["vae_loss"][cid] = []  # Maintain key consistency with VAE logging structure
 
