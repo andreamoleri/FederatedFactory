@@ -58,6 +58,7 @@ from models.diffusion import DiT, DiffusionConfig, rectified_flow_sampler
 from utils import sample_grid, grid_from_tensors, decoder_size_mb
 import matplotlib.pyplot as plt
 from jobs.experiment_setup import _export_client_class_distribution
+from models.diffusion import DiT, DiffusionConfig
 
 logger = logging.getLogger(__name__)
 
@@ -455,6 +456,105 @@ def run_generative_training(
     _handle_network_simulation(args, P, tracker, partition_mode, present_classes, client_gen_models)
 
     return gen_models, client_gen_models, client_sample_counts, gen_step_total, gen_start
+
+
+def load_generative_checkpoints(
+        args: Any,
+        device: torch.device,
+        P: Any,
+        train_subsets_dict: Dict[str, Dict[int, Any]],
+        present_classes: List[int],
+        chans: int,
+        img_shape: Tuple[int, int, int],
+        checkpoint_family_epoch: int
+) -> Tuple[List[Optional[Any]], Dict[str, Dict[int, Any]], Dict[str, Dict[int, int]]]:
+    """
+    Loads pre-trained generative models from the checkpoints directory instead of training.
+
+    Directory Structure Expected:
+    checkpoints/{dataset}/{partition}_{alpha}/{client_id}/checkpoint-client-{cid}-epoch-{epoch}.pt
+    """
+    logger.info(f"[GEN-PHASE] Loading checkpoints for Epoch Family: {checkpoint_family_epoch}")
+
+    # 1. Determine Checkpoint Root Path
+    # Structure: checkpoints/cifar10/dirichlet_0.1/
+    partition_str = getattr(args, "partition", "silos")
+    if partition_str == "dirichlet":
+        partition_str = f"dirichlet_{args.alpha}"
+
+    ckpt_root = Path("checkpoints") / args.dataset / partition_str
+
+    if not ckpt_root.exists():
+        raise FileNotFoundError(f"Checkpoint directory not found: {ckpt_root}")
+
+    # 2. Config Setup (Same as training)
+    # We must initialize the model architecture exactly as it was trained
+    dit_config = DiffusionConfig(
+        in_ch=chans,
+        embed_dim=args.dit_embed,
+        depth=args.dit_depth,
+        num_heads=args.dit_heads,
+        patch_size=args.dit_patch,
+        num_classes=0,  # Conditional via separate models per class/client usually, or handling internally
+        img_resolution=img_shape[1]  # Assuming square
+    )
+
+    gen_models = [None] * getattr(args, "num_classes", 10)  # Placeholder for central registry if needed
+    client_gen_models: Dict[str, Dict[int, Any]] = {}
+    client_sample_counts: Dict[str, Dict[int, int]] = {}
+
+    total_loaded = 0
+
+    # 3. Iterate over clients and load
+    # Logic mirrors the "Silos" vs "Dirichlet" iteration in run_generative_training
+
+    # Flatten structure for iteration
+    if getattr(args, "partition", "silos") == "silos":
+        # In Silos, usually 1 client = 1 class.
+        # But based on codebase, train_subsets_dict might be client -> classes.
+        pass  # Logic handled below generically
+
+    for client_name, class_subsets in train_subsets_dict.items():
+        client_gen_models[client_name] = {}
+        client_sample_counts[client_name] = {}
+
+        # In this codebase, we train ONE model per client that handles all classes present,
+        # OR one model per class per client?
+        # Looking at run_generative_training:
+        # It calls train_diffusion per client.
+        # So we expect ONE checkpoint per client containing the model state.
+
+        client_ckpt_dir = ckpt_root / client_name
+        ckpt_file = client_ckpt_dir / f"checkpoint-client-{client_name}-epoch-{checkpoint_family_epoch:04d}.pt"
+
+        if not ckpt_file.exists():
+            logger.warning(f"Checkpoint missing for {client_name} at {ckpt_file}")
+            continue
+
+        logger.info(f"Loading {client_name} from {ckpt_file}")
+
+        # Initialize Model
+        model = DiT(dit_config).to(device)
+        state_dict = torch.load(ckpt_file, map_location=device)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        # Register Model
+        # In run_generative_training, client_gen_models maps {client_name: {class_id: model}}
+        # If the model is conditional or unconditional trained on specific data.
+        # Assuming the standard flow:
+        for class_id, subset in class_subsets.items():
+            client_gen_models[client_name][class_id] = model
+            client_sample_counts[client_name][class_id] = len(subset)
+
+            # Populate global registry if this is the 'primary' holder (mostly for Silos)
+            if gen_models[class_id] is None:
+                gen_models[class_id] = model
+
+        total_loaded += 1
+
+    logger.info(f"[GEN-PHASE] Successfully loaded {total_loaded} client models.")
+    return gen_models, client_gen_models, client_sample_counts
 
 def _handle_network_simulation(args: Any, P: Any, tracker: Any, partition_mode: str, present_classes: List[int], client_gen_models: Dict[str, Any]):
     """

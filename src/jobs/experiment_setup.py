@@ -230,8 +230,7 @@ def setup_experiment_env(args: Any, run_id: int | None) -> Tuple[PathRegistry, s
 
     return P, time_iso
 
-
-def prepare_data(args: Any, device: torch.device) -> Tuple:
+def prepare_data(args: Any, device: torch.device, partition_seed: int | None = None) -> Tuple:
     """
     Load, transform, and partition the dataset for the experiment.
 
@@ -384,6 +383,11 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
     if args.dataset.startswith("emnist") and test_targets_arr.min() != 0:
         test_targets_arr = test_targets_arr - test_targets_arr.min()
 
+    # Determine seed for partitioning
+    # CRITICAL CHANGE: Use partition_seed if provided, else use args.seed
+    effective_partition_seed = partition_seed if partition_seed is not None else args.seed
+    logger.info(f"[DATA] Partitioning using seed: {effective_partition_seed}")
+
     # MEMORY FIX: Limit samples for Generative Metrics (FID/KID)
     max_eval_samples = getattr(args, "eval_samples_per_class", 2000)
 
@@ -391,11 +395,14 @@ def prepare_data(args: Any, device: torch.device) -> Tuple:
         # Logic for Synthetic Federated Partitions (Skew/Dirichlet)
         if partition_mode == "skew":
             client_config = parse_client_config(getattr(args, "client_config", ""))
-            train_subsets_dict, _ = create_skew_partition(base_train_set, client_config, args.seed, num_classes)
+            train_subsets_dict, _ = create_skew_partition(base_train_set, client_config, effective_partition_seed,
+                                                          num_classes)
         else:
             alpha = float(getattr(args, "alpha", 0.5))
             n_clients = int(getattr(args, "num_clients", 10))
-            train_subsets_dict, _ = create_dirichlet_partition(base_train_set, n_clients, alpha, args.seed)
+            # Use effective_partition_seed here
+            train_subsets_dict, _ = create_dirichlet_partition(base_train_set, n_clients, alpha,
+                                                               effective_partition_seed)
 
         present_classes = list(range(num_classes))
 

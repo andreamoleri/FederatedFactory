@@ -117,7 +117,7 @@ def train_diffusion(
         of optimizer steps performed.
     """
     model.to(device)
-    opt = optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-4)
+    opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4, betas=(0.9, 0.99))
     hist.setdefault("vae_loss", {})
     hist["vae_loss"][cid] = []  # Maintain key consistency with VAE logging structure
 

@@ -53,7 +53,7 @@ from models.baselines import FedAvgBaseline, FedProxBaseline, FedDFBaseline, Fed
 from models.vae import Decoder
 from jobs.baseline_runner import run_federated_baseline, subset_to_tensor
 from jobs.experiment_setup import setup_experiment_env, prepare_data
-from jobs.generative_phase import run_generative_training
+from jobs.generative_phase import run_generative_training, load_generative_checkpoints
 from jobs.classifier_phase import (
     run_classifier_training,
     ensemble_accuracy
@@ -104,20 +104,23 @@ def save_predictions_artifact(y_true: np.ndarray, y_pred: np.ndarray, y_probs: n
 #  MAIN EXPERIMENT RUNNER
 # ==============================================================================
 
-def run_experiment(
-    args: Any,
-    run_id: int | None = None,
-    tracker: ExperimentCostTracker | None = None
-):
-    """
-    Executes a single experimental run based on the provided configuration.
-    """
-    set_seed(args.seed)
+def run_experiment(args: Any, run_id: int | None = None, tracker: ExperimentCostTracker | None = None):
+    set_seed(args.seed)  # Sets seed {1..5} for Classifier initialization and Sampling
 
-    # 1. Setup Environment and Data Loading
+    # 1. Setup Environment
     P, time_iso = setup_experiment_env(args, run_id)
 
-    prepared_data = prepare_data(args, torch.device("cpu"))
+    # 2. Prepare Data
+    # CRITICAL: If loading checkpoints, we MUST use the seed they were created with (42)
+    # to ensure the data partitions match the trained models.
+    # If standard training, we use the experiment seed.
+    if args.checkpoint_epoch_family is not None:
+        part_seed = 42
+        logger.info(f"[EXPERIMENT] Using FIXED Partition Seed 42 to align with loaded checkpoints.")
+    else:
+        part_seed = args.seed
+
+    prepared_data = prepare_data(args, torch.device("cpu"), partition_seed=part_seed)
 
     (base_train_set, test_set, tfm, num_classes, img_shape, chans,
      train_subsets_dict, train_subsets, present_classes,
@@ -210,34 +213,28 @@ def run_experiment(
         perc_loss = VGGPerceptualLoss().to(device) if (chans == 3 and not bool(args.grayscale)) else None
         hist = {"vae_loss": {}}
 
-        gen_models, client_gen_models, client_sample_counts, gen_step_total, gen_start = run_generative_training(
-            args, device, P, train_subsets_dict, train_subsets, present_classes, num_classes,
-            chans, img_shape, tracker, hist, perc_loss
-        )
+        # BRANCHING LOGIC
+        if args.checkpoint_epoch_family is not None:
+            # LOAD MODE
+            gen_step_total = 0
+            gen_start = time.perf_counter()  # Minimal time
+            gen_models, client_gen_models, client_sample_counts = load_generative_checkpoints(
+                args, device, P, train_subsets_dict, present_classes, chans, img_shape, args.checkpoint_epoch_family
+            )
+            # Populate sample counts since we skipped training return
+            for cname, subsets in train_subsets_dict.items():
+                if cname not in client_sample_counts: client_sample_counts[cname] = {}
+                for cid, sub in subsets.items():
+                    client_sample_counts[cname][cid] = len(sub)
+        else:
+            # TRAIN MODE
+            gen_models, client_gen_models, client_sample_counts, gen_step_total, gen_start = run_generative_training(
+                args, device, P, train_subsets_dict, train_subsets, present_classes, num_classes,
+                chans, img_shape, tracker, hist, perc_loss
+            )
+
         gen_time = time.perf_counter() - gen_start
         metrics["vae_steps"] = gen_step_total
-
-        # 4. Classifier Phase
-        # UPDATED: Capture synthetic_cache from return values
-        clf_steps, synth_total, clf_start, y_true, y_pred, y_probs, trained_clfs, single_clf, synthetic_cache = run_classifier_training(
-            args, device, P, train_subsets_dict, train_subsets, present_classes, num_classes,
-            chans, img_shape, tracker, hist,
-            gen_models, client_gen_models, client_sample_counts, reserved_test_ld
-        )
-        clf_time = time.perf_counter() - clf_start
-
-        # 5. Metrics & Evaluation
-        acc = ensemble_accuracy(y_true, y_pred)
-
-        # UPDATED: Pass synthetic_cache as pre_generated_data
-        gen_metrics = run_evaluation(
-            args, device, P, present_classes, reserved_test_imgs_list,
-            gen_models, client_gen_models, client_sample_counts, img_shape,
-            trained_clfs, single_clf, y_true, y_pred,
-            train_subsets_dict, train_subsets, base_train_set, chans,
-            pre_generated_data=synthetic_cache  # <--- NEW ARGUMENT
-        )
-        metrics["gen_metrics"] = gen_metrics
 
         if args.model == "vae" and len(gen_models) > 0 and gen_models[0] is not None:
             from jobs.generative_phase import _module_size_mb

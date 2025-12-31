@@ -89,7 +89,7 @@ from metrics.costs import ExperimentCostTracker
 # --------------------------- CORE IMPORTS -----------------------------
 # The fundamental import connecting main to the new experiment runner
 from jobs.experiment_runner import run_experiment
-
+from jobs.generative_phase import load_generative_checkpoints
 
 def _write_environment(root: Path):
     """
@@ -611,7 +611,8 @@ def main():
     cli.add_argument("--classes", type=str, default="", help="(NICO++) Comma-separated classes")
     cli.add_argument("--save-datasets", action="store_true")
     cli.add_argument("--robustness", type=str, default="false", help="Enable Gaussian noise (true/false)")
-
+    cli.add_argument("--checkpoint-epoch-family", type=int, default=None,
+                     help="If set, skip generative training and load checkpoints from this epoch (e.g., 500).")
     cli.add_argument("--checkpoint-every", type=int, default=0, help="Save generative model checkpoints every N epochs (0 = disabled)")
 
     args_raw, _unknown = cli.parse_known_args()
@@ -724,6 +725,7 @@ def main():
                 num_clients=args_raw.num_clients,
                 carbon_intensity_kg_per_kwh=args_raw.carbon_intensity_kg_per_kwh,
                 checkpoint_every=args_raw.checkpoint_every,
+                checkpoint_epoch_family=args_raw.checkpoint_epoch_family,
             )
 
             if _is_experiment_done(args_raw.out_dir, ns):
