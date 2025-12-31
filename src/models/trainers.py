@@ -78,7 +78,7 @@ def train_diffusion(
         device: torch.device,
         epochs: int,
         hist: Dict,
-        cid: int | str,  # Updated type hint to allow 'server'
+        cid: int | str,
         dp: bool = False,
         dp_clip: float = 1.0,
         dp_noise_mult: float = 1.1,
@@ -86,62 +86,32 @@ def train_diffusion(
         tracker: Optional[ExperimentCostTracker] = None,
         checkpoint_every: int = 0,
         checkpoint_dir: Optional[Path] = None,
-        lr: float = 1e-3,  # [FIX] Added missing lr parameter
+        lr: float = 1e-3,
+        grad_accum_steps: int = 1,  # [FIX] Added accumulation steps argument
 ) -> Tuple[DiT, int]:
     """
     Train a Diffusion Transformer using the Rectified Flow objective.
-
-    This function handles both standard training and Differentially Private (DP) training.
-    In the DP regime, it performs manual microbatching to manage memory usage while
-    computing per-sample gradients, applies global norm clipping, and injects Gaussian noise.
-
-    Args:
-        model (DiT): The Diffusion Transformer model to be trained.
-        loader (DataLoader): The iterable data loader containing training samples.
-        device (torch.device): The computational device (CPU or CUDA) to use.
-        epochs (int): The number of complete passes through the dataset.
-        hist (Dict): A dictionary to store training history and loss metrics.
-        cid (int): The client identifier, used for logging and history keys.
-        dp (bool, optional): If True, enables Differential Privacy mechanisms (DP-SGD).
-            Defaults to False.
-        dp_clip (float, optional): The maximum L2 norm threshold for gradient clipping
-            in DP mode. Defaults to 1.0.
-        dp_noise_mult (float, optional): The noise multiplier for the Gaussian mechanism
-            relative to the clipping threshold. Defaults to 1.1.
-        dp_microbatch (int, optional): The number of samples processed per microbatch
-            step in DP mode to manage memory. Defaults to 8.
-        tracker (Optional[ExperimentCostTracker], optional): An object to track
-            computational costs (FLOPs) and training time. Defaults to None.
-        checkpoint_every (int): Epoch interval for saving checkpoints.
-        checkpoint_dir (Path): Directory to save checkpoints.
-        lr (float): Learning rate for the optimizer.
-
-    Returns:
-        Tuple[DiT, int]: A tuple containing the trained model and the total number
-        of optimizer steps performed.
+    Supports Gradient Accumulation for large effective batch sizes.
     """
     model.to(device)
 
-    # [FIX] Now 'lr' refers to the function argument
+    # [FIX] Using the passed learning rate
     opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4, betas=(0.9, 0.99))
 
     hist.setdefault("vae_loss", {})
-    hist["vae_loss"][cid] = []  # Maintain key consistency with VAE logging structure
+    hist["vae_loss"][cid] = []
 
     clip_C = float(dp_clip)
     microbatch = max(1, int(dp_microbatch))
     noise_std = float(dp_noise_mult) * clip_C
     step_count = 0
 
-    # Initialize GradScaler only for the non-DP path to enable Automatic Mixed Precision (AMP).
-    # DP-SGD logic typically handles precision manually or requires specific scaler handling.
     scaler = amp.GradScaler(
         "cuda",
         enabled=(not dp) and torch.cuda.is_available()
     )
 
-    # Extract a representative mini-batch for FLOPs profiling.
-    # This ensures the tracker knows the input tensor shape for cost estimation.
+    # Profiling logic
     rep_batch = None
     try:
         for xb, _ in loader:
@@ -163,88 +133,89 @@ def train_diffusion(
         model.train()
         total_loss_sum = 0.0
 
-        for x, _y in loader:
+        # [FIX] Zero gradients at start of epoch
+        opt.zero_grad(set_to_none=True)
+
+        for i, (x, _y) in enumerate(loader):
             x = x.to(device, non_blocking=True)
 
             if not dp:
-                # ---------- Standard (Non-Private) Training Path ----------
-                # Uses standard backpropagation with Automatic Mixed Precision (AMP)
-                # for memory efficiency and speed on compatible hardware.
-                opt.zero_grad(set_to_none=True)
-
+                # ---------- Standard Path with Gradient Accumulation ----------
                 amp_dtype = (
                     torch.bfloat16 if torch.cuda.is_available() else torch.float32
                 )
+
+                # 1. Forward Pass
                 with amp.autocast(
                         device_type="cuda" if torch.cuda.is_available() else "cpu",
                         dtype=amp_dtype,
                 ):
                     loss = rectified_flow_loss(model, x)
+                    # [FIX] Normalize loss for accumulation
+                    loss = loss / grad_accum_steps
 
+                # 2. Backward Pass (Accumulate Gradients)
                 if scaler.is_enabled():
                     scaler.scale(loss).backward()
-                    nn.utils.clip_grad_norm_(model.parameters(), 10.0)
-                    scaler.step(opt)
-                    scaler.update()
                 else:
                     loss.backward()
-                    nn.utils.clip_grad_norm_(model.parameters(), 10.0)
-                    opt.step()
 
-                total_loss_sum += loss.item() * x.size(0)
-                step_count += 1
+                # Track un-normalized loss for logging
+                total_loss_sum += loss.item() * grad_accum_steps * x.size(0)
 
-                if tracker is not None:
-                    tracker.count_train_step(1)
+                # 3. Optimizer Step (Only every N steps)
+                if (i + 1) % grad_accum_steps == 0:
+                    if scaler.is_enabled():
+                        scaler.unscale_(opt)
+                        nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+                        scaler.step(opt)
+                        scaler.update()
+                    else:
+                        nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+                        opt.step()
+
+                    # Reset gradients
+                    opt.zero_grad(set_to_none=True)
+                    step_count += 1
+
+                    if tracker is not None:
+                        tracker.count_train_step(1)
 
             else:
-                # ---------- Differentially Private (DP-SGD) Path ----------
-                # Implements manual microbatching to calculate per-sample gradients,
-                # clip them to a fixed norm, and aggregate them before adding noise.
-                bs = x.size(0)
-                opt.zero_grad(set_to_none=True)
+                # ---------- DP Path (Accumulation usually managed via microbatches) ----------
+                # For simplicity, if DP is enabled, we assume grad_accum_steps=1 or
+                # handle it via the existing microbatch loop structure.
 
-                # Initialize gradient accumulators for manual aggregation.
+                bs = x.size(0)
+                # Note: opt.zero_grad is handled per batch in the DP loop below logic
+                # For safety in this hybrid function, we ensure it starts clean
+                if i == 0: opt.zero_grad(set_to_none=True)
+
+                # ... (Existing DP Microbatch Logic) ...
+                # Initialize gradient accumulators
                 for p in model.parameters():
                     if p.requires_grad:
-                        p.grad_accum = torch.zeros_like(
-                            p, memory_format=torch.preserve_format
-                        )
+                        p.grad_accum = torch.zeros_like(p, memory_format=torch.preserve_format)
 
                 microbatch_count = 0
-                amp_dtype = (
-                    torch.bfloat16 if torch.cuda.is_available() else torch.float32
-                )
+                amp_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
 
-                # Process the batch in smaller microbatches.
                 for mb_start in range(0, bs, microbatch):
                     x_mb = x[mb_start: mb_start + microbatch]
-
-                    with amp.autocast(
-                            device_type="cuda" if torch.cuda.is_available() else "cpu",
-                            dtype=amp_dtype,
-                    ):
-                        # Normalize by microbatch size so gradients represent the mean.
+                    with amp.autocast(device_type="cuda" if torch.cuda.is_available() else "cpu", dtype=amp_dtype):
                         loss_mb = rectified_flow_loss(model, x_mb) / x_mb.size(0)
-
                     loss_mb.backward()
 
-                    # Calculate the global L2 norm of gradients for this microbatch.
+                    # Manual Clipping Logic
                     total_norm_sq = 0.0
                     for p in model.parameters():
                         if p.grad is not None:
-                            total_norm_sq += float(
-                                p.grad.data.norm(2).pow(2)
-                            )
+                            total_norm_sq += float(p.grad.data.norm(2).pow(2))
                     total_norm = math.sqrt(total_norm_sq)
-
-                    # Determine the clipping coefficient (at most 1.0).
                     clip_coef = min(1.0, clip_C / (total_norm + 1e-6))
 
-                    # Apply clipping and accumulate the result into grad_accum.
                     for p in model.parameters():
-                        if p.grad is None:
-                            continue
+                        if p.grad is None: continue
                         p.grad.data.mul_(clip_coef)
                         p.grad_accum.add_(p.grad.data)
                         p.grad.detach_()
@@ -253,26 +224,37 @@ def train_diffusion(
                     microbatch_count += 1
                     total_loss_sum += loss_mb.item() * x_mb.size(0)
 
-                # Add Gaussian noise, average over microbatches, and perform the optimizer step.
+                # Add Noise & Step
                 for p in model.parameters():
-                    if not hasattr(p, "grad_accum"):
-                        continue
+                    if not hasattr(p, "grad_accum"): continue
                     grad = p.grad_accum
                     _dp_add_noise_(grad, noise_std)
                     grad.div_(microbatch_count)
                     p.grad = grad
                     del p.grad_accum
 
-                # Additional safety clipping for numerical stability (post-noise).
                 nn.utils.clip_grad_norm_(model.parameters(), 10.0)
                 opt.step()
-
+                opt.zero_grad(set_to_none=True)  # Reset for next batch immediately in DP mode
                 step_count += 1
-                if tracker is not None:
-                    tracker.count_train_step(1)
+                if tracker is not None: tracker.count_train_step(1)
+
+        # [FIX] Handle remaining gradients if loader length is not divisible by accumulation steps
+        if not dp and (len(loader) % grad_accum_steps != 0):
+            if scaler.is_enabled():
+                scaler.unscale_(opt)
+                nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+                scaler.step(opt)
+                scaler.update()
+            else:
+                nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+                opt.step()
+            opt.zero_grad(set_to_none=True)
+            step_count += 1
 
         avg_loss = total_loss_sum / len(loader.dataset)
         hist["vae_loss"][cid].append(avg_loss)
+
         tag = "DP" if dp else "STD"
         logger.info(
             logmsg.VAE_EPOCH.format(
@@ -284,15 +266,10 @@ def train_diffusion(
             )
         )
 
-        # === CHECKPOINT LOGIC ===
         if checkpoint_every > 0 and (ep + 1) % checkpoint_every == 0 and checkpoint_dir is not None:
-            # EDM2-style naming convention adapted for Epochs
-            # Format: checkpoint-client-{cid}-epoch-{epoch}.pt
             ckpt_name = f"checkpoint-client-{cid}-epoch-{ep + 1:04d}.pt"
             ckpt_path = checkpoint_dir / ckpt_name
-
             try:
-                # Save state dictionary (compatible with DiT wrapper)
                 torch.save(model.state_dict(), ckpt_path)
                 logger.info(f"[CHECKPOINT] Saved model to {ckpt_path}")
             except Exception as e:

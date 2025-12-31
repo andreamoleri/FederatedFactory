@@ -63,16 +63,18 @@ def run_training_campaign():
     # CONFIGURATION
     # ==============================================================================
     SEED = 0
-    EPOCHS = 1000
+    EPOCHS = 2000
     CHECKPOINT_EVERY = 100
 
     hyperparams = {
         "dit_embed": 128,
-        "dit_channel_mult": [1, 2, 2, 2],  # Default for 32x32 and 224x224
+        "dit_channel_mult": [1, 2, 2, 2],
         "dit_dropout": 0.30,
-        "batch_size": 128,
+        # [FIX] BATCH SIZE PHYSICS
+        "batch_size": 128,         # Physical Limit (VRAM constrained)
+        "target_batch_size": 4096, # Mathematical Requirement (EDM2 Convergence)
         "dp": False,
-        "lr": 1e-3,
+        "lr": 0.01,                # [FIX] Increased LR for larger effective batch size
         "num_clients": 10
     }
 
@@ -106,8 +108,6 @@ def run_training_campaign():
 
     # 2. Data Prep
     try:
-        # [FIX] Updated unpacking to retrieve `train_subsets` (list) and `present_classes`
-        # These are required to handle Silos partitioning correctly.
         (base_train_set, _, _, num_classes, img_shape, chans,
          train_subsets_dict, train_subsets, present_classes, _, _, _) = prepare_data(args, torch.device("cpu"), partition_seed=SEED)
     except Exception as e:
@@ -116,43 +116,38 @@ def run_training_campaign():
         logger.error(traceback.format_exc())
         sys.exit(1)
 
-    # --- [FIX] HANDLE SILOS PARTITIONING ---
-    # Silos returns an empty `train_subsets_dict` but a populated `train_subsets` list.
-    # We must convert this list into the dictionary format expected by the training loop.
+    # --- HANDLE SILOS PARTITIONING ---
     if not train_subsets_dict:
         if train_subsets and present_classes:
             logger.info("[PARTITION] Silos mode detected (List-based). Converting to Client Dict...")
-            # Map each class-specific subset to a distinct client.
-            # Example: Class 0 -> client_0, Class 1 -> client_1
             for cls_id, subset in zip(present_classes, train_subsets):
                 client_name = f"client_{cls_id}"
                 train_subsets_dict[client_name] = {cls_id: subset}
         else:
             logger.error(f"❌ CRITICAL ERROR: Both 'train_subsets_dict' and 'train_subsets' list are empty.")
-            logger.error(f"   The partition '{args.partition}' returned 0 clients/data for '{args.dataset}'.")
             sys.exit(1)
 
-    # Verify we have data to train on
     total_samples_check = sum(len(ds) for sub in train_subsets_dict.values() for ds in sub.values())
     logger.info(f"✅ Data Loaded. Found {len(train_subsets_dict)} clients with {total_samples_check} total samples.")
-    # ---------------------------------------------
 
-    # [FIX 3] Dynamic Architecture Adjustment for 28x28 Resolution
     if img_shape[1] == 28:
-        logger.info("[CONFIG] Detected 28x28 resolution. Adjusting channel_mult to [1, 2, 2] to prevent size mismatch.")
+        logger.info("[CONFIG] Detected 28x28 resolution. Adjusting channel_mult to [1, 2, 2].")
         hyperparams["dit_channel_mult"] = [1, 2, 2]
 
-    # Build the Domain-Aware Augmentation Policy
+    # [FIX] GRADIENT ACCUMULATION CALCULATION
+    # Calculate how many physical batches sum up to one target batch
+    grad_accum_steps = max(1, hyperparams["target_batch_size"] // hyperparams["batch_size"])
+    effective_batch = hyperparams["batch_size"] * grad_accum_steps
+    logger.info(f"⚡ [PHYSICS] Target Batch: {hyperparams['target_batch_size']} | Physical: {hyperparams['batch_size']}")
+    logger.info(f"⚡ [PHYSICS] Accumulation Steps: {grad_accum_steps} (Effective: {effective_batch})")
+
     logger.info(f"[AUGMENTATION] Building Stage I policy for {args.dataset}")
     train_transform = build_transform(args.dataset, train=True, robustness=True)
 
     # 3. Define Checkpoint Output Root
     part_folder = f"{args.partition}_{args.alpha}" if args.alpha is not None else args.partition
-
-    # Sanitize dataset name for folder path
     safe_dataset_name = args.dataset.replace(":", "_")
     save_root = Path("checkpoints") / safe_dataset_name / part_folder
-
     save_root.mkdir(parents=True, exist_ok=True)
 
     # 4. Initialize and Train
@@ -190,7 +185,8 @@ def run_training_campaign():
                 batch_size=hyperparams["batch_size"],
                 shuffle=True,
                 num_workers=4,
-                pin_memory=True
+                pin_memory=True,
+                drop_last=True # [FIX] Important for consistent batch stats in EDM2
             )
 
             model = DiT(dit_cfg).to(device)
@@ -207,7 +203,8 @@ def run_training_campaign():
                 tracker=None,
                 checkpoint_every=CHECKPOINT_EVERY,
                 checkpoint_dir=class_dir,
-                lr=hyperparams["lr"]
+                lr=hyperparams["lr"],
+                grad_accum_steps=grad_accum_steps  # [FIX] Passing accumulation steps
             )
 
             del model
@@ -215,7 +212,7 @@ def run_training_campaign():
             torch.cuda.empty_cache()
 
     if not training_performed:
-        logger.error("❌ ERROR: Script finished but no training loops were entered (all datasets empty?).")
+        logger.error("❌ ERROR: Script finished but no training loops were entered.")
         sys.exit(1)
 
     logger.info("✅ Training Campaign Finished Successfully.")

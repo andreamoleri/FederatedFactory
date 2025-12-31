@@ -317,7 +317,7 @@ def build_transform(dataset_name: str, train: bool = False, robustness: bool = F
     effective_channels = channels
 
     if "cifar" in dataset_name.lower():
-        norm = transforms.Normalize(CIFAR_MEAN, CIFAR_STD)
+        norm = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     elif strategy == "natural_high_res" and effective_channels == 3:
         norm = transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
     elif effective_channels == 3:
