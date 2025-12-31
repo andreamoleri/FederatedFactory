@@ -71,6 +71,28 @@ torch.backends.cudnn.allow_tf32 = True
 
 logger = get_logger(__name__)
 
+import copy
+from typing import Dict, Tuple, Optional
+from pathlib import Path
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch import amp
+from torch.utils.data import DataLoader
+
+# Internal imports based on your structure
+from models.diffusion import DiT, rectified_flow_loss
+from metrics.costs import ExperimentCostTracker
+from utils import _dp_add_noise_
+from logs.logger import get_logger
+from logs import messages as logmsg
+
+# Import EDM2 EMA implementation
+# Ensure src/modules/EDM2 is in your PYTHONPATH or adjusted in imports
+from training.phema import PowerFunctionEMA
+
+logger = get_logger(__name__)
+
 
 def train_diffusion(
         model: DiT,
@@ -87,24 +109,32 @@ def train_diffusion(
         checkpoint_every: int = 0,
         checkpoint_dir: Optional[Path] = None,
         lr: float = 1e-3,
-        grad_accum_steps: int = 1,  # [FIX] Added accumulation steps argument
+        grad_accum_steps: int = 1,
 ) -> Tuple[DiT, int]:
     """
     Train a Diffusion Transformer using the Rectified Flow objective.
-    Supports Gradient Accumulation for large effective batch sizes.
+    Now includes PowerFunctionEMA for stable, high-quality generation.
     """
     model.to(device)
 
-    # [FIX] Using the passed learning rate
-    opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4, betas=(0.9, 0.99))
+    # [CHANGE 1] Switch to Adam without weight decay.
+    # EDM2 architectures handle weight norms internally; decay often hurts convergence.
+    opt = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.99), eps=1e-8)
+
+    # [CHANGE 2] Initialize EMA
+    # std=0.05 is a standard robust setting for EDM2 post-hoc reconstruction compatibility
+    ema = PowerFunctionEMA(model, stds=[0.05])
 
     hist.setdefault("vae_loss", {})
     hist["vae_loss"][cid] = []
 
+    # DP Settings
     clip_C = float(dp_clip)
     microbatch = max(1, int(dp_microbatch))
     noise_std = float(dp_noise_mult) * clip_C
+
     step_count = 0
+    cur_nimg = 0  # Track total images seen for EMA beta calculation
 
     scaler = amp.GradScaler(
         "cuda",
@@ -133,17 +163,15 @@ def train_diffusion(
         model.train()
         total_loss_sum = 0.0
 
-        # [FIX] Zero gradients at start of epoch
         opt.zero_grad(set_to_none=True)
 
         for i, (x, _y) in enumerate(loader):
             x = x.to(device, non_blocking=True)
+            physical_batch_size = x.size(0)
 
             if not dp:
-                # ---------- Standard Path with Gradient Accumulation ----------
-                amp_dtype = (
-                    torch.bfloat16 if torch.cuda.is_available() else torch.float32
-                )
+                # ---------- Standard Path ----------
+                amp_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
 
                 # 1. Forward Pass
                 with amp.autocast(
@@ -151,19 +179,17 @@ def train_diffusion(
                         dtype=amp_dtype,
                 ):
                     loss = rectified_flow_loss(model, x)
-                    # [FIX] Normalize loss for accumulation
                     loss = loss / grad_accum_steps
 
-                # 2. Backward Pass (Accumulate Gradients)
+                # 2. Backward
                 if scaler.is_enabled():
                     scaler.scale(loss).backward()
                 else:
                     loss.backward()
 
-                # Track un-normalized loss for logging
-                total_loss_sum += loss.item() * grad_accum_steps * x.size(0)
+                total_loss_sum += loss.item() * grad_accum_steps * physical_batch_size
 
-                # 3. Optimizer Step (Only every N steps)
+                # 3. Optimizer Step (Accumulated)
                 if (i + 1) % grad_accum_steps == 0:
                     if scaler.is_enabled():
                         scaler.unscale_(opt)
@@ -174,7 +200,15 @@ def train_diffusion(
                         nn.utils.clip_grad_norm_(model.parameters(), 10.0)
                         opt.step()
 
-                    # Reset gradients
+                    # [CHANGE 3] Update EMA
+                    # Calculate effective batch size (Physical * Accumulation Steps)
+                    # Note: We assume the last batch might be smaller but ignore that edge case for EMA beta smoothing
+                    effective_batch = physical_batch_size * grad_accum_steps
+                    cur_nimg += effective_batch
+
+                    # Update shadow weights
+                    ema.update(cur_nimg=cur_nimg, batch_size=effective_batch)
+
                     opt.zero_grad(set_to_none=True)
                     step_count += 1
 
@@ -182,17 +216,11 @@ def train_diffusion(
                         tracker.count_train_step(1)
 
             else:
-                # ---------- DP Path (Accumulation usually managed via microbatches) ----------
-                # For simplicity, if DP is enabled, we assume grad_accum_steps=1 or
-                # handle it via the existing microbatch loop structure.
-
-                bs = x.size(0)
-                # Note: opt.zero_grad is handled per batch in the DP loop below logic
-                # For safety in this hybrid function, we ensure it starts clean
+                # ---------- DP Path ----------
+                # Assuming grad_accum_steps is handled via microbatching logic internally here
                 if i == 0: opt.zero_grad(set_to_none=True)
 
-                # ... (Existing DP Microbatch Logic) ...
-                # Initialize gradient accumulators
+                # Initialize accumulators
                 for p in model.parameters():
                     if p.requires_grad:
                         p.grad_accum = torch.zeros_like(p, memory_format=torch.preserve_format)
@@ -200,13 +228,13 @@ def train_diffusion(
                 microbatch_count = 0
                 amp_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
 
-                for mb_start in range(0, bs, microbatch):
+                for mb_start in range(0, physical_batch_size, microbatch):
                     x_mb = x[mb_start: mb_start + microbatch]
                     with amp.autocast(device_type="cuda" if torch.cuda.is_available() else "cpu", dtype=amp_dtype):
                         loss_mb = rectified_flow_loss(model, x_mb) / x_mb.size(0)
                     loss_mb.backward()
 
-                    # Manual Clipping Logic
+                    # Clip
                     total_norm_sq = 0.0
                     for p in model.parameters():
                         if p.grad is not None:
@@ -224,7 +252,7 @@ def train_diffusion(
                     microbatch_count += 1
                     total_loss_sum += loss_mb.item() * x_mb.size(0)
 
-                # Add Noise & Step
+                # Add Noise
                 for p in model.parameters():
                     if not hasattr(p, "grad_accum"): continue
                     grad = p.grad_accum
@@ -235,11 +263,16 @@ def train_diffusion(
 
                 nn.utils.clip_grad_norm_(model.parameters(), 10.0)
                 opt.step()
-                opt.zero_grad(set_to_none=True)  # Reset for next batch immediately in DP mode
+
+                # [CHANGE 3] Update EMA for DP
+                cur_nimg += physical_batch_size
+                ema.update(cur_nimg=cur_nimg, batch_size=physical_batch_size)
+
+                opt.zero_grad(set_to_none=True)
                 step_count += 1
                 if tracker is not None: tracker.count_train_step(1)
 
-        # [FIX] Handle remaining gradients if loader length is not divisible by accumulation steps
+        # Handle remaining gradients (Non-DP only)
         if not dp and (len(loader) % grad_accum_steps != 0):
             if scaler.is_enabled():
                 scaler.unscale_(opt)
@@ -249,9 +282,16 @@ def train_diffusion(
             else:
                 nn.utils.clip_grad_norm_(model.parameters(), 10.0)
                 opt.step()
+
+            # Update EMA for the remainder
+            remaining_batch = (len(loader) % grad_accum_steps) * loader.batch_size
+            cur_nimg += remaining_batch
+            ema.update(cur_nimg=cur_nimg, batch_size=remaining_batch)
+
             opt.zero_grad(set_to_none=True)
             step_count += 1
 
+        # Logging
         avg_loss = total_loss_sum / len(loader.dataset)
         hist["vae_loss"][cid].append(avg_loss)
 
@@ -266,20 +306,32 @@ def train_diffusion(
             )
         )
 
+        # [CHANGE 4] Checkpointing
         if checkpoint_every > 0 and (ep + 1) % checkpoint_every == 0 and checkpoint_dir is not None:
             ckpt_name = f"checkpoint-client-{cid}-epoch-{ep + 1:04d}.pt"
             ckpt_path = checkpoint_dir / ckpt_name
             try:
-                torch.save(model.state_dict(), ckpt_path)
-                logger.info(f"[CHECKPOINT] Saved model to {ckpt_path}")
+                # Retrieve the EMA model (smoothed weights)
+                # ema.get() returns list of (model, suffix). We take the first one.
+                ema_model_list = ema.get()
+                best_ema_model = ema_model_list[0][0]
+
+                torch.save(best_ema_model.state_dict(), ckpt_path)
+                logger.info(f"[CHECKPOINT] Saved EMA model (smooth) to {ckpt_path}")
             except Exception as e:
                 logger.warning(f"[CHECKPOINT] Failed to save checkpoint: {e}")
 
     model.cpu()
+
+    # [CHANGE 5] Return EMA Model
+    # We return the smoothed EMA model for evaluation/inference,
+    # as the raw model 'model' is likely too noisy.
+    ema_model_final = ema.get()[0][0].cpu()
+
     if tracker is not None:
         tracker.end_phase(f"train_c{cid}")
 
-    return model, step_count
+    return ema_model_final, step_count
 
 
 def train_vae(

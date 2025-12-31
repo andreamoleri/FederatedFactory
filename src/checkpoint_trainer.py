@@ -63,8 +63,8 @@ def run_training_campaign():
     # CONFIGURATION
     # ==============================================================================
     SEED = 0
-    EPOCHS = 2000
-    CHECKPOINT_EVERY = 100
+    EPOCHS = 10000
+    CHECKPOINT_EVERY = 500
 
     hyperparams = {
         "dit_embed": 128,
