@@ -65,7 +65,7 @@ TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
 
 # Calculate Counts
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
-JOBS_PER_GPU=2
+JOBS_PER_GPU=1
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
 
 echo ">>> 📊 Configuration: Using $NUM_GPUS GPUs ($TARGET_GPU_LIST)"

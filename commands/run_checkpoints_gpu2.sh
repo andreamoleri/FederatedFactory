@@ -26,6 +26,11 @@ fi
 
 TRAINER_PY="$PROJECT_ROOT/src/checkpoint_trainer.py"
 PYTHON_EXEC="$(which python)"
+# Find torchrun relative to python executable or in path
+TORCHRUN_EXEC="$(dirname "$PYTHON_EXEC")/torchrun"
+if [[ ! -f "$TORCHRUN_EXEC" ]]; then
+    TORCHRUN_EXEC="torchrun"
+fi
 
 # ==============================================================================
 # GPU & UTILIZATION CONFIGURATION
@@ -35,13 +40,18 @@ export PYTHONUNBUFFERED=1
 export MAX_WORKERS=0
 export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=4
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
 export CUDA_MODULE_LOADING=LAZY
+
+# Force IPv4 to stop the socket address errors
+export GLOO_SOCKET_IFNAME=lo
+export NCCL_SOCKET_IFNAME=lo
+export TP_SOCKET_IFNAME=lo
 
 # ------------------------------------------------------------------------------
 # [CONFIG] SELECT YOUR GPUS HERE
 # ------------------------------------------------------------------------------
-# Option A: Set specific GPUs, e.g., "0 1"
+# Option A: Set specific GPUs, e.g., "0,1" (COMMA SEPARATED)
 # Option B: Leave empty "" to auto-detect.
 MANUAL_GPU_IDS=""
 
@@ -50,34 +60,34 @@ MANUAL_GPU_IDS=""
 # ------------------------------------------------------------------------------
 if [[ -n "$MANUAL_GPU_IDS" ]]; then
     echo ">>> ⚙️  User manually selected GPUs: $MANUAL_GPU_IDS"
-    TARGET_GPU_LIST="$MANUAL_GPU_IDS"
+    # Ensure comma separation for CUDA_VISIBLE_DEVICES
+    COMMA_GPU_LIST="$MANUAL_GPU_IDS"
 else
     echo ">>> 🤖 Auto-detecting all available GPUs..."
-    TARGET_GPU_LIST=$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ' ')
-    if [[ -z "$TARGET_GPU_LIST" ]]; then
+    # Get list as comma separated (0,1)
+    COMMA_GPU_LIST=$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ',' | sed 's/,$//')
+
+    if [[ -z "$COMMA_GPU_LIST" ]]; then
         echo ">>> ⚠️  Auto-detect failed, defaulting to GPU 0"
-        TARGET_GPU_LIST="0"
+        COMMA_GPU_LIST="0"
     fi
 fi
 
-# Clean up whitespace
-TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
+# Count GPUs by counting commas + 1
+NUM_GPUS=$(echo "$COMMA_GPU_LIST" | tr -cd ',' | wc -c)
+NUM_GPUS=$((NUM_GPUS + 1))
 
-# Calculate Counts
-NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
-JOBS_PER_GPU=1
-TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
+# --- CRITICAL CHANGE FOR DDP ---
+# We export visibility GLOBALLY so torchrun sees all devices.
+export CUDA_VISIBLE_DEVICES="$COMMA_GPU_LIST"
 
-echo ">>> 📊 Configuration: Using $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
-echo ">>> 🚀 Concurrency:   $JOBS_PER_GPU jobs/GPU = $TOTAL_CONCURRENCY total parallel jobs"
-
-export NUM_GPUS
-export TARGET_GPU_LIST
+echo ">>> 📊 Configuration: DDP Enabled on $NUM_GPUS GPUs ($COMMA_GPU_LIST)"
+echo ">>> 🚀 Strategy:      Running 1 Job at a time, utilizing ALL GPUs."
 
 # ==============================================================================
 # ORGANIZATION
 # ==============================================================================
-LOG_WORK_DIR="$SCRIPT_DIR/run_checkpoints_work_gpu2"
+LOG_WORK_DIR="$SCRIPT_DIR/run_checkpoints_work_ddp"
 LOG_STORAGE_DIR="$LOG_WORK_DIR/logs"
 
 mkdir -p "$LOG_STORAGE_DIR"
@@ -116,42 +126,27 @@ DATASETS=(
 )
 
 # ==============================================================================
-# GENERATE COMMANDS
+# GENERATE COMMANDS (MODIFIED FOR TORCHRUN)
 # ==============================================================================
 echo ">>> GENERATING CHECKPOINT COMMANDS..."
 
 JOB_COUNT=1
 
+# Generate a random port to prevent collisions if script is restarted quickly
+MASTER_PORT=$(shuf -i 29500-29999 -n 1)
+
 for DS in "${DATASETS[@]}"; do
 
-    # Sanitization for log filenames
     SAFE_DS="${DS//:/_}"
 
-    : '
     # --------------------------------------------------------------------------
-    # 1. Dirichlet Commands (Alpha = 0.1)
-    # --------------------------------------------------------------------------
-    LOG_FILENAME="job${JOB_COUNT}_${SAFE_DS}_dirichlet_0.1.log"
-    LOG_FILE="$LOG_STORAGE_DIR/$LOG_FILENAME"
-
-    # NOTE: We use strict quoting here like the "Good" script
-    CMD="$PYTHON_EXEC $TRAINER_PY \
-    --dataset \"$DS\" \
-    --partition dirichlet \
-    --alpha 0.1 \
-    --data-dir \"$DATA_DIR\" > \"$LOG_FILE\" 2>&1"
-
-    echo "$CMD" >> "$CMD_FILE"
-    ((JOB_COUNT++))
-    '
-
-    # --------------------------------------------------------------------------
-    # 2. Silos Commands
+    # Silos Commands (DDP ENABLED)
     # --------------------------------------------------------------------------
     LOG_FILENAME="job${JOB_COUNT}_${SAFE_DS}_silos.log"
     LOG_FILE="$LOG_STORAGE_DIR/$LOG_FILENAME"
 
-    CMD="$PYTHON_EXEC $TRAINER_PY \
+    # CRITICAL CHANGE: Using torchrun instead of python
+    CMD="$TORCHRUN_EXEC --nproc_per_node=$NUM_GPUS --master_port=$MASTER_PORT $TRAINER_PY \
     --dataset \"$DS\" \
     --partition silos \
     --data-dir \"$DATA_DIR\" > \"$LOG_FILE\" 2>&1"
@@ -188,41 +183,14 @@ else
     echo ">>> ✅ CONFIGURATION UNCHANGED."
     echo ">>> Keeping joblog to RESUME from where we left off."
 
-    # ==========================================================================
-    # DISPLAY ALREADY COMPLETED JOBS
-    # ==========================================================================
     if [[ -s "$JOBLOG" ]]; then
-        echo ""
-        echo ">>> 📋 ALREADY COMPLETED JOBS:"
-        # Table Header
-        printf "  %-6s %-25s %-15s %-10s\n" "ID" "DATASET" "PARTITION" "ALPHA"
-        echo "  -------------------------------------------------------------"
-
-        # Parse joblog
-        awk -F'\t' 'NR>1 && $7=="0" {
-            id=$1
-            cmd=$0;
-
-            d="?"; p="?"; a="-";
-
-            if (match(cmd, /--dataset ([^ ]+)/, arr))   d=arr[1];
-            if (match(cmd, /--partition ([^ ]+)/, arr)) p=arr[1];
-            if (match(cmd, /--alpha ([^ ]+)/, arr))     a=arr[1];
-
-            gsub(/"/, "", d);
-
-            printf "  %-6s %-25s %-15s %-10s\n", id, d, p, a
-        }' "$JOBLOG" | sort -n
-
-        echo "  -------------------------------------------------------------"
         COMPLETED_COUNT=$(awk -F'\t' 'NR>1 && $7=="0" {count++} END {print count+0}' "$JOBLOG")
         echo ">>> Skipping $COMPLETED_COUNT jobs that finished successfully."
-        echo ""
     fi
 fi
 
 # ==============================================================================
-# EXECUTION
+# EXECUTION (SEQUENTIAL DDP)
 # ==============================================================================
 COUNT=$(wc -l < "$CMD_FILE")
 
@@ -232,44 +200,27 @@ if ! command -v parallel &> /dev/null; then
 fi
 
 echo ">>> STARTING EXECUTION OF FROZEN CORES ($COUNT Configurations)"
-echo ">>> CONFIG: $NUM_GPUS GPUs | $JOBS_PER_GPU Jobs/GPU | $TOTAL_CONCURRENCY Concurrent Jobs"
+# We run JOBS=1 because one job now consumes the ENTIRE node (All GPUs)
+echo ">>> CONFIG: Running 1 Distributed Job at a time (using all $NUM_GPUS GPUs)"
 
-parallel --jobs "$TOTAL_CONCURRENCY" \
+parallel --jobs 1 \
     --retries 1 \
     --joblog "$JOBLOG" \
     --resume-failed \
     --env PYTHONPATH \
     --env CUDA_VISIBLE_DEVICES \
-    --env NUM_GPUS \
-    --env TARGET_GPU_LIST \
     --line-buffer \
     '
-    JOB_SLOT={%}
-
-    # --- ROBUST ARRAY LOGIC (MATCHING COLLEAGUE SCRIPT) ---
-    # Convert string list to array
-    IFS=" " read -r -a GPU_ARRAY <<< "$TARGET_GPU_LIST"
-
-    # Calculate index
-    ARRAY_INDEX=$(( (JOB_SLOT - 1) % NUM_GPUS ))
-
-    # Get Physical GPU ID
-    GPU_ID=${GPU_ARRAY[$ARRAY_INDEX]}
-    # ------------------------------------------------------
-
-    export CUDA_VISIBLE_DEVICES=$GPU_ID
-
-    echo "🚀 [GPU $GPU_ID] Starting Checkpoint Job {#}"
+    echo "🚀 [DDP] Starting Distributed Job {#}"
 
     # Execute and capture exit status explicitly
-    # Note: The command string already includes redirection
     eval {}
     status=$?
 
     if [ $status -eq 0 ]; then
-        echo "✅ [GPU $GPU_ID] Job {#} Finished"
+        echo "✅ [DDP] Job {#} Finished"
     else
-        echo "❌ [GPU $GPU_ID] Job {#} Failed (Exit Code: $status)"
+        echo "❌ [DDP] Job {#} Failed (Exit Code: $status)"
         exit 1
     fi
     ' :::: "$CMD_FILE"

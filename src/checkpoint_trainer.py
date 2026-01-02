@@ -18,6 +18,25 @@ edm2_root = src_root / "modules" / "EDM2"
 if str(edm2_root) not in sys.path:
     sys.path.insert(0, str(edm2_root))
 
+from modules.EDM2.training import training_loop
+import modules.EDM2.training.networks_edm2
+
+# ==============================================================================
+# ⚡ H100 OPTIMIZATION MONKEY-PATCH
+# ==============================================================================
+# We intercept the Network initialization to apply torch.compile automatically.
+# This makes the EDM2 training loop use the compiled model without modifying library code.
+_original_init = modules.EDM2.training.networks_edm2.Precond.__init__
+
+def _compiled_init(self, *args, **kwargs):
+    _original_init(self, *args, **kwargs)
+    # mode="max-autotune" is the most aggressive optimization for H100
+    # It takes a few minutes to compile at the start, but runs much faster.
+    self.forward = torch.compile(self.forward, mode="max-autotune")
+    logger.info(">>> 🚀 H100 Optimization: Model compiled with mode='max-autotune'")
+
+modules.EDM2.training.networks_edm2.Precond.__init__ = _compiled_init
+
 # ----------------------------------------------------------------------------
 # 1. Standard Imports
 # ----------------------------------------------------------------------------
@@ -52,6 +71,9 @@ def _safe_torch_load(*args, **kwargs):
 
 torch.load = _safe_torch_load
 # ============================================================================
+
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
 
 # Internal Project Imports
 from logs.logger import get_logger
@@ -248,8 +270,8 @@ def run_edm2_native(run_dir, data_path, total_kimg, batch_size, dry_run=False):
     # Dataset Config
     c.dataset_kwargs = dnnlib.EasyDict(class_name='training.dataset.ImageFolderDataset', path=str(data_path),
                                        use_labels=False, xflip=True, cache=True)
-    c.data_loader_kwargs = dnnlib.EasyDict(class_name='torch.utils.data.DataLoader', pin_memory=True, num_workers=2,
-                                           prefetch_factor=2)
+    c.data_loader_kwargs = dnnlib.EasyDict(class_name='torch.utils.data.DataLoader', pin_memory=True, num_workers=16,
+                                           prefetch_factor=4, persistent_workers=True)
     c.encoder_kwargs = dnnlib.EasyDict(class_name='training.encoders.StandardRGBEncoder')
 
     # --- BATCH SIZE PHYSICS ---
@@ -261,13 +283,31 @@ def run_edm2_native(run_dir, data_path, total_kimg, batch_size, dry_run=False):
     if batch_size % world_size != 0:
         batch_size = (batch_size // world_size) * world_size
 
-    # 2. Determine Per-GPU Batch (Physical Limit)
-    SAFE_GPU_LIMIT = 768
+    # ==============================================================================
+    # 2. Determine Per-GPU Batch (Physical Limit) - CRITICAL FIX
+    # ==============================================================================
+
+    # Check if we are running high-res FLamby data
+    is_high_res = "fed_isic" in str(data_path) or "224" in str(data_path)
+
+    if is_high_res:
+        # H100 safe limit for 224x224 EDM2 is approx 16-20 per GPU
+        SAFE_GPU_LIMIT = 64
+    else:
+        # Safe limit for 32x32 (CIFAR/MedMNIST)
+        SAFE_GPU_LIMIT = 768
+
     batch_per_gpu_global = batch_size // world_size
+
+    # This forces gradient accumulation if global batch > safe limit
     c.batch_gpu = min(batch_per_gpu_global, SAFE_GPU_LIMIT)
 
+    # Ensure divisibility
     while (batch_size // world_size) % c.batch_gpu != 0:
         c.batch_gpu -= 1
+        if c.batch_gpu < 1:
+            c.batch_gpu = 1
+            break
 
     c.batch_size = batch_size
 
@@ -301,10 +341,12 @@ def run_edm2_native(run_dir, data_path, total_kimg, batch_size, dry_run=False):
     c.lr_kwargs = dnnlib.EasyDict(func_name='training.training_loop.learning_rate_schedule', ref_lr=0.01,
                                   ref_batches=35000)
 
+    current_channels = 64 if is_high_res else 128
+
     # Network Architecture
     c.network_kwargs = dnnlib.EasyDict(
         class_name='training.networks_edm2.Precond',
-        model_channels=128,
+        model_channels=current_channels,
         channel_mult=[1, 2, 2, 2],
         dropout=0.30,
         use_fp16=True
@@ -349,7 +391,7 @@ def run_training_campaign():
     TOTAL_KIMG = 25000
 
     if "fed_isic2019" in args_cli.dataset or "heart" in args_cli.dataset:
-        TARGET_BATCH_SIZE = 64  # Safe size for high-res images
+        TARGET_BATCH_SIZE = 512  # Safe size for high-res images
     else:
         TARGET_BATCH_SIZE = 4096  # Efficient size for low-res (32x32)
 
