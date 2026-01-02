@@ -65,7 +65,7 @@ TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
 
 # Calculate Counts
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
-JOBS_PER_GPU=2
+JOBS_PER_GPU=1
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
 
 echo ">>> 📊 Configuration: Using $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
@@ -77,7 +77,7 @@ export TARGET_GPU_LIST
 # ==============================================================================
 # ORGANIZATION
 # ==============================================================================
-LOG_WORK_DIR="$SCRIPT_DIR/run_checkpoints_work"
+LOG_WORK_DIR="$SCRIPT_DIR/run_checkpoints_work_gpu2"
 LOG_STORAGE_DIR="$LOG_WORK_DIR/logs"
 
 mkdir -p "$LOG_STORAGE_DIR"
@@ -108,11 +108,11 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 
 # --- DATASET CONFIGURATION ---
 DATASETS=(
-    "cifar"
-    "medmnist:bloodmnist"
-    "medmnist:pathmnist"
-    "medmnist:retinamnist"
-    # "fed_isic2019"
+    # "cifar"
+    # "medmnist:bloodmnist"
+    # "medmnist:pathmnist"
+    # "medmnist:retinamnist"
+    "fed_isic2019"
 )
 
 # ==============================================================================

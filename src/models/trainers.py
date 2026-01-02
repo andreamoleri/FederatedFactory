@@ -64,10 +64,8 @@ from metrics.costs import ExperimentCostTracker
 
 from pathlib import Path
 
-# Enable TF32 (TensorFloat-32) on Ampere/Hopper GPUs to improve matrix multiplication
-# and convolution performance while maintaining sufficient precision for deep learning.
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
 
 logger = get_logger(__name__)
 
@@ -93,6 +91,17 @@ from training.phema import PowerFunctionEMA
 
 logger = get_logger(__name__)
 
+# ==============================================================================
+# UPDATED FUNCTION: train_diffusion
+# Precision Fix: Removed native AMP/GradScaler (EDM2 handles FP16 internally)
+# Optimizer Fix: Adam, lr=1e-2, no weight decay
+# EMA Fix: Added PowerFunctionEMA
+# ==============================================================================
+
+# [CRITICAL FIX] Disable TF32 to match EDM2 Reference stability requirements
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
+
 
 def train_diffusion(
         model: DiT,
@@ -108,20 +117,21 @@ def train_diffusion(
         tracker: Optional[ExperimentCostTracker] = None,
         checkpoint_every: int = 0,
         checkpoint_dir: Optional[Path] = None,
-        lr: float = 1e-3,
+        lr: float = 1e-2,
         grad_accum_steps: int = 1,
 ) -> Tuple[DiT, int]:
     """
     Train a Diffusion Transformer using the Rectified Flow objective.
+    Matches EDM2 Reference: No Native AMP, Internal FP16, No Weight Decay.
     Now includes PowerFunctionEMA for stable, high-quality generation.
     """
     model.to(device)
 
-    # [CHANGE 1] Switch to Adam without weight decay.
-    # EDM2 architectures handle weight norms internally; decay often hurts convergence.
+    # [FIX] Use Adam without weight decay (EDM2 uses weight norm internally)
+    # Reference uses betas=(0.9, 0.99), eps=1e-8
     opt = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.99), eps=1e-8)
 
-    # [CHANGE 2] Initialize EMA
+    # [FIX] Initialize EMA
     # std=0.05 is a standard robust setting for EDM2 post-hoc reconstruction compatibility
     ema = PowerFunctionEMA(model, stds=[0.05])
 
@@ -134,12 +144,7 @@ def train_diffusion(
     noise_std = float(dp_noise_mult) * clip_C
 
     step_count = 0
-    cur_nimg = 0  # Track total images seen for EMA beta calculation
-
-    scaler = amp.GradScaler(
-        "cuda",
-        enabled=(not dp) and torch.cuda.is_available()
-    )
+    cur_nimg = 0
 
     # Profiling logic
     rep_batch = None
@@ -148,15 +153,10 @@ def train_diffusion(
             rep_batch = xb.to(device)[: min(2, xb.size(0))]
             break
     except Exception:
-        rep_batch = None
+        pass
 
     if tracker is not None and rep_batch is not None:
-        tracker.register_model(
-            model,
-            rep_batch,
-            backward_factor=2.0,
-            loss_extra_fwd=0.0,
-        )
+        tracker.register_model(model, rep_batch, backward_factor=2.0, loss_extra_fwd=0.0)
         tracker.start_phase(f"train_c{cid}")
 
     for ep in range(epochs):
@@ -166,58 +166,44 @@ def train_diffusion(
         opt.zero_grad(set_to_none=True)
 
         for i, (x, _y) in enumerate(loader):
-            x = x.to(device, non_blocking=True)
+            # EDM2 expects float32 inputs in range [-1, 1].
+            # Internal casting handles the rest.
+            x = x.to(device, non_blocking=True).to(torch.float32)
             physical_batch_size = x.size(0)
 
             if not dp:
-                # ---------- Standard Path ----------
-                amp_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+                # ---------- Standard Path (EDM2 Style) ----------
 
-                # 1. Forward Pass
-                with amp.autocast(
-                        device_type="cuda" if torch.cuda.is_available() else "cpu",
-                        dtype=amp_dtype,
-                ):
-                    loss = rectified_flow_loss(model, x)
-                    loss = loss / grad_accum_steps
+                # 1. Forward Pass (No autocast context)
+                loss = rectified_flow_loss(model, x)
+                loss = loss / grad_accum_steps
 
                 # 2. Backward
-                if scaler.is_enabled():
-                    scaler.scale(loss).backward()
-                else:
-                    loss.backward()
+                loss.backward()
 
                 total_loss_sum += loss.item() * grad_accum_steps * physical_batch_size
 
                 # 3. Optimizer Step (Accumulated)
                 if (i + 1) % grad_accum_steps == 0:
-                    if scaler.is_enabled():
-                        scaler.unscale_(opt)
-                        nn.utils.clip_grad_norm_(model.parameters(), 10.0)
-                        scaler.step(opt)
-                        scaler.update()
-                    else:
-                        nn.utils.clip_grad_norm_(model.parameters(), 10.0)
-                        opt.step()
+                    # Optional: Clip grad norm (usually not needed for EDM2 but safe to keep loose)
+                    # nn.utils.clip_grad_norm_(model.parameters(), 10.0)
 
-                    # [CHANGE 3] Update EMA
-                    # Calculate effective batch size (Physical * Accumulation Steps)
-                    # Note: We assume the last batch might be smaller but ignore that edge case for EMA beta smoothing
+                    opt.step()
+                    opt.zero_grad(set_to_none=True)
+
+                    # [FIX] Update EMA
                     effective_batch = physical_batch_size * grad_accum_steps
                     cur_nimg += effective_batch
-
-                    # Update shadow weights
                     ema.update(cur_nimg=cur_nimg, batch_size=effective_batch)
 
-                    opt.zero_grad(set_to_none=True)
                     step_count += 1
-
-                    if tracker is not None:
-                        tracker.count_train_step(1)
+                    if tracker is not None: tracker.count_train_step(1)
 
             else:
                 # ---------- DP Path ----------
-                # Assuming grad_accum_steps is handled via microbatching logic internally here
+                # Warning: DP-SGD with EDM2 internal mixed precision is complex.
+                # We strictly follow the non-AMP logic here for consistency with the fix.
+
                 if i == 0: opt.zero_grad(set_to_none=True)
 
                 # Initialize accumulators
@@ -226,12 +212,12 @@ def train_diffusion(
                         p.grad_accum = torch.zeros_like(p, memory_format=torch.preserve_format)
 
                 microbatch_count = 0
-                amp_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
 
                 for mb_start in range(0, physical_batch_size, microbatch):
                     x_mb = x[mb_start: mb_start + microbatch]
-                    with amp.autocast(device_type="cuda" if torch.cuda.is_available() else "cpu", dtype=amp_dtype):
-                        loss_mb = rectified_flow_loss(model, x_mb) / x_mb.size(0)
+
+                    # Forward (No autocast)
+                    loss_mb = rectified_flow_loss(model, x_mb) / x_mb.size(0)
                     loss_mb.backward()
 
                     # Clip
@@ -261,10 +247,10 @@ def train_diffusion(
                     p.grad = grad
                     del p.grad_accum
 
-                nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+                # nn.utils.clip_grad_norm_(model.parameters(), 10.0)
                 opt.step()
 
-                # [CHANGE 3] Update EMA for DP
+                # Update EMA
                 cur_nimg += physical_batch_size
                 ema.update(cur_nimg=cur_nimg, batch_size=physical_batch_size)
 
@@ -272,60 +258,36 @@ def train_diffusion(
                 step_count += 1
                 if tracker is not None: tracker.count_train_step(1)
 
-        # Handle remaining gradients (Non-DP only)
+        # Handle remaining gradients if drop_last=False
         if not dp and (len(loader) % grad_accum_steps != 0):
-            if scaler.is_enabled():
-                scaler.unscale_(opt)
-                nn.utils.clip_grad_norm_(model.parameters(), 10.0)
-                scaler.step(opt)
-                scaler.update()
-            else:
-                nn.utils.clip_grad_norm_(model.parameters(), 10.0)
-                opt.step()
-
-            # Update EMA for the remainder
+            opt.step()
+            opt.zero_grad(set_to_none=True)
             remaining_batch = (len(loader) % grad_accum_steps) * loader.batch_size
             cur_nimg += remaining_batch
             ema.update(cur_nimg=cur_nimg, batch_size=remaining_batch)
-
-            opt.zero_grad(set_to_none=True)
             step_count += 1
 
-        # Logging
+        # Logging - [CHANGED] Now prints every epoch
         avg_loss = total_loss_sum / len(loader.dataset)
         hist["vae_loss"][cid].append(avg_loss)
 
         tag = "DP" if dp else "STD"
-        logger.info(
-            logmsg.VAE_EPOCH.format(
-                cid=cid,
-                epoch=ep + 1,
-                epochs=epochs,
-                tag=tag,
-                loss=avg_loss,
-            )
-        )
+        logger.info(logmsg.VAE_EPOCH.format(cid=cid, epoch=ep + 1, epochs=epochs, tag=tag, loss=avg_loss))
 
-        # [CHANGE 4] Checkpointing
+        # Checkpointing (Saving EMA weights)
         if checkpoint_every > 0 and (ep + 1) % checkpoint_every == 0 and checkpoint_dir is not None:
-            ckpt_name = f"checkpoint-client-{cid}-epoch-{ep + 1:04d}.pt"
-            ckpt_path = checkpoint_dir / ckpt_name
+            ckpt_path = checkpoint_dir / f"checkpoint-client-{cid}-epoch-{ep + 1:04d}.pt"
             try:
                 # Retrieve the EMA model (smoothed weights)
-                # ema.get() returns list of (model, suffix). We take the first one.
-                ema_model_list = ema.get()
-                best_ema_model = ema_model_list[0][0]
-
+                best_ema_model = ema.get()[0][0]
                 torch.save(best_ema_model.state_dict(), ckpt_path)
-                logger.info(f"[CHECKPOINT] Saved EMA model (smooth) to {ckpt_path}")
+                logger.info(f"[CHECKPOINT] Saved EMA model to {ckpt_path}")
             except Exception as e:
-                logger.warning(f"[CHECKPOINT] Failed to save checkpoint: {e}")
+                logger.warning(f"Checkpoint failed: {e}")
 
     model.cpu()
 
-    # [CHANGE 5] Return EMA Model
-    # We return the smoothed EMA model for evaluation/inference,
-    # as the raw model 'model' is likely too noisy.
+    # Return the EMA smoothed model for evaluation/inference
     ema_model_final = ema.get()[0][0].cpu()
 
     if tracker is not None:
