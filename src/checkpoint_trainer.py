@@ -30,11 +30,13 @@ import logging
 import re
 import numpy as np
 from tqdm import tqdm
+from torchvision import transforms  # <--- Added for Stage I Augmentation
+import torchvision.transforms.functional as TF
 
 # ----------------------------------------------------------------------------
 # 2. EDM2 Imports (Now safe to import)
 # ----------------------------------------------------------------------------
-import dnnlib  # <--- This failed before because path wasn't set
+import dnnlib
 from torch_utils import distributed as dist
 from training import training_loop
 
@@ -51,17 +53,6 @@ def _safe_torch_load(*args, **kwargs):
 torch.load = _safe_torch_load
 # ============================================================================
 
-# --- EDM2 IMPORTS ---
-# Ensure the EDM2 module is in the python path
-current_file = Path(__file__).resolve()
-src_root = current_file.parents[0]  # src/
-edm2_root = src_root / "modules" / "EDM2"
-if str(edm2_root) not in sys.path:
-    sys.path.insert(0, str(edm2_root))
-
-from torch_utils import distributed as dist
-from training import training_loop
-
 # Internal Project Imports
 from logs.logger import get_logger
 from jobs.experiment_setup import prepare_data
@@ -71,18 +62,67 @@ logger = get_logger(__name__)
 
 
 # ----------------------------------------------------------------------------
-# 1. Dataset Materialization (EDM2 requires files on disk)
+# 1a. Stage I: Generative Robustness Policy Factory
 # ----------------------------------------------------------------------------
-def materialize_subset_to_disk(subset, dest_dir, class_idx, target_shape=None):
+def get_generative_augmentation(dataset_name: str, resolution: int):
     """
-    Materializes images to disk, forcing a resize if target_shape is provided.
+    Implements Stage I: Generative Robustness policies (NeurIPS Sec 4.4).
+    Returns a torchvision transform pipeline that outputs a PIL Image.
+    """
+    ds = dataset_name.lower()
+    ops = []
+
+    # 1. Isotropic Medical Regime (BloodMNIST, PathMNIST, ISIC, Tissue)
+    # Policy: Full D4 Symmetry (Flips + Discrete 90-degree Rotations)
+    if any(x in ds for x in ["blood", "path", "derma", "isic", "tissue"]):
+        ops.append(transforms.RandomHorizontalFlip(p=0.5))
+        ops.append(transforms.RandomVerticalFlip(p=0.5))
+        # Discrete 90-degree rotations
+        ops.append(transforms.RandomChoice([
+            transforms.RandomRotation((90, 90)),
+            transforms.RandomRotation((180, 180)),
+            transforms.RandomRotation((270, 270)),
+            transforms.Lambda(lambda x: x) # Identity
+        ]))
+        # Resize to target resolution
+        ops.append(transforms.Resize((resolution, resolution), interpolation=transforms.InterpolationMode.BICUBIC))
+
+    # 2. Oriented Medical Regime (RetinaMNIST)
+    # Policy: Affine only, no vertical flips
+    elif "retina" in ds:
+        ops.append(transforms.RandomHorizontalFlip(p=0.5))
+        ops.append(transforms.RandomAffine(
+            degrees=5, translate=(0.05, 0.05), scale=(0.95, 1.05),
+            interpolation=transforms.InterpolationMode.BILINEAR
+        ))
+        ops.append(transforms.ColorJitter(brightness=0.1, contrast=0.1))
+        ops.append(transforms.Resize((resolution, resolution), interpolation=transforms.InterpolationMode.BICUBIC))
+
+    # 3. Anisotropic Natural Regime (CIFAR-10)
+    # Policy: Horizontal Flip + Crop, STRICTLY no vertical flip
+    else:
+        ops.append(transforms.RandomHorizontalFlip(p=0.5))
+        # Resize first to ensure we have room to crop if needed, or maintain size
+        ops.append(transforms.Resize((resolution, resolution)))
+        # Slight padding and random crop to inject variance without destroying structure
+        ops.append(transforms.RandomCrop(resolution, padding=resolution//8, padding_mode='reflect'))
+
+    return transforms.Compose(ops)
+
+
+# ----------------------------------------------------------------------------
+# 1b. Dataset Materialization (EDM2 requires files on disk)
+# ----------------------------------------------------------------------------
+def materialize_subset_to_disk(subset, dest_dir, class_idx, target_shape=None, augmentation_fn=None):
+    """
+    Materializes images to disk with optional Stage I augmentation injection.
 
     Args:
         subset: The PyTorch subset/dataset to dump.
         dest_dir: Destination folder.
         class_idx: Class ID (for logging/debugging).
-        target_shape: Optional tuple (C, H, W). If provided, all images will be
-                      resized to (W, H). e.g., (3, 224, 224).
+        target_shape: Optional tuple (C, H, W).
+        augmentation_fn: Optional torchvision transform to apply BEFORE saving.
     """
 
     # --- ROBUST CACHE CHECK ---
@@ -127,7 +167,7 @@ def materialize_subset_to_disk(subset, dest_dir, class_idx, target_shape=None):
                 return
 
     os.makedirs(dest_dir, exist_ok=True)
-    logger.info(f"   >>> Materializing {len(subset)} images to {dest_dir}...")
+    logger.info(f"   >>> Materializing {len(subset)} images to {dest_dir} (Augmented)...")
 
     count = 0
     labels = []
@@ -142,7 +182,6 @@ def materialize_subset_to_disk(subset, dest_dir, class_idx, target_shape=None):
         indices = range(len(subset))
 
     from PIL import Image
-    import torchvision.transforms.functional as TF
 
     for idx in tqdm(indices, desc=f"Saving Class {class_idx}", leave=False):
         try:
@@ -162,8 +201,13 @@ def materialize_subset_to_disk(subset, dest_dir, class_idx, target_shape=None):
                 else:
                     img = img_t
 
-            # 2. UPDATED RESIZING LOGIC
-            # If we have a target shape (ISIC), use it.
+            # 2. INJECTION: Apply Stage I Generative Augmentation
+            # This happens BEFORE final resizing/saving to ensure the generator
+            # learns the augmented manifold invariants.
+            if augmentation_fn is not None:
+                img = augmentation_fn(img)
+
+            # 3. Final Safety Resizing
             if target_shape is not None:
                 tgt_h, tgt_w = target_shape[-2], target_shape[-1]
                 # Force 32x32 minimum even if target_shape is smaller
@@ -171,15 +215,13 @@ def materialize_subset_to_disk(subset, dest_dir, class_idx, target_shape=None):
                 final_w = max(tgt_w, 32)
                 if img.size != (final_w, final_h):
                     img = img.resize((final_w, final_h), Image.LANCZOS)
-
-            # If no target shape (MedMNIST/CIFAR), ensure 32x32 minimum
             else:
+                # If no target shape (MedMNIST/CIFAR), ensure 32x32 minimum
                 curr_w, curr_h = img.size
                 if curr_w < 32 or curr_h < 32:
-                    # RetinaMNIST (28x28) goes here and becomes 32x32
                     img = img.resize((32, 32), Image.LANCZOS)
 
-            # 3. Save (same as before)
+            # 4. Save
             fname = f"img_{count:06d}.png"
             save_path = os.path.join(dest_dir, fname)
             img.save(save_path)
@@ -359,6 +401,12 @@ def run_training_campaign():
     materialized_root = Path("temp_materialized_datasets") / safe_dataset_name / part_folder
     model_save_root = Path("checkpoints") / safe_dataset_name / part_folder
 
+    # --- INJECTION CONFIGURATION ---
+    # Determine the resolution we are targeting (C, H, W) -> H
+    target_res = img_shape[-2]
+    # Build the Domain-Aware Augmentation Pipeline
+    aug_pipeline = get_generative_augmentation(args.dataset, target_res)
+
     for client_name, class_subsets in train_subsets_dict.items():
         if dist.get_rank() == 0:
             logger.info(f"[{args.dataset}] Processing Client: {client_name}")
@@ -370,8 +418,14 @@ def run_training_campaign():
             dataset_dir = materialized_root / client_name / f"class_{class_id}"
 
             if dist.get_rank() == 0:
-                # PASS img_shape HERE
-                materialize_subset_to_disk(class_dataset, dataset_dir, class_id, target_shape=img_shape)
+                # PASS img_shape AND the augmentation pipeline
+                materialize_subset_to_disk(
+                    class_dataset,
+                    dataset_dir,
+                    class_id,
+                    target_shape=img_shape,
+                    augmentation_fn=aug_pipeline
+                )
 
             # Wait for Rank 0 to finish writing files
             torch.distributed.barrier()
