@@ -476,6 +476,9 @@ def find_experiment_folders(base_dir: Path) -> List[Path]:
     """
     experiment_folders = []
 
+    if (base_dir / "datasets").exists() and (base_dir / "metrics").exists():
+        return [base_dir]  # Return immediately if base_dir is the target
+
     # Iterate through all subdirectories
     for folder in base_dir.rglob("*"):
         if folder.is_dir():
@@ -635,9 +638,14 @@ def main():
     args = parser.parse_args()
 
     base_dir = Path(args.base_dir)
+
+    # ---------------------------------------------------------
+    # FIX: Create the directory if it doesn't exist
+    # ---------------------------------------------------------
     if not base_dir.exists():
-        logger.error(f"Base directory {base_dir} does not exist")
-        return
+        logger.info(f"Base directory {base_dir} does not exist. Creating it...")
+        base_dir.mkdir(parents=True, exist_ok=True)
+    # ---------------------------------------------------------
 
     # Setup global aggregation directory for reports
     global_reports_dir = base_dir / "reports"

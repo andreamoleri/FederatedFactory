@@ -177,8 +177,9 @@ def run_experiment(args: Any, run_id: int | None = None, tracker: ExperimentCost
 
         # Map partitions
         if getattr(args, "partition", "silos") == "silos":
-            ts_dict = {f"client{d}": {d: train_subsets[i]} for i, d in enumerate(present_classes)}
-            test_dict = {f"client{d}": {} for d in present_classes}
+            # FIX: Added underscore to match checkpoint_trainer convention (client_0 vs client0)
+            ts_dict = {f"client_{d}": {d: train_subsets[i]} for i, d in enumerate(present_classes)}
+            test_dict = {f"client_{d}": {} for d in present_classes}
         else:
             ts_dict = train_subsets_dict
             test_dict = {}
@@ -205,22 +206,46 @@ def run_experiment(args: Any, run_id: int | None = None, tracker: ExperimentCost
     # =========================================================================
     # PATH B: GENERATIVE + CLASSIFIER (Hybrid)
     # =========================================================================
-    # =========================================================================
-    # PATH B: GENERATIVE + CLASSIFIER (Hybrid)
-    # =========================================================================
     else:
         # 3. Generative Phase
         perc_loss = VGGPerceptualLoss().to(device) if (chans == 3 and not bool(args.grayscale)) else None
         hist = {"vae_loss": {}}
+        gen_metrics = {}  # Initialize empty metrics to prevent NameError if evaluation is skipped
+
+        # Update partitioning map for Silos to match checkpoint naming (client_0)
+        # This ensures the loader finds the folders created by checkpoint_trainer.py
+        if getattr(args, "partition", "silos") == "silos":
+             # We reconstruct the dict with correct keys "client_X" instead of "clientX"
+             # Only needed if train_subsets_dict was not already set correctly by prepare_data
+             # (prepare_data returns a list for silos, so we map it here)
+             train_subsets_dict = {f"client_{d}": {d: train_subsets[i]} for i, d in enumerate(present_classes)}
 
         # BRANCHING LOGIC
         if args.checkpoint_epoch_family is not None:
             # LOAD MODE
             gen_step_total = 0
             gen_start = time.perf_counter()  # Minimal time
+            logger.info(f"[GEN-PHASE] Attempting to load checkpoints with Epoch Family: {args.checkpoint_epoch_family}")
+
             gen_models, client_gen_models, client_sample_counts = load_generative_checkpoints(
                 args, device, P, train_subsets_dict, present_classes, chans, img_shape, args.checkpoint_epoch_family
             )
+
+            # --- SAFETY CHECK ---
+            loaded_count = sum(1 for m in gen_models if m is not None)
+            if loaded_count == 0:
+                error_msg = (
+                    f"❌ CRITICAL ERROR: 0 Checkpoints loaded for family '{args.checkpoint_epoch_family}'.\n"
+                    f"   The code looked in folders like 'checkpoints/{args.dataset}/silos/client_0/...'\n"
+                    f"   Please verify:\n"
+                    f"   1. The folder structure exists.\n"
+                    f"   2. The filenames contain the string '{args.checkpoint_epoch_family}' (e.g. training-state-0025001.pt).\n"
+                    f"   3. The client names match (client_0 vs client0)."
+                )
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            # --------------------
+
             # Populate sample counts since we skipped training return
             for cname, subsets in train_subsets_dict.items():
                 if cname not in client_sample_counts: client_sample_counts[cname] = {}
@@ -235,6 +260,25 @@ def run_experiment(args: Any, run_id: int | None = None, tracker: ExperimentCost
 
         gen_time = time.perf_counter() - gen_start
         metrics["vae_steps"] = gen_step_total
+
+        # 4. Evaluation Phase (Optional - can be expensive)
+        # Uncomment the following lines if you want to compute FID/KID metrics
+        # gen_metrics = run_evaluation(
+        #     args, device, P, present_classes, reserved_test_imgs_list,
+        #     gen_models, client_gen_models, client_sample_counts, img_shape,
+        #     [], None, [], [], train_subsets_dict, train_subsets, base_train_set, chans
+        # )
+
+        # 5. Classifier Phase (CRITICAL: Generates 'acc')
+        (clf_steps, synth_total, clf_start, y_true, y_pred, y_probs,
+         trained_clfs, single_clf, synthetic_cache) = run_classifier_training(
+            args, device, P, train_subsets_dict, train_subsets, present_classes,
+            num_classes, chans, img_shape, tracker, hist, gen_models,
+            client_gen_models, client_sample_counts, reserved_test_ld
+        )
+
+        clf_time = time.perf_counter() - clf_start
+        acc = ensemble_accuracy(y_true, y_pred)
 
         if args.model == "vae" and len(gen_models) > 0 and gen_models[0] is not None:
             from jobs.generative_phase import _module_size_mb

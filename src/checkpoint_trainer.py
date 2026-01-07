@@ -413,6 +413,26 @@ def run_training_campaign():
         TARGET_BATCH_SIZE = 4096
 
     for client_name, class_subsets in train_subsets_dict.items():
+        # =========================================================
+        # [START] CRASH RECOVERY PATCH
+        # =========================================================
+        # We parse the client ID and skip anything before Client 7
+        try:
+            # Assuming client_name format is "client_X" or similar
+            c_id = int(client_name.split('_')[-1])
+            if c_id < 7:
+                if dist.get_rank() == 0:
+                    # Only log occasionally to avoid spamming
+                    print(f">>> SKIPPING {client_name} (Already Completed)")
+                continue
+        except Exception:
+            # If naming convention differs, don't skip
+            pass
+        # =========================================================
+        # [END] CRASH RECOVERY PATCH
+        # =========================================================
+
+
         if dist.get_rank() == 0:
             logger.info(f"[{args.dataset}] Processing Client: {client_name}")
 

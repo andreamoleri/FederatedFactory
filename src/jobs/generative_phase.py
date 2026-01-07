@@ -58,7 +58,6 @@ from models.diffusion import DiT, DiffusionConfig, rectified_flow_sampler
 from utils import sample_grid, grid_from_tensors, decoder_size_mb
 import matplotlib.pyplot as plt
 from jobs.experiment_setup import _export_client_class_distribution
-from models.diffusion import DiT, DiffusionConfig
 
 logger = logging.getLogger(__name__)
 
@@ -459,101 +458,130 @@ def run_generative_training(
 
 
 def load_generative_checkpoints(
-        args: Any,
+        args,
         device: torch.device,
         P: Any,
         train_subsets_dict: Dict[str, Dict[int, Any]],
         present_classes: List[int],
         chans: int,
         img_shape: Tuple[int, int, int],
-        checkpoint_family_epoch: int
+        epoch_family: int
 ) -> Tuple[List[Optional[Any]], Dict[str, Dict[int, Any]], Dict[str, Dict[int, int]]]:
     """
-    Loads pre-trained generative models from the checkpoints directory instead of training.
-
-    Directory Structure Expected:
-    checkpoints/{dataset}/{partition}_{alpha}/{client_id}/checkpoint-client-{cid}-epoch-{epoch}.pt
+    Loads pre-trained generative checkpoints from disk.
+    Supports EDM2 directory structure: checkpoints/{dataset}/{partition}/{client}/class_{cid}/training-state-{epoch}.pt
     """
-    logger.info(f"[GEN-PHASE] Loading checkpoints for Epoch Family: {checkpoint_family_epoch}")
+    logger.info(f"[GEN-PHASE] Loading checkpoints for Epoch Family: {epoch_family}")
 
-    # 1. Determine Checkpoint Root Path
-    # Structure: checkpoints/cifar10/dirichlet_0.1/
-    partition_str = getattr(args, "partition", "silos")
-    if partition_str == "dirichlet":
-        partition_str = f"dirichlet_{args.alpha}"
-
-    ckpt_root = Path("checkpoints") / args.dataset / partition_str
-
-    if not ckpt_root.exists():
-        raise FileNotFoundError(f"Checkpoint directory not found: {ckpt_root}")
-
-    # 2. Config Setup (Same as training)
-    # We must initialize the model architecture exactly as it was trained
-    dit_config = DiffusionConfig(
-        in_ch=chans,
-        embed_dim=args.dit_embed,
-        depth=args.dit_depth,
-        num_heads=args.dit_heads,
-        patch_size=args.dit_patch,
-        num_classes=0,  # Conditional via separate models per class/client usually, or handling internally
-        img_resolution=img_shape[1]  # Assuming square
-    )
-
-    gen_models = [None] * getattr(args, "num_classes", 10)  # Placeholder for central registry if needed
+    # Initialize containers
+    gen_models = [None] * (max(present_classes) + 1)
     client_gen_models: Dict[str, Dict[int, Any]] = {}
     client_sample_counts: Dict[str, Dict[int, int]] = {}
 
-    total_loaded = 0
+    # Define the partition path (e.g., silos vs dirichlet_0.1)
+    if getattr(args, "partition", "silos") == "dirichlet" and getattr(args, "alpha", None) is not None:
+        part_name = f"dirichlet_{args.alpha}"
+    else:
+        part_name = getattr(args, "partition", "silos")
 
-    # 3. Iterate over clients and load
-    # Logic mirrors the "Silos" vs "Dirichlet" iteration in run_generative_training
+    # Safe dataset name (e.g., medmnist:bloodmnist -> medmnist_bloodmnist)
+    safe_ds = args.dataset.replace(":", "_")
 
-    # Flatten structure for iteration
-    if getattr(args, "partition", "silos") == "silos":
-        # In Silos, usually 1 client = 1 class.
-        # But based on codebase, train_subsets_dict might be client -> classes.
-        pass  # Logic handled below generically
+    # Root path for checkpoints
+    project_root = Path(".").resolve()  # Start from current working dir (Project Root)
+    ckpt_root = project_root / "checkpoints" / safe_ds / part_name
 
+    if not ckpt_root.exists():
+        # Fallback: Try looking relative to where script is running if project_root fails
+        ckpt_root = Path("checkpoints") / safe_ds / part_name
+        if not ckpt_root.exists():
+            raise FileNotFoundError(f"Checkpoint directory not found: {ckpt_root}")
+
+    loaded_count = 0
+
+    # Iterate over clients expected in this experiment
     for client_name, class_subsets in train_subsets_dict.items():
         client_gen_models[client_name] = {}
         client_sample_counts[client_name] = {}
 
-        # In this codebase, we train ONE model per client that handles all classes present,
-        # OR one model per class per client?
-        # Looking at run_generative_training:
-        # It calls train_diffusion per client.
-        # So we expect ONE checkpoint per client containing the model state.
-
-        client_ckpt_dir = ckpt_root / client_name
-        ckpt_file = client_ckpt_dir / f"checkpoint-client-{client_name}-epoch-{checkpoint_family_epoch:04d}.pt"
-
-        if not ckpt_file.exists():
-            logger.warning(f"Checkpoint missing for {client_name} at {ckpt_file}")
-            continue
-
-        logger.info(f"Loading {client_name} from {ckpt_file}")
-
-        # Initialize Model
-        model = DiT(dit_config).to(device)
-        state_dict = torch.load(ckpt_file, map_location=device)
-        model.load_state_dict(state_dict)
-        model.eval()
-
-        # Register Model
-        # In run_generative_training, client_gen_models maps {client_name: {class_id: model}}
-        # If the model is conditional or unconditional trained on specific data.
-        # Assuming the standard flow:
         for class_id, subset in class_subsets.items():
-            client_gen_models[client_name][class_id] = model
             client_sample_counts[client_name][class_id] = len(subset)
 
-            # Populate global registry if this is the 'primary' holder (mostly for Silos)
-            if gen_models[class_id] is None:
+            # --- PATH CONSTRUCTION (EDM2 Style) ---
+            # 1. Format epoch string (e.g., 25001 -> 0025001)
+            epoch_str = f"{int(epoch_family):07d}"
+
+            # 2. Build filename
+            fname = f"training-state-{epoch_str}.pt"
+
+            # 3. Build full path (checkpoints are inside "class_{class_id}" subfolders)
+            # Correcting for potential client name mismatch
+            # If logic expects 'client_0' but dict has 'client0', we try both.
+            ckpt_path = ckpt_root / client_name / f"class_{class_id}" / fname
+
+            if not ckpt_path.exists():
+                 # Try adding/removing underscore if standard path fails
+                 alt_client = client_name.replace("client_", "client") if "client_" in client_name else client_name.replace("client", "client_")
+                 ckpt_path = ckpt_root / alt_client / f"class_{class_id}" / fname
+
+            if not ckpt_path.exists():
+                logger.warning(f"Checkpoint missing for {client_name} at {ckpt_path}")
+                continue
+
+            try:
+                # Load the model architecture
+                if args.model == "diffusion":
+                    from models.diffusion import DiT, DiffusionConfig
+                    # Reconstruct config
+                    cfg = DiffusionConfig(
+                        in_ch=chans,
+                        embed_dim=128,  # Must match trainer
+                        num_classes=0,  # Conditional via directory structure, usually 0 for EDM2 single-class
+                        img_resolution=img_shape[-1],
+                        dropout=0.3
+                    )
+                    model = DiT(cfg)
+                    model.to(device)
+
+                    # Load weights
+                    data = torch.load(ckpt_path, map_location=device)
+
+                    # --- FIX START ---
+                    # EDM2 CheckpointIO saves a dictionary where 'ema' is a dict, not an object.
+                    # The actual weights are inside data['ema']['emas'][0] (for the first std profile).
+                    if 'ema' in data and isinstance(data['ema'], dict) and 'emas' in data['ema']:
+                         # Extract the primary EMA weights
+                         weights = data['ema']['emas'][0]
+                         model.edm_net.load_state_dict(weights)
+                    elif 'net' in data:
+                         # Fallback to non-EMA weights
+                         model.edm_net.load_state_dict(data['net'])
+                    else:
+                         # Fallback for raw state dict (unlikely for EDM2 but safe)
+                         model.load_state_dict(data)
+                    # --- FIX END ---
+
+                    model.eval()
+
+                elif args.model == "vae":
+                    from models.vae import VAE
+                    model = VAE(chans, args.latent_dim)
+                    model.load_state_dict(torch.load(ckpt_path, map_location=device))
+                    model.to(device).eval()
+
+                else:
+                    raise ValueError(f"Unknown generative model type: {args.model}")
+
+                # Store model references
+                # For silos, we map the single class model to the global class ID
                 gen_models[class_id] = model
+                client_gen_models[client_name][class_id] = model
+                loaded_count += 1
 
-        total_loaded += 1
+            except Exception as e:
+                logger.error(f"Failed to load checkpoint {ckpt_path}: {e}")
 
-    logger.info(f"[GEN-PHASE] Successfully loaded {total_loaded} client models.")
+    logger.info(f"[GEN-PHASE] Successfully loaded {loaded_count} client models.")
     return gen_models, client_gen_models, client_sample_counts
 
 def _handle_network_simulation(args: Any, P: Any, tracker: Any, partition_mode: str, present_classes: List[int], client_gen_models: Dict[str, Any]):
