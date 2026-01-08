@@ -686,4 +686,13 @@ def run_evaluation(
     with open(P.root / "metrics" / "generative.json", "w") as f:
         json.dump(gen_metrics, f, indent=2)
 
-    return gen_metrics
+    # === NEW CODE: Prepare Handoff Cache ===
+    # Convert list [Tensor, Tensor...] to Dict {class_id: Tensor}
+    # We use synth_full_by_class because that contains the export data (usually larger count)
+    handoff_cache = {}
+    for i, d in enumerate(present_classes):
+        if i < len(synth_full_by_class):
+            # Keep on CPU to save VRAM during classifier training
+            handoff_cache[d] = synth_full_by_class[i].cpu()
+
+    return gen_metrics, handoff_cache  # <--- CHANGED: Return Tuple

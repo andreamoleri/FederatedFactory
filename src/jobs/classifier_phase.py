@@ -171,10 +171,12 @@ def generate_weighted_samples(
         model_kind: str,
         latent_dim: int,
         device: torch.device,
-        img_shape: Tuple[int, int, int]
+        img_shape: Tuple[int, int, int],
+        pre_generated_data: Optional[Dict[int, torch.Tensor]] = None
 ) -> Dict[int, torch.Tensor]:
     """
     Orchestrates weighted synthetic data generation across distributed clients.
+    Includes caching support to avoid redundant generation.
     """
     weighted_samples = {}
     total_samples_per_class = {}
@@ -194,6 +196,20 @@ def generate_weighted_samples(
             weighted_samples[cid] = torch.tensor([])
             continue
 
+        # [CACHE CHECK]
+        cached_images = None
+        if pre_generated_data is not None and cid in pre_generated_data:
+            cached_images = pre_generated_data[cid]
+
+        current_count = len(cached_images) if cached_images is not None else 0
+        needed = max(0, target - current_count)
+
+        # If cache covers everything, skip generation logic
+        if needed == 0 and cached_images is not None:
+             weighted_samples[cid] = cached_images[:target]
+             continue
+
+        # Determine contributors for whatever is NEEDED
         contributors = []
         for cname, models in client_gen_models.items():
             if cid in models:
@@ -203,11 +219,18 @@ def generate_weighted_samples(
         total_real = total_samples_per_class[cid]
 
         cls_samples = []
-        remaining = target
+        # Add cached images first
+        if cached_images is not None:
+            cls_samples.append(cached_images)
+
+        remaining = needed # We only generate what is missing
 
         for i, (cname, model, count) in enumerate(contributors):
+            # Proportional allocation of the *remaining/needed* amount?
+            # Or proportional allocation of total target?
+            # Standard approach: We need 'needed' more images. We distribute 'needed' proportionally.
             if i == len(contributors) - 1: n = remaining
-            else: n = int(target * (count / total_real))
+            else: n = int(needed * (count / total_real))
 
             n = min(n, remaining)
             if n <= 0: continue
@@ -292,7 +315,8 @@ def run_classifier_training(
         gen_models: List[Optional[Any]],
         client_gen_models: Dict[str, Dict[int, Any]],
         client_sample_counts: Dict[str, Dict[int, int]],
-        reserved_test_ld: DataLoader
+        reserved_test_ld: DataLoader,
+        pre_generated_data: Optional[Dict[int, torch.Tensor]] = None
 ) -> Tuple[int, int, float, np.ndarray, np.ndarray, np.ndarray, List[Any], Optional[Any], Dict[int, torch.Tensor]]:
     # ^ CHANGED Return Type hint to include Dict[int, torch.Tensor]
 
@@ -309,7 +333,8 @@ def run_classifier_training(
     y_true, y_pred, y_probs = np.array([]), np.array([]), np.array([])
 
     # NEW: Cache for synthetic data to prevent re-generation in evaluation phase
-    synthetic_cache: Dict[int, torch.Tensor] = {}
+    # Initialize with pre_generated_data if available
+    synthetic_cache: Dict[int, torch.Tensor] = pre_generated_data.copy() if pre_generated_data else {}
 
     logger.info(f"[CLF-PHASE] Partition: {partition_mode}, Local Inference: {is_local}")
 
@@ -352,30 +377,46 @@ def run_classifier_training(
                     logger.info(f"  Generating {target} synthetic images for {len(missing_classes)} missing classes...")
 
                     for cid in tqdm(missing_classes, desc=gen_desc):
-                        if getattr(args, "aggregation", "simple") == "weighted":
-                            w_samps = generate_weighted_samples(client_gen_models, client_sample_counts, target,
-                                                                args.model, args.latent_dim, device, img_shape)
-                            s_imgs = w_samps.get(cid, torch.tensor([]))
-                        else:
-                            if cid < len(gen_models) and gen_models[cid] is not None:
-                                m = gen_models[cid]
-                                if args.model == "vae":
-                                    s_imgs = synth_from_decoder(m, args.latent_dim, target, device)
-                                else:
-                                    s_imgs = synth_from_diffusion(m, target, device, img_shape)
+                        s_imgs = torch.tensor([])
+
+                        # [CACHE LOGIC START]
+                        # 1. Check Cache
+                        cached_images = synthetic_cache.get(cid)
+                        current_count = len(cached_images) if cached_images is not None else 0
+                        needed = max(0, target - current_count)
+
+                        imgs_list = []
+                        if cached_images is not None:
+                             imgs_list.append(cached_images[:target]) # Take up to target
+                             if needed == 0:
+                                 #logger.info(f"  [Cache] Reusing {target} images for Class {cid}")
+                                 pass
+
+                        # 2. Generate Delta if needed
+                        if needed > 0:
+                            if getattr(args, "aggregation", "simple") == "weighted":
+                                w_samps = generate_weighted_samples(client_gen_models, client_sample_counts, needed,
+                                                                    args.model, args.latent_dim, device, img_shape,
+                                                                    # Important: pass None here to avoid recursive cache check inside
+                                                                    pre_generated_data=None)
+                                new_imgs = w_samps.get(cid, torch.tensor([]))
+                                imgs_list.append(new_imgs.cpu())
                             else:
-                                s_imgs = torch.tensor([])
+                                if cid < len(gen_models) and gen_models[cid] is not None:
+                                    m = gen_models[cid]
+                                    if args.model == "vae":
+                                        new_imgs = synth_from_decoder(m, args.latent_dim, needed, device)
+                                    else:
+                                        new_imgs = synth_from_diffusion(m, needed, device, img_shape)
+                                    imgs_list.append(new_imgs.cpu())
+
+                        if imgs_list:
+                            s_imgs = torch.cat(imgs_list)
+                            # Update Cache with full set
+                            synthetic_cache[cid] = s_imgs
+                        # [CACHE LOGIC END]
 
                         if len(s_imgs) > 0:
-                            # CACHE DATA: Only if we haven't cached this class yet or if we have a strategy to merge
-                            # In local inference, different clients might generate the same class.
-                            # For simplicity in evaluation, we cache the first generation or append.
-                            # Here we simply overwrite or append for the global cache.
-                            if cid not in synthetic_cache:
-                                synthetic_cache[cid] = s_imgs.cpu()
-                            else:
-                                synthetic_cache[cid] = torch.cat([synthetic_cache[cid], s_imgs.cpu()])
-
                             synth_xs.append(s_imgs)
                             synth_ys.append(torch.full((len(s_imgs),), cid, dtype=torch.long))
 
@@ -427,23 +468,41 @@ def run_classifier_training(
             logger.info(f"[SERVER] Generating {target} synthetic images per class...")
 
             if getattr(args, "aggregation", "simple") == "weighted":
+                # The generate_weighted_samples function now handles caching internally if passed
                 synth_samples = generate_weighted_samples(client_gen_models, client_sample_counts, target, args.model,
-                                                          args.latent_dim, device, img_shape)
+                                                          args.latent_dim, device, img_shape,
+                                                          pre_generated_data=synthetic_cache)
             else:
                 synth_samples = {}
                 for cid in tqdm(range(num_classes), desc="Server Gen"):
-                    if cid < len(gen_models) and gen_models[cid]:
-                        if args.model == "vae":
-                            synth_samples[cid] = synth_from_decoder(gen_models[cid], args.latent_dim, target, device)
-                        else:
-                            synth_samples[cid] = synth_from_diffusion(gen_models[cid], target, device, img_shape)
+                    # [CACHE LOGIC START]
+                    cached_images = synthetic_cache.get(cid)
+                    current_count = len(cached_images) if cached_images is not None else 0
+                    needed = max(0, target - current_count)
+
+                    imgs_list = []
+                    if cached_images is not None:
+                         imgs_list.append(cached_images[:target])
+
+                    if needed > 0:
+                        if cid < len(gen_models) and gen_models[cid]:
+                            if args.model == "vae":
+                                new_imgs = synth_from_decoder(gen_models[cid], args.latent_dim, needed, device)
+                            else:
+                                new_imgs = synth_from_diffusion(gen_models[cid], needed, device, img_shape)
+                            imgs_list.append(new_imgs.cpu())
+
+                    if imgs_list:
+                        full_set = torch.cat(imgs_list)
+                        synth_samples[cid] = full_set
+                        synthetic_cache[cid] = full_set # Update cache
+                    # [CACHE LOGIC END]
+
             if tracker: tracker.end_phase("server_generation")
 
             xs, ys = [], []
             for cid, imgs in synth_samples.items():
                 if len(imgs) > 0:
-                    # CACHE DATA
-                    synthetic_cache[cid] = imgs.cpu()
                     xs.append(imgs)
                     ys.append(torch.full((len(imgs),), cid, dtype=torch.long))
                     synth_images_total += len(imgs)
@@ -543,18 +602,28 @@ def run_classifier_training(
                         logger.info(
                             f"  Generating {n_synth} synthetic images from {len(valid_gen_models)} external models...")
                         for od, gm in tqdm(valid_gen_models, desc=f"Client {d} Synth Gen"):
-                            if args.model == "vae":
-                                im = synth_from_decoder(gm, args.latent_dim, n_synth, device)
-                            else:
-                                im = synth_from_diffusion(gm, n_synth, device, img_shape)
+                            # [CACHE LOGIC START]
+                            cached_images = synthetic_cache.get(od)
+                            current_count = len(cached_images) if cached_images is not None else 0
+                            needed = max(0, n_synth - current_count)
 
-                            # CACHE DATA: Map external class ID to generated images
-                            if od not in synthetic_cache:
-                                synthetic_cache[od] = im.cpu()
-                            # else: we rely on the first generation for evaluation to save time/space
+                            imgs_list = []
+                            if cached_images is not None:
+                                imgs_list.append(cached_images[:n_synth])
 
-                            s_xs.append(im);
-                            s_ys.append(torch.full((len(im),), od, dtype=torch.long))
+                            if needed > 0:
+                                if args.model == "vae":
+                                    im = synth_from_decoder(gm, args.latent_dim, needed, device)
+                                else:
+                                    im = synth_from_diffusion(gm, needed, device, img_shape)
+                                imgs_list.append(im.cpu())
+
+                            if imgs_list:
+                                im = torch.cat(imgs_list)
+                                synthetic_cache[od] = im # Update cache
+                                s_xs.append(im)
+                                s_ys.append(torch.full((len(im),), od, dtype=torch.long))
+                            # [CACHE LOGIC END]
 
                 if s_xs:
                     s_X = torch.cat(s_xs)
@@ -611,16 +680,28 @@ def run_classifier_training(
             valid_models_zip = [(d, gm) for d, gm in zip(present_classes, gen_models) if gm is not None]
 
             for d, gm in tqdm(valid_models_zip, desc="Server Gen"):
-                if args.model == "vae":
-                    im = synth_from_decoder(gm, args.latent_dim, n_synth, device)
-                else:
-                    im = synth_from_diffusion(gm, n_synth, device, img_shape)
+                # [CACHE LOGIC START]
+                cached_images = synthetic_cache.get(d)
+                current_count = len(cached_images) if cached_images is not None else 0
+                needed = max(0, n_synth - current_count)
 
-                # CACHE DATA
-                synthetic_cache[d] = im.cpu()
+                imgs_list = []
+                if cached_images is not None:
+                     imgs_list.append(cached_images[:n_synth])
 
-                xs.append(im);
-                ys.append(torch.full((len(im),), d, dtype=torch.long))
+                if needed > 0:
+                    if args.model == "vae":
+                        im = synth_from_decoder(gm, args.latent_dim, needed, device)
+                    else:
+                        im = synth_from_diffusion(gm, needed, device, img_shape)
+                    imgs_list.append(im.cpu())
+
+                if imgs_list:
+                    im = torch.cat(imgs_list)
+                    synthetic_cache[d] = im # Update cache
+                    xs.append(im)
+                    ys.append(torch.full((len(im),), d, dtype=torch.long))
+                # [CACHE LOGIC END]
 
             X, y = torch.cat(xs), torch.cat(ys)
             synth_images_total = len(X)

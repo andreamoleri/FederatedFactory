@@ -261,20 +261,23 @@ def run_experiment(args: Any, run_id: int | None = None, tracker: ExperimentCost
         gen_time = time.perf_counter() - gen_start
         metrics["vae_steps"] = gen_step_total
 
-        # 4. Evaluation Phase (Optional - can be expensive)
-        # Uncomment the following lines if you want to compute FID/KID metrics
-        # gen_metrics = run_evaluation(
-        #     args, device, P, present_classes, reserved_test_imgs_list,
-        #     gen_models, client_gen_models, client_sample_counts, img_shape,
-        #     [], None, [], [], train_subsets_dict, train_subsets, base_train_set, chans
-        # )
+        # 4. Evaluation Phase - ENABLED
+        # === UPDATED: Capture the cache ===
+        gen_metrics, generated_data_cache = run_evaluation(
+            args, device, P, present_classes, reserved_test_imgs_list,
+            gen_models, client_gen_models, client_sample_counts, img_shape,
+            [], None, [], [], train_subsets_dict, train_subsets, base_train_set, chans,
+            pre_generated_data=None
+        )
 
         # 5. Classifier Phase (CRITICAL: Generates 'acc')
         (clf_steps, synth_total, clf_start, y_true, y_pred, y_probs,
          trained_clfs, single_clf, synthetic_cache) = run_classifier_training(
             args, device, P, train_subsets_dict, train_subsets, present_classes,
             num_classes, chans, img_shape, tracker, hist, gen_models,
-            client_gen_models, client_sample_counts, reserved_test_ld
+            client_gen_models, client_sample_counts, reserved_test_ld,
+            # === NEW ARGUMENT ===
+            pre_generated_data=generated_data_cache
         )
 
         clf_time = time.perf_counter() - clf_start
@@ -287,6 +290,13 @@ def run_experiment(args: Any, run_id: int | None = None, tracker: ExperimentCost
         metrics["real_real_fid"] = gen_metrics.get("real_real_fid", {})
         metrics["real_real_kid"] = gen_metrics.get("real_real_kid", {})
         metrics["accuracy"] = acc
+
+        # --- FIX: Populate class distribution metric for CSV export in hybrid mode ---
+        client_class_dist = {}
+        for cname, counts in client_sample_counts.items():
+            # Convert keys to string for JSON/CSV compatibility
+            client_class_dist[cname] = {str(k): v for k, v in counts.items()}
+        metrics["client_class_distribution"] = client_class_dist
 
     # ==========================================================================
     # FINAL ARTIFACTS SERIALIZATION
@@ -353,13 +363,38 @@ def run_experiment(args: Any, run_id: int | None = None, tracker: ExperimentCost
     else:
         np.savetxt(P.root / "metrics" / "confusion-matrix.csv", np.array([[0]]), delimiter=",", fmt="%d")
 
-    # 4. Test Predictions (.npz) - UPDATED
+    # 4. Test Predictions (Save BOTH Modern and Legacy Formats)
     if len(y_true) > 0:
-        # Changed to .npz to reflect that it contains multiple arrays
-        predictions_path = P.root / "artifacts" / "predictions.npz"
-        # Passing y_probs here
-        save_predictions_artifact(y_true, y_pred, y_probs, test_set, predictions_path)
-        logger.info(f"[EXPORT] Test predictions saved to: {predictions_path}")
+        # --- A) Save Modern Compressed .npz (Includes Probabilities) ---
+        # Used by notebooks and deep analysis
+        predictions_path_npz = P.root / "artifacts" / "predictions.npz"
+        save_predictions_artifact(y_true, y_pred, y_probs, test_set, predictions_path_npz)
+        logger.info(f"[EXPORT] Modern predictions (.npz) saved to: {predictions_path_npz}")
+
+        # --- B) Save Legacy .npy (Name, True, Pred) ---
+        # Required by pdf_report.py to generate the classification pages
+        predictions_path_npy = P.root / "artifacts" / "test_predictions.npy"
+
+        # 1. Extract/Generate Image Names (Robust Logic)
+        image_names = []
+        if hasattr(test_set, 'imgs'):
+            image_names = [Path(fp).name for fp, _ in test_set.imgs]
+        elif hasattr(test_set, 'samples'):
+            image_names = [Path(fp).name for fp, _ in test_set.samples]
+
+        # 2. Ensure alignment (Lazy loading might mismatch lengths)
+        limit = len(y_true)
+        if len(image_names) >= limit:
+            image_names = image_names[:limit]
+        else:
+            # Fallback if names are missing
+            image_names = [f"img_{i}" for i in range(limit)]
+
+        # 3. Stack into the legacy (N, 3) string array format
+        # Columns: [ImageName, y_true, y_pred]
+        data_to_save = np.column_stack((image_names, y_true, y_pred))
+        np.save(predictions_path_npy, data_to_save)
+        logger.info(f"[EXPORT] Legacy predictions (.npy) saved to: {predictions_path_npy}")
 
     # 5. Args.json
     with open(P.root / "args.json", "w") as f:
