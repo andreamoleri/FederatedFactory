@@ -587,7 +587,7 @@ def main():
     # Dirichlet
     cli.add_argument(
     "--alpha",
-    default="0.5",
+    default="0.1",
     help="Concentration parameter(s) for Dirichlet, e.g. '0.1,0.5,1.0'"
 )
 
