@@ -158,7 +158,7 @@ for SEED in "${SEEDS[@]}"; do
         # ---------------------------------------------------------
         # ISIC checkpoints were trained at 128px res with 64 channels
         *"isic"*)
-            INPUT_SIZE=64
+            INPUT_SIZE=128
             CURRENT_LATENT_DIM=64
             ;;
 
