@@ -24,7 +24,11 @@ if [[ -z "$PROJECT_ROOT" ]]; then
     exit 1
 fi
 
-MAIN_PY="$PROJECT_ROOT/src/main.py"
+# 2. CRITICAL FIX: Jump to Project Root so relative paths (checkpoints/) work
+cd "$PROJECT_ROOT"
+echo ">>> 📂 Working Directory set to: $(pwd)"
+
+MAIN_PY="src/main.py"
 PYTHON_EXEC="$(which python)"
 
 # ==============================================================================
@@ -41,7 +45,7 @@ export CUDA_MODULE_LOADING=LAZY
 # ------------------------------------------------------------------------------
 # Option A: Set specific GPUs, e.g., "1" or "2 4" or "0 1 2 3"
 # Option B: Leave empty "" to auto-detect ALL available GPUs.
-MANUAL_GPU_IDS="1 2 3 4"
+MANUAL_GPU_IDS="0"
 
 # ------------------------------------------------------------------------------
 # LOGIC: DETERMINE TARGET LIST
@@ -65,7 +69,7 @@ TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
 
 # Diffusion + Classification is VRAM heavy. Keeping it to 1 job per GPU is safest.
-JOBS_PER_GPU=1
+JOBS_PER_GPU=10
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
 
 echo ">>> 📊 Configuration: Using $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
@@ -77,6 +81,7 @@ export TARGET_GPU_LIST
 # ==============================================================================
 # ORGANIZATION
 # ==============================================================================
+# We create the work dir relative to the script location (commands/) to keep root clean
 LOG_WORK_DIR="$SCRIPT_DIR/run_federatedfactory_work"
 LOG_STORAGE_DIR="$LOG_WORK_DIR/logs"
 
@@ -84,14 +89,9 @@ mkdir -p "$LOG_STORAGE_DIR"
 echo ">>> 📂 Internal queues stored in: $LOG_WORK_DIR"
 echo ">>> 📝 Console logs stored in:    $LOG_STORAGE_DIR"
 
-if [[ -n "${MY_DATA_DIR:-}" ]]; then
-    DATA_DIR="$MY_DATA_DIR"
-elif [[ -d "$PROJECT_ROOT/data" ]]; then
-    DATA_DIR="$PROJECT_ROOT/data"
-else
-    mkdir -p "$PROJECT_ROOT/data"
-    DATA_DIR="$PROJECT_ROOT/data"
-fi
+# Data Dir is now relative to PROJECT_ROOT because we did `cd $PROJECT_ROOT`
+DATA_DIR="data"
+mkdir -p "$DATA_DIR"
 echo ">>> ✅  Using data directory: $DATA_DIR"
 
 export PYTHONPATH="$PROJECT_ROOT/src:${PYTHONPATH:-}"
@@ -109,13 +109,13 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 # --- EXPERIMENT PARAMETERS ---
 SEEDS=(1 2 3 4 5)
 DATASETS=(
-    "cifar"
+    # "cifar"
     "medmnist:bloodmnist"
-    "medmnist:retinamnist"
-    "medmnist:pathmnist"
-    "fed_isic2019"
+    # "medmnist:retinamnist"
+    # "medmnist:pathmnist"
+    # "fed_isic2019"
 )
-PARTITIONS=("silos" "dirichlet")
+PARTITIONS=("silos") # "dirichlet" in the future
 INFER_MODES=("server" "local")
 
 # Fixed Hyperparameters
@@ -142,7 +142,10 @@ for SEED in "${SEEDS[@]}"; do
     INPUT_SIZE=32 # Default (CIFAR)
 
     case "$L_DATASET" in
-        *"medmnist"*) INPUT_SIZE=28 ;;
+        # ---------------------------------------------------------
+        # CHANGE: Force 32 for medmnist to match the 32x32 checkpoints
+        # ---------------------------------------------------------
+        *"medmnist"*) INPUT_SIZE=32 ;;
         *"isic"*|*"nico"*) INPUT_SIZE=224 ;;
     esac
 
@@ -159,15 +162,12 @@ for SEED in "${SEEDS[@]}"; do
         for MODE in "${INFER_MODES[@]}"; do
 
             # Construct Output Directory Structure
-            # output/diffusion/dataset/seed/mode-L128/partition...
             SAFE_DS="${DATASET//:/_}"
 
-            # The python script handles hierarchy, but we define the specific out-dir root
-            # to keep things clean if needed, or rely on main.py's internal structure.
-            # Here we pass the project output root.
-            OUT_ROOT="$PROJECT_ROOT/output"
+            # Since we are in PROJECT_ROOT, "output" is just "output"
+            OUT_ROOT="output"
 
-            # Log Filename
+            # Log Filename (keep explicit path for logs)
             LOG_FILENAME="job${JOB_COUNT}_${SAFE_DS}_${PARTITION}${ALPHA_SUFFIX}_${MODE}_seed${SEED}.log"
             LOG_FILE="$LOG_STORAGE_DIR/$LOG_FILENAME"
 

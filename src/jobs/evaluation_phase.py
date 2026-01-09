@@ -266,6 +266,12 @@ def run_evaluation(
 
         if len(real_c) == 0 or len(fake_c) == 0: continue
 
+        # [CRITICAL FIX] Ensure dimensionality match before feature extraction
+        # Real images (from test set) dictate the resolution.
+        if real_c.shape[-1] != fake_c.shape[-1]:
+            target_h, target_w = real_c.shape[-2], real_c.shape[-1]
+            fake_c = F.interpolate(fake_c, size=(target_h, target_w), mode='bilinear', antialias=True)
+
         fr, _ = feat_extractor.features_and_logits(real_c)
         ff, pf = feat_extractor.features_and_logits(fake_c)
         f_real_map[d] = fr
@@ -429,6 +435,13 @@ def run_evaluation(
 
     for i, d in enumerate(present_classes):
         t0 = time.perf_counter()
+
+        # [CRITICAL FIX] Determine target resolution from the reserved test set
+        # This aligns the training reconstruction to the canonical test set, resolving 28 vs 32 mismatches.
+        target_res = 32 # Default fallback
+        if len(reserved_test_imgs_list) > i and reserved_test_imgs_list[i] is not None and reserved_test_imgs_list[i].numel() > 0:
+            target_res = reserved_test_imgs_list[i].shape[-1]
+
         if partition_mode in ["skew", "dirichlet"]:
             real_train_imgs_list = []
             for client_subsets in train_subsets_dict.values():
@@ -442,6 +455,10 @@ def run_evaluation(
             # FIX: Wrap PIL subset with TransformSubset
             subset_clean = TransformSubset(train_subsets[i], eval_tf)
             real_train_imgs = subset_to_tensor(subset_clean)
+
+        # [CRITICAL FIX] Force resize real_train_imgs to match reserved_test_imgs_list
+        if len(real_train_imgs) > 0 and real_train_imgs.shape[-1] != target_res:
+            real_train_imgs = F.interpolate(real_train_imgs, size=(target_res, target_res), mode='bilinear', antialias=True)
 
         real_all = torch.cat([real_train_imgs, reserved_test_imgs_list[i]], dim=0) if len(real_train_imgs) > 0 else reserved_test_imgs_list[i]
         real_full_by_class.append(real_all)
@@ -459,7 +476,6 @@ def run_evaluation(
             continue
 
         # NEW LOGIC: Use Cache for Export
-        # NEW LOGIC: Use Cache for Export
         xs = None
         used_cache = False  # <--- Flag to track cache usage
 
@@ -468,7 +484,6 @@ def run_evaluation(
             if len(cached_data) >= target_count:
                 xs = cached_data[:target_count]
                 used_cache = True  # <--- Set flag
-                # logger.info(f"[DATASET EXPORT] Class {d}: Using {len(xs)} cached training samples.") <--- Removed redundant log
             else:
                 # Not enough in cache
                 needed = target_count - len(cached_data)
@@ -489,8 +504,6 @@ def run_evaluation(
                     else:
                         delta = torch.tensor([])
                 xs = torch.cat([cached_data, delta.cpu()])
-                # Note: Mixed source, so we can consider it partially generated.
-                # We won't set used_cache=True to keep the "generated" log for transparency on the extra compute.
 
         if xs is None:
             # Full generation fallback (Logic remains unchanged)
@@ -512,11 +525,17 @@ def run_evaluation(
                 else:
                     xs = torch.tensor([])
 
+        # [CRITICAL FIX] Resize synthetic images to match the target resolution
+        # This handles cases where Generator is 32x32 but Test Set (and Real Data) are 28x28 (or vice versa)
+        # target_res was determined in the previous loop for this class 'd'
+        target_res = real_full_by_class[i].shape[-1] if len(real_full_by_class) > i else 32
+
+        if xs is not None and len(xs) > 0 and xs.shape[-1] != target_res:
+             xs = F.interpolate(xs, size=(target_res, target_res), mode='bilinear', antialias=True)
+
         synth_full_by_class.append(xs)
 
-        # --- FIXED LOGGING MESSAGE ---
         if used_cache:
-            # Was "Locally saved", now "Retrieved" to avoid confusion with disk write
             logger.info(f"[DATASET EXPORT] Class {d}: Retrieved {len(xs)} cached samples (target: {target_count})")
         else:
             logger.info(f"[DATASET EXPORT] Class {d}: Generated {len(xs)} synthetic samples (target: {target_count})")
