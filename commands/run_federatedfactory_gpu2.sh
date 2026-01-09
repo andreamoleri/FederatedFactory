@@ -45,7 +45,7 @@ export CUDA_MODULE_LOADING=LAZY
 # ------------------------------------------------------------------------------
 # Option A: Set specific GPUs, e.g., "1" or "2 4" or "0 1 2 3"
 # Option B: Leave empty "" to auto-detect ALL available GPUs.
-MANUAL_GPU_IDS="0 1 2 3"
+MANUAL_GPU_IDS="0 1"
 
 # ------------------------------------------------------------------------------
 # LOGIC: DETERMINE TARGET LIST
@@ -69,7 +69,7 @@ TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
 
 # Diffusion + Classification is VRAM heavy. Keeping it to 1 job per GPU is safest.
-JOBS_PER_GPU=8
+JOBS_PER_GPU=10
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
 
 echo ">>> 📊 Configuration: Using $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
@@ -82,7 +82,7 @@ export TARGET_GPU_LIST
 # ORGANIZATION
 # ==============================================================================
 # We create the work dir relative to the script location (commands/) to keep root clean
-LOG_WORK_DIR="$SCRIPT_DIR/run_federatedfactory_work"
+LOG_WORK_DIR="$SCRIPT_DIR/run_federatedfactory_work_gpu2"
 LOG_STORAGE_DIR="$LOG_WORK_DIR/logs"
 
 mkdir -p "$LOG_STORAGE_DIR"
@@ -109,11 +109,11 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 # --- EXPERIMENT PARAMETERS ---
 SEEDS=(1 2 3 4 5)
 DATASETS=(
-    # "cifar"
-    "medmnist:bloodmnist"
-    "medmnist:retinamnist"
-    "medmnist:pathmnist"
-    # "fed_isic2019"
+    "cifar"
+    # "medmnist:bloodmnist"
+    # "medmnist:retinamnist"
+    # "medmnist:pathmnist"
+    "fed_isic2019"
 )
 PARTITIONS=("silos") # TODO: "dirichlet" in the future
 INFER_MODES=("server" "local")
@@ -121,8 +121,8 @@ INFER_MODES=("server" "local")
 # Fixed Hyperparameters
 CHECKPOINT_FAMILY="0025001"
 AGGREGATION="weighted"
-CLF_EPOCHS=300 # TODO: 300
-SAMPLES_PER_CLASS=10000 # TODO: 10000
+CLF_EPOCHS=3 # TODO: 300
+SAMPLES_PER_CLASS=10 # TODO: 10000
 MODEL="diffusion"
 ALPHA_VAL=0.1
 
