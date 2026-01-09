@@ -109,7 +109,7 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 # --- EXPERIMENT PARAMETERS ---
 SEEDS=(1 2 3 4 5)
 DATASETS=(
-    # "cifar"
+    "cifar"
     # "medmnist:bloodmnist"
     # "medmnist:retinamnist"
     # "medmnist:pathmnist"
@@ -120,7 +120,6 @@ INFER_MODES=("server" "local")
 
 # Fixed Hyperparameters
 CHECKPOINT_FAMILY="0025001"
-LATENT_DIM=128
 AGGREGATION="weighted"
 CLF_EPOCHS=2 # TODO: 300
 SAMPLES_PER_CLASS=10 # TODO: 10000
@@ -137,20 +136,36 @@ JOB_COUNT=1
 for SEED in "${SEEDS[@]}"; do
   for DATASET in "${DATASETS[@]}"; do
 
-    # --- INPUT SIZE LOGIC ---
+    # --- 1. RESOLUTION & CHANNEL CONFIGURATION ---
+    # Matches logic in src/checkpoint_trainer.py
     L_DATASET=$(echo "$DATASET" | tr '[:upper:]' '[:lower:]')
-    INPUT_SIZE=32 # Default (CIFAR)
+
+    # Defaults
+    INPUT_SIZE=32
+    CURRENT_LATENT_DIM=128
 
     case "$L_DATASET" in
         # ---------------------------------------------------------
-        # CHANGE: Force 32 for medmnist to match the 32x32 checkpoints
+        # Case A: Low-Res Datasets (CIFAR, MedMNIST)
         # ---------------------------------------------------------
-        *"medmnist"*) INPUT_SIZE=32 ;;
+        *"medmnist"*|*"cifar"*)
+            INPUT_SIZE=32
+            CURRENT_LATENT_DIM=128
+            ;;
 
-        # [FIX] ISIC checkpoints were trained at 128 for H100 optimization
-        *"isic"*) INPUT_SIZE=128 ;;
+        # ---------------------------------------------------------
+        # Case B: High-Res Datasets (ISIC) - H100 Optimized
+        # ---------------------------------------------------------
+        # ISIC checkpoints were trained at 128px res with 64 channels
+        *"isic"*)
+            INPUT_SIZE=64
+            CURRENT_LATENT_DIM=64
+            ;;
 
-        *"nico"*) INPUT_SIZE=224 ;;
+        *"nico"*)
+            INPUT_SIZE=224
+            CURRENT_LATENT_DIM=128
+            ;;
     esac
 
     for PARTITION in "${PARTITIONS[@]}"; do
@@ -176,6 +191,7 @@ for SEED in "${SEEDS[@]}"; do
             LOG_FILE="$LOG_STORAGE_DIR/$LOG_FILENAME"
 
             # Build Command
+            # Note: We use $CURRENT_LATENT_DIM instead of hardcoded 128
             CMD="$PYTHON_EXEC $MAIN_PY \
                 --dataset \"$DATASET\" \
                 --partition \"$PARTITION\" $ALPHA_ARG \
@@ -183,7 +199,7 @@ for SEED in "${SEEDS[@]}"; do
                 --seed $SEED \
                 --input-size $INPUT_SIZE \
                 --model \"$MODEL\" \
-                --latent-dim $LATENT_DIM \
+                --latent-dim $CURRENT_LATENT_DIM \
                 --aggregation \"$AGGREGATION\" \
                 --checkpoint-epoch-family \"$CHECKPOINT_FAMILY\" \
                 --clf-epochs $CLF_EPOCHS \
