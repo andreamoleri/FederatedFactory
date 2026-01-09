@@ -384,6 +384,36 @@ def run_classifier_training(
     logger.info(f"[CLF-PHASE] Partition: {partition_mode}, Local Inference: {is_local}")
 
     # =========================================================================
+    # [CRITICAL OOM FIX] VRAM CLEANUP BEFORE CLASSIFIER TRAINING
+    # =========================================================================
+    logger.info("[MEMORY] Offloading Generative Models to CPU to free VRAM for Classifier...")
+
+    # 1. Move Client Generators to CPU
+    for cname, models in client_gen_models.items():
+        for cid, model in models.items():
+            if model is not None:
+                model.to("cpu")
+
+    # 2. Move Global/List Generators to CPU
+    for model in gen_models:
+        if model is not None:
+            model.to("cpu")
+
+    # 3. Ensure Synthetic Data Cache is on CPU (Crucial)
+    # If the cache is on GPU, it will explode memory when concatenated
+    if synthetic_cache:
+        for k, v in synthetic_cache.items():
+            if isinstance(v, torch.Tensor):
+                synthetic_cache[k] = v.to("cpu")
+
+    # 4. Hard Flush
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
+    logger.info(f"[MEMORY] VRAM Flushed. Allocated: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
+    # =========================================================================
+
+    # =========================================================================
     # PARTITION MODE: SKEW / DIRICHLET
     # =========================================================================
     if is_skew:
@@ -584,8 +614,8 @@ def run_classifier_training(
                 train_ds = TransformSubset(train_raw, train_tf)
                 val_ds = TransformSubset(val_raw, eval_tf)
 
-                tr_ld = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
-                val_ld = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
+                tr_ld = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=0)
+                val_ld = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
                 if tracker: tracker.start_phase("server_classifier")
                 clf, steps = train_classifier(SimpleCNN(chans, len(present_in_synth)), tr_ld, val_ld, device,

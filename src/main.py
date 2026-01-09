@@ -70,6 +70,9 @@ fvcore_logger.setLevel(logging.ERROR)
 codecarbon_logger = logging.getLogger("codecarbon")
 codecarbon_logger.setLevel(logging.ERROR)
 
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
+
 # -------------------------------------- logging ------------------------------
 from logs.logger import get_logger
 from logs import messages as logmsg

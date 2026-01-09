@@ -184,7 +184,7 @@ for SEED in "${SEEDS[@]}"; do
             SAFE_DS="${DATASET//:/_}"
 
             # Since we are in PROJECT_ROOT, "output" is just "output"
-            OUT_ROOT="output"
+            OUT_ROOT="federatedfactory_output_l40"
 
             # Log Filename (keep explicit path for logs)
             LOG_FILENAME="job${JOB_COUNT}_${SAFE_DS}_${PARTITION}${ALPHA_SUFFIX}_${MODE}_seed${SEED}.log"

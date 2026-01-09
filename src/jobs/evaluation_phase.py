@@ -1,16 +1,18 @@
+# src/jobs/evaluation_phase.py
+
 """
 📊 Generative Model Evaluation Module
 -------------------------------------
 
-This module orchestrates the comprehensive evaluation of generative machine learning 
-models. It synthesizes data from trained generators (VAEs or Diffusion models) and 
+This module orchestrates the comprehensive evaluation of generative machine learning
+models. It synthesizes data from trained generators (VAEs or Diffusion models) and
 computes industry-standard quantitative metrics to assess image quality and diversity.
 
-It includes advanced statistical analysis (PCA spectra, Histogram matching), 
+It includes advanced statistical analysis (PCA spectra, Histogram matching),
 VAE reconstruction metrics, and dataset export capabilities.
 
 🧠 Purpose:
-    To provide a robust, academic-grade evaluation pipeline that bridges the gap 
+    To provide a robust, academic-grade evaluation pipeline that bridges the gap
     between model training and analytical benchmarking.
 
 🔧 Core Functionalities:
@@ -27,7 +29,7 @@ VAE reconstruction metrics, and dataset export capabilities.
 
 Author: Andrea Moleri
 File Location: src/jobs/evaluation_phase.py
-Last Modified: 21/11/2025
+Last Modified: 09/01/2026 (Fix: Enforce contiguous memory for cuBLAS stability)
 """
 
 from __future__ import annotations
@@ -271,6 +273,12 @@ def run_evaluation(
         if real_c.shape[-1] != fake_c.shape[-1]:
             target_h, target_w = real_c.shape[-2], real_c.shape[-1]
             fake_c = F.interpolate(fake_c, size=(target_h, target_w), mode='bilinear', antialias=True)
+
+        # [CRITICAL FIX] Ensure contiguous memory layout to prevent cuBLAS execution failure
+        # Slicing from previous operations (e.g. subset_to_tensor or interpolate) can
+        # result in non-contiguous tensors that trip up TF32 kernels on Ampere.
+        real_c = real_c.contiguous()
+        fake_c = fake_c.contiguous()
 
         fr, _ = feat_extractor.features_and_logits(real_c)
         ff, pf = feat_extractor.features_and_logits(fake_c)
@@ -714,4 +722,4 @@ def run_evaluation(
             # Keep on CPU to save VRAM during classifier training
             handoff_cache[d] = synth_full_by_class[i].cpu()
 
-    return gen_metrics, handoff_cache  # <--- CHANGED: Return Tuple
+    return gen_metrics, handoff_cache 
