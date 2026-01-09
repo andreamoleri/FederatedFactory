@@ -45,7 +45,7 @@ export CUDA_MODULE_LOADING=LAZY
 # ------------------------------------------------------------------------------
 # Option A: Set specific GPUs, e.g., "1" or "2 4" or "0 1 2 3"
 # Option B: Leave empty "" to auto-detect ALL available GPUs.
-MANUAL_GPU_IDS="0"
+MANUAL_GPU_IDS="0 1 2 3"
 
 # ------------------------------------------------------------------------------
 # LOGIC: DETERMINE TARGET LIST
@@ -69,7 +69,7 @@ TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
 
 # Diffusion + Classification is VRAM heavy. Keeping it to 1 job per GPU is safest.
-JOBS_PER_GPU=10
+JOBS_PER_GPU=5
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
 
 echo ">>> 📊 Configuration: Using $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
@@ -110,20 +110,20 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 SEEDS=(1 2 3 4 5)
 DATASETS=(
     # "cifar"
-    "medmnist:bloodmnist"
+    # "medmnist:bloodmnist"
     # "medmnist:retinamnist"
     # "medmnist:pathmnist"
-    # "fed_isic2019"
+    "fed_isic2019"
 )
-PARTITIONS=("silos") # "dirichlet" in the future
+PARTITIONS=("silos") # TODO: "dirichlet" in the future
 INFER_MODES=("server" "local")
 
 # Fixed Hyperparameters
 CHECKPOINT_FAMILY="0025001"
 LATENT_DIM=128
 AGGREGATION="weighted"
-CLF_EPOCHS=300
-SAMPLES_PER_CLASS=10000
+CLF_EPOCHS=2 # TODO: 300
+SAMPLES_PER_CLASS=10 # TODO: 10000
 MODEL="diffusion"
 ALPHA_VAL=0.1
 
@@ -146,7 +146,11 @@ for SEED in "${SEEDS[@]}"; do
         # CHANGE: Force 32 for medmnist to match the 32x32 checkpoints
         # ---------------------------------------------------------
         *"medmnist"*) INPUT_SIZE=32 ;;
-        *"isic"*|*"nico"*) INPUT_SIZE=224 ;;
+
+        # [FIX] ISIC checkpoints were trained at 128 for H100 optimization
+        *"isic"*) INPUT_SIZE=128 ;;
+
+        *"nico"*) INPUT_SIZE=224 ;;
     esac
 
     for PARTITION in "${PARTITIONS[@]}"; do
@@ -270,6 +274,8 @@ fi
 echo ">>> STARTING EXECUTION OF $COUNT EXPERIMENTS"
 echo ">>> CONFIG: $NUM_GPUS GPUs | $JOBS_PER_GPU Jobs/GPU | $TOTAL_CONCURRENCY Concurrent Jobs"
 
+# We use --joblog to track success/fail
+# We use --resume-failed so re-running the script picks up dropped jobs
 parallel --jobs "$TOTAL_CONCURRENCY" \
     --retries 1 \
     --joblog "$JOBLOG" \
@@ -280,32 +286,29 @@ parallel --jobs "$TOTAL_CONCURRENCY" \
     --env TARGET_GPU_LIST \
     --line-buffer \
     '
+    # 1. Calculate GPU ID based on Job Slot
     JOB_SLOT={%}
-
-    # --- ROBUST ARRAY LOGIC ---
-    # Convert string list to array
     IFS=" " read -r -a GPU_ARRAY <<< "$TARGET_GPU_LIST"
-
-    # Calculate index
     ARRAY_INDEX=$(( (JOB_SLOT - 1) % NUM_GPUS ))
-
-    # Get Physical GPU ID
     GPU_ID=${GPU_ARRAY[$ARRAY_INDEX]}
-    # --------------------------
 
+    # 2. Set Visibility
     export CUDA_VISIBLE_DEVICES=$GPU_ID
 
     echo "🚀 [GPU $GPU_ID] Starting Job {#}"
 
-    # Execute and capture exit status explicitly
+    # 3. Execute the command passed from the text file
+    # We use eval because the line contains redirections (> log.txt)
     eval {}
-    status=$?
+    exit_status=$?
 
-    if [ $status -eq 0 ]; then
+    # 4. Report Status
+    if [ $exit_status -eq 0 ]; then
         echo "✅ [GPU $GPU_ID] Job {#} Finished"
     else
-        echo "❌ [GPU $GPU_ID] Job {#} Failed (Exit Code: $status)"
-        exit 1
+        echo "❌ [GPU $GPU_ID] Job {#} Failed (Exit Code: $exit_status)"
+        # Parallel needs a non-zero exit to record failure in joblog
+        exit $exit_status
     fi
     ' :::: "$CMD_FILE"
 

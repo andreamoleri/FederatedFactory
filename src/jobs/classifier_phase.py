@@ -47,6 +47,7 @@ import time
 from typing import List, Dict, Optional, Tuple, Any, Set, Union
 
 import torch
+import torch.nn.functional as F  # Added for interpolation
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset, ConcatDataset, Dataset, random_split, Subset
 import torchvision.transforms.functional as TF
@@ -69,12 +70,8 @@ class TransformSubset(Dataset):
     """
     Wraps a standard Subset or Dataset and forces a specific transform
     to be applied on __getitem__.
-
-    CRITICAL FIX: This class now automatically handles Synthetic Tensors.
-    If the input data is a Tensor (e.g., from Diffusion), it converts it back
-    to a PIL image so that standard torchvision transforms (which often include
-    ToTensor) work correctly without crashing.
     """
+
     def __init__(self, subset, transform):
         self.subset = subset
         self.transform = transform
@@ -83,7 +80,7 @@ class TransformSubset(Dataset):
         x, y = self.subset[index]
 
         # --- SYNTHETIC DATA ADAPTER ---
-        # If input is a Tensor (Synthetic), transform to PIL first
+        # If input data is a Tensor (Synthetic), transform to PIL first
         if isinstance(x, torch.Tensor):
             # Synthetic data is typically [-1, 1]. Shift to [0, 1]
             x = (x + 1.0) / 2.0
@@ -93,6 +90,13 @@ class TransformSubset(Dataset):
 
         if self.transform:
             x = self.transform(x)
+
+        # --- [FIX] HARMONIZE LABEL TYPES ---
+        # Real data loaders often return 'int', but synthetic TensorDataset returns 'Tensor'.
+        # We enforce Tensor type here so the DataLoader collate_fn doesn't crash.
+        if not isinstance(y, torch.Tensor):
+            y = torch.tensor(y, dtype=torch.long)
+
         return x, y
 
     def __len__(self):
@@ -151,18 +155,47 @@ def synth_from_decoder(dec: Decoder, latent: int, n: int, device: torch.device) 
     return torch.cat(imgs_list, dim=0)
 
 @torch.no_grad()
-def synth_from_diffusion(model: DiT, n: int, device: torch.device, img_shape: Tuple[int, int, int]) -> torch.Tensor:
+def synth_from_diffusion(model: DiT, n: int, device: torch.device, target_shape: Tuple[int, int, int]) -> torch.Tensor:
     """
-    Generates synthetic images using a Diffusion Transformer (DiT) via Rectified Flow.
-    Returns tensors on CPU.
+    Generates synthetic images using a Diffusion Transformer (DiT).
+
+    [RESOLUTION FIX]
+    1. Detects Native Resolution of the checkpoint (e.g., 128).
+    2. Generates at Native Resolution.
+    3. Upsamples to Target Resolution (e.g., 224) if they differ.
     """
-    C, H, W = img_shape
+    C, H_target, W_target = target_shape
+
+    # 1. Determine Native Resolution
+    # EDM2 models store resolution in edm_net.img_resolution
+    native_res = getattr(model.edm_net, 'img_resolution', H_target)
+
     model.to(device).eval()
+
+    # 2. Generate at Native Resolution
     # rectified_flow_sampler already handles batching internally (max_batch=64)
-    # steps=50 is standard, reduced for speed if necessary, but kept at 50 for quality
-    x = rectified_flow_sampler(model, n=n, shape=(C, H, W), steps=50, device=device).cpu()
+    x_native = rectified_flow_sampler(
+        model,
+        n=n,
+        shape=(C, native_res, native_res), # Use NATIVE shape
+        steps=50,
+        device=device
+    )
+
     model.cpu()
-    return x.cpu()
+
+    # 3. Resize if Native != Target
+    if native_res != H_target or native_res != W_target:
+        # Bicubic is standard for upsampling images for evaluation (e.g. Inception)
+        x_out = F.interpolate(
+            x_native,
+            size=(H_target, W_target),
+            mode='bicubic',
+            antialias=True
+        )
+        return x_out.cpu()
+
+    return x_native.cpu()
 
 def generate_weighted_samples(
         client_gen_models: Dict[str, Dict[int, Any]],
@@ -336,6 +369,18 @@ def run_classifier_training(
     # Initialize with pre_generated_data if available
     synthetic_cache: Dict[int, torch.Tensor] = pre_generated_data.copy() if pre_generated_data else {}
 
+    # [RESOLUTION FIX] Ensure Cached Data Matches Target Resolution
+    # If eval phase generated 128x128 but we need 224x224 for clf, resize cache now.
+    target_res = img_shape[-1]
+    for cid, cached_imgs in synthetic_cache.items():
+        if len(cached_imgs) > 0 and cached_imgs.shape[-1] != target_res:
+            synthetic_cache[cid] = F.interpolate(
+                cached_imgs,
+                size=(target_res, target_res),
+                mode='bicubic',
+                antialias=True
+            )
+
     logger.info(f"[CLF-PHASE] Partition: {partition_mode}, Local Inference: {is_local}")
 
     # =========================================================================
@@ -412,6 +457,11 @@ def run_classifier_training(
 
                         if imgs_list:
                             s_imgs = torch.cat(imgs_list)
+
+                            # [RESOLUTION FIX] Resize VAE/Cached to Target if mismatched
+                            if s_imgs.shape[-1] != target_res:
+                                s_imgs = F.interpolate(s_imgs, size=(target_res, target_res), mode='bicubic', antialias=True)
+
                             # Update Cache with full set
                             synthetic_cache[cid] = s_imgs
                         # [CACHE LOGIC END]
@@ -443,8 +493,9 @@ def run_classifier_training(
                     final_train_ds = r_train_ds
                     final_val_ds = r_val_ds
 
-                tr_ld = DataLoader(final_train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
-                val_ld = DataLoader(final_val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
+                # Safe Mode: num_workers=0
+                tr_ld = DataLoader(final_train_ds, batch_size=args.batch_size, shuffle=True, num_workers=0)
+                val_ld = DataLoader(final_val_ds, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
                 if tracker: tracker.start_phase(f"client_{cname}_clf")
                 clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs,
@@ -494,6 +545,11 @@ def run_classifier_training(
 
                     if imgs_list:
                         full_set = torch.cat(imgs_list)
+
+                        # [RESOLUTION FIX]
+                        if full_set.shape[-1] != target_res:
+                            full_set = F.interpolate(full_set, size=(target_res, target_res), mode='bicubic', antialias=True)
+
                         synth_samples[cid] = full_set
                         synthetic_cache[cid] = full_set # Update cache
                     # [CACHE LOGIC END]
@@ -620,6 +676,10 @@ def run_classifier_training(
 
                             if imgs_list:
                                 im = torch.cat(imgs_list)
+                                # [RESOLUTION FIX]
+                                if im.shape[-1] != target_res:
+                                    im = F.interpolate(im, size=(target_res, target_res), mode='bicubic', antialias=True)
+
                                 synthetic_cache[od] = im # Update cache
                                 s_xs.append(im)
                                 s_ys.append(torch.full((len(im),), od, dtype=torch.long))
@@ -698,6 +758,10 @@ def run_classifier_training(
 
                 if imgs_list:
                     im = torch.cat(imgs_list)
+                    # [RESOLUTION FIX]
+                    if im.shape[-1] != target_res:
+                        im = F.interpolate(im, size=(target_res, target_res), mode='bicubic', antialias=True)
+
                     synthetic_cache[d] = im # Update cache
                     xs.append(im)
                     ys.append(torch.full((len(im),), d, dtype=torch.long))
