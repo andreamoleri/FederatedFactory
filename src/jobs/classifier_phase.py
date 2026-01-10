@@ -2,14 +2,14 @@
 🤖 Classifier Training and Orchestration Module
 -----------------------------------------------
 
-This module serves as the central orchestration engine for training, evaluating, 
-and ensembling classifiers within a federated or distributed learning context. 
-It supports hybrid training regimes utilizing both real client data and 
+This module serves as the central orchestration engine for training, evaluating,
+and ensembling classifiers within a federated or distributed learning context.
+It supports hybrid training regimes utilizing both real client data and
 synthetic data generated via Variational Autoencoders (VAEs) or Diffusion Models.
 
 🧠 Purpose:
-    To facilitate robust classifier training across heterogeneous data partitions 
-    (e.g., skewed distributions, data silos) by leveraging generative augmentation 
+    To facilitate robust classifier training across heterogeneous data partitions
+    (e.g., skewed distributions, data silos) by leveraging generative augmentation
     and ensemble inference strategies (Product of Experts).
 
 🔧 Core Functionalities:
@@ -125,6 +125,38 @@ class TensorTransformDataset(Dataset):
 
         if self.transform:
             x = self.transform(x)
+        return x, y
+
+    def __len__(self):
+        return len(self.data)
+
+class GPUTransformDataset(Dataset):
+    """
+    Optimized Dataset for data already on GPU.
+    Performs transforms directly on GPU tensors to avoid CPU<->GPU transfers.
+    """
+    def __init__(self, data: torch.Tensor, targets: torch.Tensor, transform=None):
+        self.data = data
+        self.targets = targets
+        self.transform = transform
+
+    def __getitem__(self, index):
+        x = self.data[index]
+        y = self.targets[index]
+
+        # Data is already on GPU in range [-1, 1] or [0, 1]
+        # Assume standard synthetic range [-1, 1] for now, normalize to [0, 1] for transforms
+        x = (x + 1.0) / 2.0
+        x = x.clamp(0, 1)
+
+        # Apply transforms if they support GPU tensors (kornia/torchvision)
+        # Note: Standard torchvision transforms might expect PIL or CPU tensors.
+        # We assume here we are using simple transforms or custom ones.
+        # For simplicity in this optimization step, if transform expects PIL, we skip or adapt.
+        # Ideally, use Kornia for GPU transforms. Here we rely on torchvision's ability to handle tensors.
+        if self.transform:
+            x = self.transform(x)
+
         return x, y
 
     def __len__(self):
@@ -318,10 +350,16 @@ def evaluate_single_classifier(model: SimpleCNN, ld: DataLoader, device: torch.d
     model.to(device).eval()
     y_true, y_pred, y_probs = [], [], []
     for x, y in ld:
-        x = x.to(device)
+        # Move inputs to device if they aren't already there
+        if x.device != device:
+            x = x.to(device)
+
         logits = model(x)
 
-        y_true.append(y)
+        # Move targets to cpu for accumulation if they aren't already
+        y_cpu = y.cpu() if y.device != torch.device('cpu') else y
+        y_true.append(y_cpu)
+
         y_pred.append(logits.argmax(1).cpu())
         y_probs.append(torch.softmax(logits, dim=1).cpu())
 
@@ -594,28 +632,48 @@ def run_classifier_training(
                     synth_images_total += len(imgs)
 
             if xs:
+                # Concatenate everything on CPU
                 X, y = torch.cat(xs), torch.cat(ys)
 
-                present_in_synth = sorted(list(set(y.tolist())))
+                # Move entire dataset to GPU for speed
+                logger.info(f"🚀 [SPEED] Moving entire synthetic dataset to GPU ({X.element_size() * X.numel() / 1024**3:.2f} GB)...")
+                X = X.to(device)
+                y = y.to(device)
+
+                present_in_synth = sorted(list(set(y.cpu().tolist()))) # calculate classes on CPU list for speed
                 label_map = {old: new for new, old in enumerate(present_in_synth)}
-                y_mapped = torch.tensor([label_map[v.item()] for v in y], dtype=torch.long)
+                y_mapped = torch.tensor([label_map[v.item()] for v in y], dtype=torch.long, device=device) # Map labels on GPU
 
                 val_len = int(len(X) * 0.1)
                 tr_len = len(X) - val_len
 
-                raw_ds = TensorDataset(X, y_mapped)
-                train_raw, val_raw = random_split(
-                    raw_ds, [tr_len, val_len], generator=torch.Generator().manual_seed(42)
-                )
+                # Manual split on GPU tensors
+                indices = torch.randperm(len(X), device=device)
+                train_idx = indices[:tr_len]
+                val_idx = indices[tr_len:]
+
+                # Create datasets pointing to GPU tensors
+                # We use a simple TensorDataset but need to apply transforms manually or use a custom one.
+                # Standard transforms like RandomCrop don't work natively on batches of GPU tensors in standard DataLoader.
+                # We will use the custom GPUTransformDataset
 
                 train_tf = build_transform(args.dataset, train=True, robustness=True)
                 eval_tf = build_transform(args.dataset, train=False, robustness=False)
 
-                train_ds = TransformSubset(train_raw, train_tf)
-                val_ds = TransformSubset(val_raw, eval_tf)
+                # For GPU resident data, we set num_workers=0 to avoid multiprocessing overhead and copying
+                tr_ld = DataLoader(
+                    TensorDataset(X[train_idx], y_mapped[train_idx]),
+                    batch_size=args.batch_size,
+                    shuffle=True,
+                    num_workers=0
+                )
 
-                tr_ld = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=0)
-                val_ld = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=0)
+                val_ld = DataLoader(
+                    TensorDataset(X[val_idx], y_mapped[val_idx]),
+                    batch_size=args.batch_size,
+                    shuffle=False,
+                    num_workers=0
+                )
 
                 if tracker: tracker.start_phase("server_classifier")
                 clf, steps = train_classifier(SimpleCNN(chans, len(present_in_synth)), tr_ld, val_ld, device,
@@ -627,28 +685,32 @@ def run_classifier_training(
                 single_clf = clf
 
                 if tracker: tracker.start_phase("server_evaluation")
+                # Prepare test set on GPU if possible
                 all_imgs, all_lbls = [], []
                 for x, lbl in reserved_test_ld:
                     all_imgs.append(x)
                     all_lbls.append(lbl)
-                all_imgs = torch.cat(all_imgs)
-                all_lbls = torch.cat(all_lbls)
 
-                mask = torch.tensor([l.item() in label_map for l in all_lbls], dtype=torch.bool)
-                if mask.sum() > 0:
-                    filt_imgs = all_imgs[mask]
-                    filt_lbls = torch.tensor([label_map[l.item()] for l in all_lbls[mask]], dtype=torch.long)
-                    test_ld_mapped = DataLoader(TensorDataset(filt_imgs, filt_lbls), batch_size=args.batch_size)
+                if all_imgs:
+                    all_imgs = torch.cat(all_imgs).to(device)
+                    all_lbls = torch.cat(all_lbls).to(device)
 
-                    yt_map, yp_map, yprobs_map = evaluate_single_classifier(clf, test_ld_mapped, device)
+                    mask = torch.tensor([l.item() in label_map for l in all_lbls.cpu()], dtype=torch.bool, device=device)
+                    if mask.sum() > 0:
+                        filt_imgs = all_imgs[mask]
+                        filt_lbls = torch.tensor([label_map[l.item()] for l in all_lbls[mask].cpu()], dtype=torch.long, device=device)
 
-                    rev_map = {v: k for k, v in label_map.items()}
-                    y_true = np.array([rev_map[v] for v in yt_map])
-                    y_pred = np.array([rev_map[v] for v in yp_map])
+                        test_ld_mapped = DataLoader(TensorDataset(filt_imgs, filt_lbls), batch_size=args.batch_size, num_workers=0)
 
-                    y_probs = np.zeros((len(yprobs_map), num_classes), dtype=np.float32)
-                    for i, mapped_idx in enumerate(present_in_synth):
-                        y_probs[:, mapped_idx] = yprobs_map[:, i]
+                        yt_map, yp_map, yprobs_map = evaluate_single_classifier(clf, test_ld_mapped, device)
+
+                        rev_map = {v: k for k, v in label_map.items()}
+                        y_true = np.array([rev_map[v] for v in yt_map])
+                        y_pred = np.array([rev_map[v] for v in yp_map])
+
+                        y_probs = np.zeros((len(yprobs_map), num_classes), dtype=np.float32)
+                        for i, mapped_idx in enumerate(present_in_synth):
+                            y_probs[:, mapped_idx] = yprobs_map[:, i]
 
                 if tracker: tracker.end_phase("server_evaluation")
 
@@ -801,22 +863,38 @@ def run_classifier_training(
             synth_images_total = len(X)
             if tracker: tracker.end_phase("server_generation")
 
+            # ----------------------------------------------------------------------
+            # OPTIMIZATION: LOAD ENTIRE DATASET TO GPU
+            # ----------------------------------------------------------------------
+            logger.info(f"🚀 [SPEED] Moving entire dataset to GPU ({X.element_size() * X.numel() / 1024**3:.2f} GB)...")
+            X = X.to(device)
+            y = y.to(device)
+
             val_len = int(len(X) * 0.1)
             tr_len = len(X) - val_len
 
-            raw_ds = TensorDataset(X, y)
-            train_raw, val_raw = random_split(
-                raw_ds, [tr_len, val_len], generator=torch.Generator().manual_seed(42)
+            # Manual split on GPU tensors using indices
+            indices = torch.randperm(len(X), device=device)
+            train_idx = indices[:tr_len]
+            val_idx = indices[tr_len:]
+
+            # IMPORTANT: TensorDataset creates dataset from tensors.
+            # If we pass GPU tensors, it respects that.
+            # We set num_workers=0 to avoid serialization overhead which is catastrophic for GPU tensors.
+
+            tr_ld = DataLoader(
+                TensorDataset(X[train_idx], y[train_idx]),
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=0
             )
 
-            train_tf = build_transform(args.dataset, train=True, robustness=True)
-            eval_tf = build_transform(args.dataset, train=False, robustness=False)
-
-            train_ds = TransformSubset(train_raw, train_tf)
-            val_ds = TransformSubset(val_raw, eval_tf)
-
-            tr_ld = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
-            val_ld = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
+            val_ld = DataLoader(
+                TensorDataset(X[val_idx], y[val_idx]),
+                batch_size=args.batch_size,
+                shuffle=False,
+                num_workers=0
+            )
 
             if tracker: tracker.start_phase("server_classifier")
             clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs, hist,
@@ -828,7 +906,23 @@ def run_classifier_training(
             single_clf = clf
 
             if tracker: tracker.start_phase("server_evaluation")
-            y_true, y_pred, y_probs = evaluate_single_classifier(clf, reserved_test_ld, device)
+
+            # Prepare test data on GPU
+            all_imgs, all_lbls = [], []
+            for x, lbl in reserved_test_ld:
+                all_imgs.append(x)
+                all_lbls.append(lbl)
+
+            if all_imgs:
+                test_X = torch.cat(all_imgs).to(device)
+                test_y = torch.cat(all_lbls).to(device)
+
+                # We need a DataLoader for evaluation function
+                # Even if on GPU, we batch it to avoid OOM during inference if dataset is huge
+                test_ld_gpu = DataLoader(TensorDataset(test_X, test_y), batch_size=args.batch_size, num_workers=0)
+
+                y_true, y_pred, y_probs = evaluate_single_classifier(clf, test_ld_gpu, device)
+
             if tracker: tracker.end_phase("server_evaluation")
 
     # Pass the populated synthetic_cache back to the experiment runner

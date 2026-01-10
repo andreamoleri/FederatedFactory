@@ -613,6 +613,8 @@ def main():
     # Misc
     cli.add_argument("--classes", type=str, default="", help="(NICO++) Comma-separated classes")
     cli.add_argument("--save-datasets", action="store_true")
+    cli.add_argument("--synthetic-data-dir", type=str, default=None,
+                     help="Path to folder containing pre-generated synthetic images to reuse")
     cli.add_argument("--robustness", type=str, default="false", help="Enable Gaussian noise (true/false)")
     cli.add_argument("--checkpoint-epoch-family", type=int, default=None,
                      help="If set, skip generative training and load checkpoints from this epoch (e.g., 500).")

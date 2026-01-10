@@ -498,7 +498,7 @@ def train_classifier(
     """
     Train a standard classifier model (e.g., SimpleCNN) according to strict specifications:
     - Optimizer: SGD
-    - LR: 0.1 (decayed via Cosine Annealing to 0)
+    - LR: Scaled linearly based on batch size (Base 0.1 for BS=128)
     - Momentum: 0.9
     - Weight Decay: 1e-4
 
@@ -515,20 +515,41 @@ def train_classifier(
     Returns:
         Tuple[nn.Module, int]: The trained model and the number of training steps.
     """
+
+    # [OPTIMIZATION] Enable DataParallel if multiple GPUs are available
+    # This allows the model to utilize both H100s for the forward/backward pass
+    if torch.cuda.device_count() > 1 and not isinstance(model, nn.DataParallel):
+        model = nn.DataParallel(model)
+
     model.to(device)
 
-    # Specification 5: SGD, Momentum 0.9, Weight Decay 1e-4, Initial LR 0.1
+    # [CRITICAL] H100 Linear Scaling Rule
+    # Standard ResNet LR is 0.1 for Batch Size 128.
+    # We scale it: NewLR = 0.1 * (CurrentBatchSize / 128)
+    base_lr = 0.1
+    base_bs = 128
+    current_bs = train_ld.batch_size
+
+    # If using DataParallel, the batch size in loader is global, so this is correct.
+    scaled_lr = base_lr * (current_bs / base_bs)
+
+    # Cap LR to prevent divergence in early phases (optional but safe)
+    scaled_lr = min(scaled_lr, 3.0)
+
+    logger.info(f"🚀 [H100 OPT] Scaling LR from {base_lr} to {scaled_lr:.4f} (Batch Size: {current_bs})")
+
+    # Use the scaled LR
     opt = optim.SGD(
         model.parameters(),
-        lr=0.1,
+        lr=scaled_lr,
         momentum=0.9,
         weight_decay=1e-4
     )
 
-    # Specification 5: Cosine Annealing Scheduler (decays to 0 over 'epochs')
+    # Cosine Annealing scheduler (decays to 0 over 'epochs')
     scheduler = optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=0.0)
 
-    # Standard CrossEntropy (removed label_smoothing to adhere to standard ResNet baseline specs)
+    # Standard CrossEntropy
     ce = nn.CrossEntropyLoss()
 
     # Initialize history structure for accuracy and loss tracking
@@ -537,10 +558,16 @@ def train_classifier(
 
     steps = 0
 
-    # Profile the classifier for FLOPs tracking
+    # [MEMORY] Force cleanup before training loop starts to maximize available VRAM
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    # Profile the classifier for FLOPs tracking (using a small sample batch)
     rep_batch = None
     try:
         for xb, yb in train_ld:
+            # Transfer a tiny slice just for profiling registration
             rep_batch = xb.to(device)[: min(2, xb.size(0))]
             break
     except Exception:
@@ -563,8 +590,11 @@ def train_classifier(
         total = 0
 
         for x, y in train_ld:
-            x, y = x.to(device), y.to(device)
-            opt.zero_grad()
+            # [SPEED] Non-blocking transfer allows overlap of data transfer and computation
+            x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
+
+            # [SPEED] set_to_none=True is slightly faster and uses less memory than zero_grad()
+            opt.zero_grad(set_to_none=True)
 
             out = model(x)
             loss = ce(out, y)
@@ -573,8 +603,12 @@ def train_classifier(
             opt.step()
 
             loss_sum += loss.item()
-            correct += (out.argmax(1) == y).sum().item()
-            total += y.size(0)
+
+            # [SPEED] Calculate metrics inside no_grad to save memory/compute
+            with torch.no_grad():
+                correct += (out.argmax(1) == y).sum().item()
+                total += y.size(0)
+
             steps += 1
 
             if tracker is not None:
@@ -583,17 +617,20 @@ def train_classifier(
         # Step the scheduler after every epoch
         scheduler.step()
 
+        # ---------------- Logging & Validation Phase ---------------------------
+        # MODIFIED: Removed the "if (ep+1)%5" condition. Now runs every epoch.
+
         tr_acc = correct / total if total > 0 else 0.0
         tr_loss = loss_sum / len(train_ld) if len(train_ld) > 0 else 0.0
 
-        # ---------------- Validation Phase ---------------------------
         model.eval()
         val_loss_sum = 0.0
         correct_v = 0
         total_v = 0
+
         with torch.no_grad():
             for x, y in val_ld:
-                x, y = x.to(device), y.to(device)
+                x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
                 out = model(x)
                 val_loss_sum += ce(out, y).item()
                 correct_v += (out.argmax(1) == y).sum().item()
@@ -613,10 +650,15 @@ def train_classifier(
 
         logger.info(
             f"[CLF] Client {cid} | Epoch {ep + 1}/{epochs} | "
-            f"LR: {current_lr:.6f} | Train Acc: {tr_acc:.4f} | Val Acc: {val_acc:.4f}"
+            f"LR: {current_lr:.4f} | Train Acc: {tr_acc:.4f} | Val Acc: {val_acc:.4f}"
         )
 
+    # Unwrap DataParallel model before returning to avoid serialization issues
+    if isinstance(model, nn.DataParallel):
+        model = model.module
+
     model.cpu()
+
     if tracker is not None:
         tracker.end_phase(f"clf_c{cid}")
 

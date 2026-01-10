@@ -19,6 +19,7 @@ partitioning to model training, evaluation, and metric persistence.
     • Orchestrate two-phase training: Generative (VAE/GAN) followed by Classifier
     • Compute and serialize comprehensive performance metrics and artifacts
     • Delegate evaluation and dataset export to the evaluation phase
+    • [NEW] Load external pre-generated synthetic data to skip generation steps.
 
 🎯 Intended Use:
     • High-performance computing (HPC) cluster jobs
@@ -32,7 +33,7 @@ File Interactions:
 
 Author: Andrea Moleri
 File Location: src/jobs/experiment_runner.py
-Last Modified: 12/12/2025
+Last Modified: 10/01/2026
 """
 from __future__ import annotations
 import logging
@@ -41,10 +42,12 @@ import numpy as np
 import json
 import csv
 import torch
+import re
 from pathlib import Path
 from typing import List, Dict, Optional, Any, Tuple
 from sklearn.metrics import confusion_matrix
 from torch.utils.data import DataLoader, TensorDataset
+from torchvision.io import read_image, ImageReadMode
 
 # Importazioni da moduli locali
 from utils import set_seed, VGGPerceptualLoss
@@ -98,6 +101,77 @@ def save_predictions_artifact(y_true: np.ndarray, y_pred: np.ndarray, y_probs: n
         image_names=image_names
     )
     return output_path
+
+
+def load_external_synthetic_data(
+    data_root: str,
+    dataset_name: str,
+    expected_resolution: int
+) -> Dict[int, torch.Tensor]:
+    """
+    Walks the experimental_data structure and loads images into tensors.
+    Expected structure: root / dataset_name / synthetic / class-XXX / *.png
+    Returns: Dict { class_id: Tensor(N, C, H, W) in range [-1, 1] }
+    """
+    root_path = Path(data_root)
+    # Handle dataset naming variations (e.g., medmnist:bloodmnist vs folder name)
+    possible_names = [
+        dataset_name,
+        dataset_name.replace(":", ""),
+        dataset_name.split(":")[0],
+    ]
+
+    target_dir = None
+    for name in possible_names:
+        candidate = root_path / name / "synthetic"
+        if candidate.exists():
+            target_dir = candidate
+            break
+
+    if target_dir is None:
+        logger.warning(f"[LOADER] Could not find synthetic data folder in {data_root} for {dataset_name}. Generation will proceed as normal.")
+        return {}
+
+    logger.info(f"[LOADER] Found external synthetic data at: {target_dir}")
+
+    cache = {}
+    class_dirs = sorted(list(target_dir.iterdir()))
+
+    for c_dir in class_dirs:
+        if not c_dir.is_dir(): continue
+
+        # Regex to extract class ID from "class-000_airplane" or "class-000"
+        match = re.search(r'class-(\d+)', c_dir.name)
+        if not match: continue
+
+        class_id = int(match.group(1))
+
+        # Collect images
+        image_files = sorted(list(c_dir.glob("*.png")))
+        if not image_files: continue
+
+        tensors = []
+        for img_path in image_files:
+            try:
+                # Read as uint8 [0, 255]
+                # ImageReadMode.RGB ensures 3 channels. If grayscale needed, pipeline handles resize/gray later.
+                img = read_image(str(img_path), mode=ImageReadMode.RGB)
+                tensors.append(img)
+            except Exception as e:
+                pass
+
+        if not tensors: continue
+
+        # Stack: (N, C, H, W)
+        batch = torch.stack(tensors).float()
+
+        # Normalize from [0, 255] to [-1, 1] (Generative pipeline convention)
+        batch = (batch / 127.5) - 1.0
+
+        cache[class_id] = batch
+        logger.info(f"   Loaded Class {class_id}: {batch.shape[0]} samples")
+
+    return cache
 
 
 # ==============================================================================
@@ -220,6 +294,18 @@ def run_experiment(args: Any, run_id: int | None = None, tracker: ExperimentCost
              # (prepare_data returns a list for silos, so we map it here)
              train_subsets_dict = {f"client_{d}": {d: train_subsets[i]} for i, d in enumerate(present_classes)}
 
+        # --- [NEW] PRE-LOAD EXTERNAL DATA IF AVAILABLE ---
+        # This logic checks if the user provided a path to pre-existing synthetic data.
+        # If so, it loads it into 'generated_data_cache' to skip generation steps later.
+        generated_data_cache = {}
+        if getattr(args, "synthetic_data_dir", None):
+            generated_data_cache = load_external_synthetic_data(
+                args.synthetic_data_dir,
+                args.dataset,
+                img_shape[-1]
+            )
+        # -------------------------------------------------
+
         # BRANCHING LOGIC
         if args.checkpoint_epoch_family is not None:
             # LOAD MODE
@@ -262,22 +348,30 @@ def run_experiment(args: Any, run_id: int | None = None, tracker: ExperimentCost
         metrics["vae_steps"] = gen_step_total
 
         # 4. Evaluation Phase - ENABLED
-        # === UPDATED: Capture the cache ===
-        gen_metrics, generated_data_cache = run_evaluation(
+        # === UPDATED: Pass the cache (pre_generated_data) ===
+        # If the cache is populated from external files, run_evaluation will skip generation
+        # and compute metrics directly on the loaded images.
+        gen_metrics, handoff_cache = run_evaluation(
             args, device, P, present_classes, reserved_test_imgs_list,
             gen_models, client_gen_models, client_sample_counts, img_shape,
             [], None, [], [], train_subsets_dict, train_subsets, base_train_set, chans,
-            pre_generated_data=None
+            pre_generated_data=generated_data_cache # <--- INJECT HERE
         )
 
+        # Update the main cache with whatever was used/generated in evaluation
+        if handoff_cache:
+            generated_data_cache.update(handoff_cache)
+
         # 5. Classifier Phase (CRITICAL: Generates 'acc')
+        # === UPDATED: Pass the cache ===
+        # The classifier training will use these tensors directly to train the final CNNs.
         (clf_steps, synth_total, clf_start, y_true, y_pred, y_probs,
          trained_clfs, single_clf, synthetic_cache) = run_classifier_training(
             args, device, P, train_subsets_dict, train_subsets, present_classes,
             num_classes, chans, img_shape, tracker, hist, gen_models,
             client_gen_models, client_sample_counts, reserved_test_ld,
             # === NEW ARGUMENT ===
-            pre_generated_data=generated_data_cache
+            pre_generated_data=generated_data_cache # <--- INJECT HERE
         )
 
         clf_time = time.perf_counter() - clf_start

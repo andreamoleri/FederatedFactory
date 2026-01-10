@@ -139,7 +139,7 @@ def rectified_flow_sampler(
         device: torch.device | None = None,
         y: Optional[torch.Tensor] = None,
         guidance_scale: float = 0.0,
-        max_batch: int = 64,
+        max_batch: int = 8192,
         autocast_dtype: Optional[torch.dtype] = None,
 ) -> torch.Tensor:
     if device is None:
