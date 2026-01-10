@@ -69,7 +69,7 @@ TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
 
 # Diffusion + Classification is VRAM heavy. Keeping it to 1 job per GPU is safest.
-JOBS_PER_GPU=5
+JOBS_PER_GPU=1
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
 
 echo ">>> 📊 Configuration: Using $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
@@ -82,7 +82,7 @@ export TARGET_GPU_LIST
 # ORGANIZATION
 # ==============================================================================
 # We create the work dir relative to the script location (commands/) to keep root clean
-LOG_WORK_DIR="$SCRIPT_DIR/run_federatedfactory_work_gpu2_cifar"
+LOG_WORK_DIR="$SCRIPT_DIR/run_federatedfactory_work_gpu2_isic"
 LOG_STORAGE_DIR="$LOG_WORK_DIR/logs"
 
 mkdir -p "$LOG_STORAGE_DIR"
@@ -107,13 +107,13 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 > "$CMD_FILE"
 
 # --- EXPERIMENT PARAMETERS ---
-SEEDS=(1 2 3 4 5)
+SEEDS=(1) # TODO: INIZIAMO CON MENO SEED (SOLO 1), POI LI AUMENTIAMO
 DATASETS=(
-    "cifar"
+    # "cifar"
     # "medmnist:bloodmnist"
     # "medmnist:retinamnist"
     # "medmnist:pathmnist"
-    # "fed_isic2019"
+    "fed_isic2019"
 )
 PARTITIONS=("silos") # TODO: "dirichlet" in the future
 INFER_MODES=("server" "local")
@@ -184,7 +184,7 @@ for SEED in "${SEEDS[@]}"; do
             SAFE_DS="${DATASET//:/_}"
 
             # Since we are in PROJECT_ROOT, "output" is just "output"
-            OUT_ROOT="federatedfactory_output_h100_cifar"
+            OUT_ROOT="federatedfactory_output_h100_isic"
 
             # Log Filename (keep explicit path for logs)
             LOG_FILENAME="job${JOB_COUNT}_${SAFE_DS}_${PARTITION}${ALPHA_SUFFIX}_${MODE}_seed${SEED}.log"
