@@ -496,49 +496,35 @@ def train_classifier(
         tracker: Optional[ExperimentCostTracker] = None,
 ) -> Tuple[nn.Module, int]:
     """
-    Train a standard classifier model (e.g., SimpleCNN) according to strict specifications:
-    - Optimizer: SGD
-    - LR: Scaled linearly based on batch size (Base 0.1 for BS=128)
-    - Momentum: 0.9
-    - Weight Decay: 1e-4
-
-    Args:
-        model (nn.Module): The classifier model.
-        train_ld (DataLoader): DataLoader for training data.
-        val_ld (DataLoader): DataLoader for validation data.
-        device (torch.device): Execution device.
-        epochs (int): Number of training epochs (Spec requires 300).
-        hist (Dict): Dictionary to store accuracy and loss history.
-        cid (int | str): Client identifier.
-        tracker (Optional[ExperimentCostTracker], optional): FLOPs and time tracker.
-
-    Returns:
-        Tuple[nn.Module, int]: The trained model and the number of training steps.
+    Optimized H100 Training Loop:
+    - TF32 enabled
+    - Validate ONLY on the last epoch
+    - Print EVERY epoch
     """
 
-    # [OPTIMIZATION] Enable DataParallel if multiple GPUs are available
-    # This allows the model to utilize both H100s for the forward/backward pass
+    # [OPTIMIZATION] 1. Re-enable TF32
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+
+    # [OPTIMIZATION] 2. Enable DataParallel
     if torch.cuda.device_count() > 1 and not isinstance(model, nn.DataParallel):
         model = nn.DataParallel(model)
 
     model.to(device)
 
-    # [CRITICAL] H100 Linear Scaling Rule
-    # Standard ResNet LR is 0.1 for Batch Size 128.
-    # We scale it: NewLR = 0.1 * (CurrentBatchSize / 128)
+    # [OPTIMIZATION] 3. Compile model
+    try:
+        model = torch.compile(model, mode="reduce-overhead")
+    except Exception:
+        pass
+
+    # Scale LR
     base_lr = 0.1
     base_bs = 128
     current_bs = train_ld.batch_size
-
-    # If using DataParallel, the batch size in loader is global, so this is correct.
     scaled_lr = base_lr * (current_bs / base_bs)
-
-    # Cap LR to prevent divergence in early phases (optional but safe)
     scaled_lr = min(scaled_lr, 3.0)
 
-    logger.info(f"🚀 [H100 OPT] Scaling LR from {base_lr} to {scaled_lr:.4f} (Batch Size: {current_bs})")
-
-    # Use the scaled LR
     opt = optim.SGD(
         model.parameters(),
         lr=scaled_lr,
@@ -546,120 +532,111 @@ def train_classifier(
         weight_decay=1e-4
     )
 
-    # Cosine Annealing scheduler (decays to 0 over 'epochs')
     scheduler = optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=0.0)
-
-    # Standard CrossEntropy
     ce = nn.CrossEntropyLoss()
 
-    # Initialize history structure for accuracy and loss tracking
     for k in ("clf_train_acc", "clf_val_acc", "clf_train_loss", "clf_val_loss"):
         hist.setdefault(k, {})[cid] = []
 
     steps = 0
-
-    # [MEMORY] Force cleanup before training loop starts to maximize available VRAM
     import gc
     gc.collect()
     torch.cuda.empty_cache()
 
-    # Profile the classifier for FLOPs tracking (using a small sample batch)
+    # --- Profiling Hook ---
     rep_batch = None
     try:
         for xb, yb in train_ld:
-            # Transfer a tiny slice just for profiling registration
             rep_batch = xb.to(device)[: min(2, xb.size(0))]
             break
     except Exception:
-        rep_batch = None
+        pass
 
     if tracker is not None and rep_batch is not None:
-        tracker.register_model(
-            model,
-            rep_batch,
-            backward_factor=2.0,
-            loss_extra_fwd=0.0,
-        )
+        tracker.register_model(model, rep_batch, backward_factor=2.0, loss_extra_fwd=0.0)
         tracker.start_phase(f"clf_c{cid}")
 
+    # ==========================
+    # MAIN TRAINING LOOP
+    # ==========================
     for ep in range(epochs):
-        # ---------------- Training Phase -----------------------------
         model.train()
         loss_sum = 0.0
         correct = 0
         total = 0
 
         for x, y in train_ld:
-            # [SPEED] Non-blocking transfer allows overlap of data transfer and computation
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
-
-            # [SPEED] set_to_none=True is slightly faster and uses less memory than zero_grad()
             opt.zero_grad(set_to_none=True)
 
             out = model(x)
             loss = ce(out, y)
-
             loss.backward()
             opt.step()
 
             loss_sum += loss.item()
-
-            # [SPEED] Calculate metrics inside no_grad to save memory/compute
             with torch.no_grad():
                 correct += (out.argmax(1) == y).sum().item()
                 total += y.size(0)
-
             steps += 1
+            if tracker: tracker.count_train_step(1)
 
-            if tracker is not None:
-                tracker.count_train_step(1)
-
-        # Step the scheduler after every epoch
         scheduler.step()
 
-        # ---------------- Logging & Validation Phase ---------------------------
-        # MODIFIED: Removed the "if (ep+1)%5" condition. Now runs every epoch.
-
+        # Calculate Training Metrics
         tr_acc = correct / total if total > 0 else 0.0
         tr_loss = loss_sum / len(train_ld) if len(train_ld) > 0 else 0.0
 
-        model.eval()
-        val_loss_sum = 0.0
-        correct_v = 0
-        total_v = 0
-
-        with torch.no_grad():
-            for x, y in val_ld:
-                x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
-                out = model(x)
-                val_loss_sum += ce(out, y).item()
-                correct_v += (out.argmax(1) == y).sum().item()
-                total_v += y.size(0)
-
-        val_acc = correct_v / total_v if total_v > 0 else 0.0
-        val_loss = val_loss_sum / len(val_ld) if len(val_ld) > 0 else 0.0
-
-        # Record metrics
+        # Log Training History
         hist["clf_train_acc"][cid].append(tr_acc)
-        hist["clf_val_acc"][cid].append(val_acc)
         hist["clf_train_loss"][cid].append(tr_loss)
-        hist["clf_val_loss"][cid].append(val_loss)
 
-        # Retrieve current LR for logging
+        # ======================================================================
+        # [CHANGE 1] PRINT EVERY EPOCH
+        # We removed the 'if % 5' check.
+        # ======================================================================
         current_lr = scheduler.get_last_lr()[0]
 
-        logger.info(
-            f"[CLF] Client {cid} | Epoch {ep + 1}/{epochs} | "
-            f"LR: {current_lr:.4f} | Train Acc: {tr_acc:.4f} | Val Acc: {val_acc:.4f}"
-        )
+        # ======================================================================
+        # [CHANGE 2] VALIDATE ONLY ON LAST EPOCH
+        # Extreme speedup by avoiding validation overhead during training.
+        # ======================================================================
+        if (ep + 1) == epochs:
+            model.eval()
+            val_loss_sum = 0.0
+            correct_v = 0
+            total_v = 0
 
-    # Unwrap DataParallel model before returning to avoid serialization issues
+            with torch.no_grad():
+                for x, y in val_ld:
+                    x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
+                    out = model(x)
+                    val_loss_sum += ce(out, y).item()
+                    correct_v += (out.argmax(1) == y).sum().item()
+                    total_v += y.size(0)
+
+            val_acc = correct_v / total_v if total_v > 0 else 0.0
+            val_loss = val_loss_sum / len(val_ld) if len(val_ld) > 0 else 0.0
+
+            # Log Validation History (Only once at the end)
+            hist["clf_val_acc"][cid].append(val_acc)
+            hist["clf_val_loss"][cid].append(val_loss)
+
+            logger.info(
+                f"[CLF] Client {cid} | Ep {ep + 1}/{epochs} | "
+                f"LR: {current_lr:.4f} | TrAcc: {tr_acc:.4f} | ValAcc: {val_acc:.4f}"
+            )
+        else:
+            # Print just training stats for intermediate epochs
+            logger.info(
+                f"[CLF] Client {cid} | Ep {ep + 1}/{epochs} | "
+                f"LR: {current_lr:.4f} | TrAcc: {tr_acc:.4f}"
+            )
+
     if isinstance(model, nn.DataParallel):
         model = model.module
 
     model.cpu()
-
-    if tracker is not None:
-        tracker.end_phase(f"clf_c{cid}")
+    if tracker: tracker.end_phase(f"clf_c{cid}")
 
     return model, steps
