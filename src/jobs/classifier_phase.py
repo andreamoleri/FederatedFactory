@@ -561,9 +561,22 @@ def run_classifier_training(
                     final_train_ds = r_train_ds
                     final_val_ds = r_val_ds
 
-                # Safe Mode: num_workers=0
-                tr_ld = DataLoader(final_train_ds, batch_size=args.batch_size, shuffle=True, num_workers=0)
-                val_ld = DataLoader(final_val_ds, batch_size=args.batch_size, shuffle=False, num_workers=0)
+                tr_ld = DataLoader(
+                    final_train_ds,
+                    batch_size=args.batch_size,
+                    shuffle=True,
+                    num_workers=args.workers,
+                    pin_memory=True,
+                    persistent_workers=True  # Keeps workers alive between epochs
+                )
+                val_ld = DataLoader(
+                    final_val_ds,
+                    batch_size=args.batch_size,
+                    shuffle=False,
+                    num_workers=args.workers,
+                    pin_memory=True,
+                    persistent_workers=True
+                )
 
                 if tracker: tracker.start_phase(f"client_{cname}_clf")
                 clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs,
@@ -800,8 +813,23 @@ def run_classifier_training(
                     train_ds = r_train_ds
                     val_ds = r_val_ds
 
-                tr_ld = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2)
-                val_ld = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
+                # NEW CODE:
+                tr_ld = DataLoader(
+                    train_ds,
+                    batch_size=args.batch_size,
+                    shuffle=True,
+                    num_workers=args.workers,
+                    pin_memory=True,
+                    persistent_workers=True
+                )
+                val_ld = DataLoader(
+                    val_ds,
+                    batch_size=args.batch_size,
+                    shuffle=False,
+                    num_workers=args.workers,
+                    pin_memory=True,
+                    persistent_workers=True
+                )
 
                 if tracker: tracker.start_phase(f"client_{d:03d}_clf")
                 clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs,

@@ -121,7 +121,7 @@ for SEED in "${SEEDS[@]}"; do
                 --clf-epochs $CLF_EPOCHS \
                 --samples-per-class $SAMPLES_PER_CLASS \
                 --batch-size $BATCH_SIZE \
-                --workers 8 \
+                --workers 16 \
                 --data-dir \"$DATA_DIR\" \
                 --synthetic-data-dir \"$PROJECT_ROOT/experimental_data\" \
                 --out-dir \"$OUT_ROOT\" > \"$LOG_FILE\" 2>&1"
