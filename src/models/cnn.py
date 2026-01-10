@@ -40,8 +40,5 @@ class SimpleCNN(nn.Module):
         self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
         self.fc = self.model.fc
 
-        # 3. CRITICAL FIX: Replace BN with GN
-        replace_bn_with_gn(self.model)
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)

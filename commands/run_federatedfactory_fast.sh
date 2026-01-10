@@ -1,43 +1,97 @@
 #!/bin/bash
 
 # ==============================================================================
-# H100 OPTIMIZED RUNNER
+# H100 OPTIMIZED RUNNER - PARALLEL MODE + ZOMBIE KILLER + ROBUSTNESS
 # ==============================================================================
 set -o errexit
 set -o nounset
 set -o pipefail
 
-# 1. Project Root Setup
+# ==============================================================================
+# 1. ROBUST PROJECT ROOT DETECTION
+# ==============================================================================
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+current_dir="$SCRIPT_DIR"
+PROJECT_ROOT=""
+
+# Walk up the directory tree until we find the 'src' folder
+while [[ "$current_dir" != "/" ]]; do
+    if [[ -d "$current_dir/src" ]]; then
+        PROJECT_ROOT="$current_dir"
+        break
+    fi
+    current_dir="$(dirname "$current_dir")"
+done
+
+if [[ -z "$PROJECT_ROOT" ]]; then
+    echo "❌ ERROR: Could not locate 'src' directory. Please run this from within the project."
+    exit 1
+fi
+
+# Jump to Project Root so relative paths work
 cd "$PROJECT_ROOT"
 echo ">>> 📂 Working Directory: $(pwd)"
 
 export PYTHONPATH="$PROJECT_ROOT/src:${PYTHONPATH:-}"
 MAIN_PY="src/main.py"
 PYTHON_EXEC="$(which python)"
+USER_ID=$(id -u)
+
+# Check for dependencies
+if ! command -v parallel &> /dev/null; then
+    echo "❌ GNU Parallel is not installed. Please install it (sudo apt install parallel)."
+    exit 1
+fi
 
 # ==============================================================================
-# GPU CONFIGURATION (H100 OPTIMIZATION)
+# 2. ZOMBIE KILLER (THE CLEANUP)
 # ==============================================================================
-# Disable CPU affinity throttling to let DataLoaders breathe
-export OMP_NUM_THREADS=8
-export MKL_NUM_THREADS=8
+echo ">>> ☢️  INITIATING CLEANUP PROTOCOL..."
+
+# Kill any python script running 'src/main.py' belonging to THIS user
+pkill -u "$USER_ID" -f "src/main.py" || true
+echo "    - Killed old training processes."
+
+# Kill any previous MPS control daemons
+pkill -u "$USER_ID" -f "nvidia-cuda-mps" || true
+echo "    - Killed old MPS servers."
+
+sleep 2
+
+# ==============================================================================
+# 3. CONFIGURE MPS (USER MODE)
+# ==============================================================================
+export CUDA_MPS_PIPE_DIRECTORY="/tmp/nvidia-mps-${USER_ID}"
+export CUDA_MPS_LOG_DIRECTORY="/tmp/nvidia-log-${USER_ID}"
+
+rm -rf "$CUDA_MPS_PIPE_DIRECTORY" "$CUDA_MPS_LOG_DIRECTORY"
+mkdir -p "$CUDA_MPS_PIPE_DIRECTORY"
+mkdir -p "$CUDA_MPS_LOG_DIRECTORY"
+
+echo ">>> ⚡ Starting Fresh NVIDIA MPS Server..."
+nvidia-cuda-mps-control -d
+
+# ==============================================================================
+# 4. GPU & RESOURCE CONFIGURATION
+# ==============================================================================
+export OMP_NUM_THREADS=4
+export MKL_NUM_THREADS=4
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # Detect GPUs
 TARGET_GPU_LIST=$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ' ' | xargs)
 if [[ -z "$TARGET_GPU_LIST" ]]; then TARGET_GPU_LIST="0"; fi
-
-# CRITICAL: Run only 1 job per GPU to maximize H100 throughput and cache hits
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
-JOBS_PER_GPU=1
-TOTAL_CONCURRENCY=1
 
-echo ">>> 🚀 H100 Mode: Using $NUM_GPUS GPUs | Concurrency: $TOTAL_CONCURRENCY"
+JOBS_PER_GPU=10
+TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
+WORKERS=4
+
+echo ">>> 🚀 H100 Mode: Detected $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
+echo ">>> 🔄 Strategy: $JOBS_PER_GPU job(s) per GPU = $TOTAL_CONCURRENCY Total Concurrent Jobs"
 
 # ==============================================================================
-# DIRECTORY & DATA
+# 5. DIRECTORY & DATA
 # ==============================================================================
 LOG_WORK_DIR="$SCRIPT_DIR/run_federatedfactory_fast"
 LOG_STORAGE_DIR="$LOG_WORK_DIR/logs"
@@ -46,31 +100,30 @@ DATA_DIR="data"
 mkdir -p "$DATA_DIR"
 
 CMD_FILE="$LOG_WORK_DIR/queue.txt"
+PREV_CMD_FILE="$LOG_WORK_DIR/.queue.last" # Checksum file
 JOBLOG="$LOG_WORK_DIR/joblog.txt"
+
 > "$CMD_FILE"
 
 # ==============================================================================
-# EXPERIMENT PARAMETERS
+# 6. EXPERIMENT PARAMETERS
 # ==============================================================================
-SEEDS=(1) # TODO 1 2 3 4 5
+SEEDS=(1 2 3 4 5)
 DATASETS=(
-    # "medmnist:bloodmnist"
-    # "medmnist:retinamnist"
-    # "medmnist:pathmnist"
-    "cifar"
+    # "cifar"
+    "medmnist:bloodmnist"
+    "medmnist:retinamnist"
+    "medmnist:pathmnist"
+    # "fed_isic2019"
 )
-PARTITIONS=("silos")
-INFER_MODES=("server") # TODO: local
+PARTITIONS=("silos") # TODO: "dirichlet" in the future
+INFER_MODES=("server" "local")
 
-# H100 TUNING: Huge Batch Size
-# 128 is too small for H100. 1024 or 2048 saturates the cores better.
-BATCH_SIZE=4096
-
-# Configuration
+# Fixed Hyperparameters
 CHECKPOINT_FAMILY="0025001"
 AGGREGATION="weighted"
-CLF_EPOCHS=300
-SAMPLES_PER_CLASS=10000
+CLF_EPOCHS=300 # TODO: 300
+SAMPLES_PER_CLASS=10000 # TODO: 10000
 MODEL="diffusion"
 ALPHA_VAL=0.1
 
@@ -80,34 +133,39 @@ JOB_COUNT=1
 
 for SEED in "${SEEDS[@]}"; do
   for DATASET in "${DATASETS[@]}"; do
-
-    # Resolution Logic
     L_DATASET=$(echo "$DATASET" | tr '[:upper:]' '[:lower:]')
+
+    # Robust Resolution Logic using case statement
     INPUT_SIZE=32
     LATENT_DIM=128
 
-    # Adjust for ISIC if needed
-    if [[ "$L_DATASET" == *"isic"* ]]; then
-        INPUT_SIZE=128
-        LATENT_DIM=64
-    fi
+    case "$L_DATASET" in
+        *"isic"*)
+            INPUT_SIZE=128
+            LATENT_DIM=64
+            ;;
+        *"nico"*)
+            INPUT_SIZE=224
+            LATENT_DIM=128
+            ;;
+        *)
+            # Default for medmnist/cifar
+            INPUT_SIZE=32
+            LATENT_DIM=128
+            ;;
+    esac
 
     for PARTITION in "${PARTITIONS[@]}"; do
-
         ALPHA_ARG=""
-        ALPHA_SUFFIX=""
         if [ "$PARTITION" == "dirichlet" ]; then
             ALPHA_ARG="--alpha $ALPHA_VAL"
-            ALPHA_SUFFIX="_alpha_${ALPHA_VAL}"
         fi
 
         for MODE in "${INFER_MODES[@]}"; do
-
             SAFE_DS="${DATASET//:/_}"
             OUT_ROOT="output_h100_fast"
             LOG_FILE="$LOG_STORAGE_DIR/job${JOB_COUNT}_${SAFE_DS}_${MODE}_seed${SEED}.log"
 
-            # Added --batch-size explicitly
             CMD="$PYTHON_EXEC $MAIN_PY \
                 --dataset \"$DATASET\" \
                 --partition \"$PARTITION\" $ALPHA_ARG \
@@ -121,7 +179,7 @@ for SEED in "${SEEDS[@]}"; do
                 --clf-epochs $CLF_EPOCHS \
                 --samples-per-class $SAMPLES_PER_CLASS \
                 --batch-size $BATCH_SIZE \
-                --workers 16 \
+                --workers $WORKERS \
                 --data-dir \"$DATA_DIR\" \
                 --synthetic-data-dir \"$PROJECT_ROOT/experimental_data\" \
                 --out-dir \"$OUT_ROOT\" > \"$LOG_FILE\" 2>&1"
@@ -134,35 +192,107 @@ for SEED in "${SEEDS[@]}"; do
 done
 
 # ==============================================================================
-# EXECUTION
+# 7. ROBUST RESUME CHECK
+# ==============================================================================
+CHANGES_DETECTED=0
+
+if [ -f "$PREV_CMD_FILE" ]; then
+    NEW_SUM=$(sha256sum "$CMD_FILE" | awk '{print $1}')
+    OLD_SUM=$(sha256sum "$PREV_CMD_FILE" | awk '{print $1}')
+
+    if [ "$NEW_SUM" != "$OLD_SUM" ]; then
+        CHANGES_DETECTED=1
+    fi
+else
+    CHANGES_DETECTED=1
+fi
+
+if [ "$CHANGES_DETECTED" -eq 1 ]; then
+    echo ">>> ⚠️  CONFIGURATION CHANGED (or first run)."
+    echo ">>> Resetting joblog to ensure new parameters are executed."
+    if [ -f "$JOBLOG" ]; then
+        mv "$JOBLOG" "${JOBLOG}.bak_$(date +%s)"
+    fi
+    cp "$CMD_FILE" "$PREV_CMD_FILE"
+else
+    echo ">>> ✅ CONFIGURATION UNCHANGED."
+    echo ">>> Keeping joblog to RESUME from where we left off."
+
+    # Display completed jobs table
+    if [[ -s "$JOBLOG" ]]; then
+        echo ""
+        echo ">>> 📋 ALREADY COMPLETED JOBS:"
+        printf "  %-6s %-25s %-10s %-10s %-10s\n" "ID" "DATASET" "PARTITION" "MODE" "SEED"
+        echo "  -----------------------------------------------------------------------"
+
+        awk -F'\t' 'NR>1 && $7=="0" {
+            id=$1
+            cmd=$0;
+
+            d="?"; p="?"; m="?"; s="?";
+
+            if (match(cmd, /--dataset ([^ ]+)/, arr))   d=arr[1];
+            if (match(cmd, /--partition ([^ ]+)/, arr)) p=arr[1];
+            if (match(cmd, /--infer-mode ([^ ]+)/, arr)) m=arr[1];
+            if (match(cmd, /--seed ([^ ]+)/, arr))      s=arr[1];
+
+            gsub(/"/, "", d);
+            gsub(/"/, "", p);
+            gsub(/"/, "", m);
+
+            printf "  %-6s %-25s %-10s %-10s %-10s\n", id, d, p, m, s
+        }' "$JOBLOG" | sort -n
+
+        echo "  -----------------------------------------------------------------------"
+        COMPLETED_COUNT=$(awk -F'\t' 'NR>1 && $7=="0" {count++} END {print count+0}' "$JOBLOG")
+        echo ">>> Skipping $COMPLETED_COUNT jobs that finished successfully."
+        echo ""
+    fi
+fi
+
+# ==============================================================================
+# 8. EXECUTION
 # ==============================================================================
 COUNT=$(wc -l < "$CMD_FILE")
-echo ">>> STARTING $COUNT JOBS on $NUM_GPUS GPUs"
+echo ">>> STARTING $COUNT JOBS..."
 
+export TARGET_GPU_LIST
+export NUM_GPUS
+export CUDA_MPS_PIPE_DIRECTORY
+export CUDA_MPS_LOG_DIRECTORY
+
+# Using GNU Parallel with MPS logic maintained
 parallel --jobs "$TOTAL_CONCURRENCY" \
     --retries 1 \
     --joblog "$JOBLOG" \
     --resume-failed \
     --env PYTHONPATH \
     --env CUDA_VISIBLE_DEVICES \
+    --env CUDA_MPS_PIPE_DIRECTORY \
+    --env TARGET_GPU_LIST \
+    --env NUM_GPUS \
     --line-buffer \
     '
-    # Smart GPU Allocation
     JOB_SLOT={%}
-    GPUS=(0 1) # Explicitly define your GPUs here
-    GPU_ID=${GPUS[$(( (JOB_SLOT - 1) % 2 ))]}
+    IFS=" " read -r -a GPU_ARRAY <<< "$TARGET_GPU_LIST"
+    IDX=$(( (JOB_SLOT - 1) % NUM_GPUS ))
+    GPU_ID=${GPU_ARRAY[IDX]}
+    export CUDA_VISIBLE_DEVICES=$GPU_ID
 
-    export CUDA_VISIBLE_DEVICES=0,1
-    echo "🚀 [GPU $GPU_ID] Starting Job {#}"
-
+    echo "🚀 [Slot {#} -> GPU $GPU_ID (MPS)] Starting..."
     eval {}
+    exit_status=$?
 
-    if [ $? -eq 0 ]; then
-        echo "✅ [GPU $GPU_ID] Job {#} Finished"
-    else
-        echo "❌ [GPU $GPU_ID] Job {#} Failed"
-        exit 1
+    if [ $exit_status -ne 0 ]; then
+        echo "❌ [Slot {#}] Failed with exit code $exit_status"
+        exit $exit_status
     fi
     ' :::: "$CMD_FILE"
 
-echo ">>> 🎉 All Fast Experiments Completed."
+# ==============================================================================
+# 9. CLEANUP
+# ==============================================================================
+echo ">>> 🛑 Stopping MPS..."
+echo "quit" | nvidia-cuda-mps-control
+rm -rf "$CUDA_MPS_PIPE_DIRECTORY" "$CUDA_MPS_LOG_DIRECTORY"
+echo ">>> 🎉 Done."

@@ -569,8 +569,11 @@ def train_classifier(
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             opt.zero_grad(set_to_none=True)
 
-            out = model(x)
-            loss = ce(out, y)
+            with torch.amp.autocast('cuda', dtype=torch.bfloat16):
+                out = model(x)
+                loss = ce(out, y)
+
+
             loss.backward()
             opt.step()
 
