@@ -512,12 +512,6 @@ def train_classifier(
 
     model.to(device)
 
-    # [OPTIMIZATION] 3. Compile model
-    try:
-        model = torch.compile(model, mode="reduce-overhead")
-    except Exception:
-        pass
-
     # Scale LR
     base_lr = 0.1
     base_bs = 128

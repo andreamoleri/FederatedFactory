@@ -35,7 +35,7 @@ for tracking hardware utilization, energy consumption, and algorithmic complexit
 
 Author: Andrea Moleri
 File Location: src/tracking/cost_tracker.py
-Last Modified: 06/12/2025
+Last Modified: 11/01/2026 (Fix: Robust _sum_dir_bytes to prevent FileNotFoundError crash)
 """
 
 from __future__ import annotations
@@ -255,6 +255,7 @@ def register_extra_ops(fca):
 def _sum_dir_bytes(path: Path) -> int:
     """
     Calculates the total size in bytes of all files within a directory tree.
+    Robust against FileNotFoundError during iteration.
 
     Args:
         path (Path): The root directory to scan.
@@ -265,12 +266,19 @@ def _sum_dir_bytes(path: Path) -> int:
     if not path.exists():
         return 0
     total = 0
-    for p in path.rglob("*"):
-        if p.is_file():
+    try:
+        # [FIX] Wrap iteration in try-except to handle race conditions where files/dirs
+        # might be removed during scanning (e.g. temporary logs).
+        for p in path.rglob("*"):
             try:
-                total += p.stat().st_size
-            except Exception:
+                if p.is_file():
+                    total += p.stat().st_size
+            except OSError:
+                # Ignore files that vanish or access errors
                 pass
+    except OSError:
+        # Ignore errors if the root path itself becomes invalid during iteration
+        pass
     return total
 
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+-#!/bin/bash
 
 # ==============================================================================
 # H100 OPTIMIZED RUNNER - PARALLEL MODE + ZOMBIE KILLER + ROBUSTNESS
@@ -74,16 +74,39 @@ nvidia-cuda-mps-control -d
 # ==============================================================================
 # 4. GPU & RESOURCE CONFIGURATION
 # ==============================================================================
-export OMP_NUM_THREADS=4
-export MKL_NUM_THREADS=4
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-# Detect GPUs
-TARGET_GPU_LIST=$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ' ' | xargs)
-if [[ -z "$TARGET_GPU_LIST" ]]; then TARGET_GPU_LIST="0"; fi
+# ------------------------------------------------------------------------------
+# [CONFIG] SELECT YOUR GPUS HERE
+# ------------------------------------------------------------------------------
+# Option A: Set specific GPUs, e.g., "1" or "2 4" or "0 1 2 3"
+# Option B: Leave empty "" to auto-detect ALL available GPUs.
+MANUAL_GPU_IDS="0 1"
+
+# ------------------------------------------------------------------------------
+# LOGIC: DETERMINE TARGET LIST
+# ------------------------------------------------------------------------------
+if [[ -n "$MANUAL_GPU_IDS" ]]; then
+    echo ">>> ⚙️  User manually selected GPUs: $MANUAL_GPU_IDS"
+    TARGET_GPU_LIST="$MANUAL_GPU_IDS"
+else
+    echo ">>> 🤖 Auto-detecting all available GPUs..."
+    TARGET_GPU_LIST=$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ' ')
+    if [[ -z "$TARGET_GPU_LIST" ]]; then
+        echo ">>> ⚠️  Auto-detect failed, defaulting to GPU 0"
+        TARGET_GPU_LIST="0"
+    fi
+fi
+
+# Clean up whitespace
+TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
+
+# Calculate Counts
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
 
-JOBS_PER_GPU=10
+JOBS_PER_GPU=5
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
 WORKERS=4
 
@@ -93,7 +116,7 @@ echo ">>> 🔄 Strategy: $JOBS_PER_GPU job(s) per GPU = $TOTAL_CONCURRENCY Total
 # ==============================================================================
 # 5. DIRECTORY & DATA
 # ==============================================================================
-LOG_WORK_DIR="$SCRIPT_DIR/run_federatedfactory_fast"
+LOG_WORK_DIR="$SCRIPT_DIR/run_federatedfactory_H100"
 LOG_STORAGE_DIR="$LOG_WORK_DIR/logs"
 mkdir -p "$LOG_STORAGE_DIR"
 DATA_DIR="data"
@@ -110,14 +133,14 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 # ==============================================================================
 SEEDS=(1 2 3 4 5)
 DATASETS=(
-    # "cifar"
+    "cifar"
     "medmnist:bloodmnist"
     "medmnist:retinamnist"
     "medmnist:pathmnist"
     # "fed_isic2019"
 )
 PARTITIONS=("silos") # TODO: "dirichlet" in the future
-INFER_MODES=("server" "local")
+INFER_MODES=("local") # TODO: "server" in the L40
 
 # Fixed Hyperparameters
 CHECKPOINT_FAMILY="0025001"
@@ -126,6 +149,7 @@ CLF_EPOCHS=300 # TODO: 300
 SAMPLES_PER_CLASS=10000 # TODO: 10000
 MODEL="diffusion"
 ALPHA_VAL=0.1
+BATCH_SIZE=128
 
 echo ">>> GENERATING COMMANDS..."
 
@@ -156,16 +180,27 @@ for SEED in "${SEEDS[@]}"; do
     esac
 
     for PARTITION in "${PARTITIONS[@]}"; do
+
+        # 1. Initialize variables (Added from Block B)
         ALPHA_ARG=""
+        ALPHA_SUFFIX=""
+
+        # 2. Logic to set suffix if partition is dirichlet
         if [ "$PARTITION" == "dirichlet" ]; then
             ALPHA_ARG="--alpha $ALPHA_VAL"
+            ALPHA_SUFFIX="_alpha_${ALPHA_VAL}"
         fi
 
         for MODE in "${INFER_MODES[@]}"; do
             SAFE_DS="${DATASET//:/_}"
-            OUT_ROOT="output_h100_fast"
-            LOG_FILE="$LOG_STORAGE_DIR/job${JOB_COUNT}_${SAFE_DS}_${MODE}_seed${SEED}.log"
+            OUT_ROOT="federatedfactory_output_H100"
 
+            # 3. Updated Log Filename (Now includes ${PARTITION} and ${ALPHA_SUFFIX})
+            # Old Block A: job${JOB_COUNT}_${SAFE_DS}_${MODE}_seed${SEED}.log
+            # New Block A:
+            LOG_FILE="$LOG_STORAGE_DIR/job${JOB_COUNT}_${SAFE_DS}_${PARTITION}${ALPHA_SUFFIX}_${MODE}_seed${SEED}.log"
+
+            # TODO: Add back --save-datasets, remove --synthetic-data-dir
             CMD="$PYTHON_EXEC $MAIN_PY \
                 --dataset \"$DATASET\" \
                 --partition \"$PARTITION\" $ALPHA_ARG \
@@ -180,8 +215,8 @@ for SEED in "${SEEDS[@]}"; do
                 --samples-per-class $SAMPLES_PER_CLASS \
                 --batch-size $BATCH_SIZE \
                 --workers $WORKERS \
+                --save-datasets \
                 --data-dir \"$DATA_DIR\" \
-                --synthetic-data-dir \"$PROJECT_ROOT/experimental_data\" \
                 --out-dir \"$OUT_ROOT\" > \"$LOG_FILE\" 2>&1"
 
             echo "$CMD" >> "$CMD_FILE"
@@ -283,7 +318,9 @@ parallel --jobs "$TOTAL_CONCURRENCY" \
     eval {}
     exit_status=$?
 
-    if [ $exit_status -ne 0 ]; then
+    if [ $exit_status -eq 0 ]; then
+        echo "✅ [Slot {#}] Finished Successfully"
+    else
         echo "❌ [Slot {#}] Failed with exit code $exit_status"
         exit $exit_status
     fi
