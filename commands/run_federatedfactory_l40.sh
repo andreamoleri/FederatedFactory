@@ -83,7 +83,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # ------------------------------------------------------------------------------
 # Option A: Set specific GPUs, e.g., "1" or "2 4" or "0 1 2 3"
 # Option B: Leave empty "" to auto-detect ALL available GPUs.
-MANUAL_GPU_IDS="0 1 2 3"
+MANUAL_GPU_IDS="3"
 
 # ------------------------------------------------------------------------------
 # LOGIC: DETERMINE TARGET LIST
@@ -108,7 +108,7 @@ NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
 
 JOBS_PER_GPU=1
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
-WORKERS=4
+WORKERS=2
 
 echo ">>> 🚀 H100 Mode: Detected $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
 echo ">>> 🔄 Strategy: $JOBS_PER_GPU job(s) per GPU = $TOTAL_CONCURRENCY Total Concurrent Jobs"
@@ -140,7 +140,7 @@ DATASETS=(
     "fed_isic2019"
 )
 PARTITIONS=("silos") # TODO: "dirichlet" in the future
-INFER_MODES=("server") # TODO: "local" in the H100
+INFER_MODES=("server") # TODO: "local" in the H100 
 
 # Fixed Hyperparameters
 CHECKPOINT_FAMILY="0025001"
@@ -149,7 +149,7 @@ CLF_EPOCHS=300 # TODO: 300
 SAMPLES_PER_CLASS=10000 # TODO: 10000
 MODEL="diffusion"
 ALPHA_VAL=0.1
-BATCH_SIZE=128
+BATCH_SIZE=64 # TODO: I changed it to 64128was 64
 
 echo ">>> GENERATING COMMANDS..."
 
@@ -165,7 +165,7 @@ for SEED in "${SEEDS[@]}"; do
 
     case "$L_DATASET" in
         *"isic"*)
-            INPUT_SIZE=128
+            INPUT_SIZE=128 
             LATENT_DIM=64
             ;;
         *"nico"*)

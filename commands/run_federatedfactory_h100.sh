@@ -78,6 +78,8 @@ export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
+
+
 # ------------------------------------------------------------------------------
 # [CONFIG] SELECT YOUR GPUS HERE
 # ------------------------------------------------------------------------------
@@ -106,9 +108,9 @@ TARGET_GPU_LIST=$(echo "$TARGET_GPU_LIST" | xargs)
 # Calculate Counts
 NUM_GPUS=$(echo "$TARGET_GPU_LIST" | wc -w)
 
-JOBS_PER_GPU=5
+JOBS_PER_GPU=1
 TOTAL_CONCURRENCY=$((NUM_GPUS * JOBS_PER_GPU))
-WORKERS=4
+WORKERS=2
 
 echo ">>> 🚀 H100 Mode: Detected $NUM_GPUS GPUs ($TARGET_GPU_LIST)"
 echo ">>> 🔄 Strategy: $JOBS_PER_GPU job(s) per GPU = $TOTAL_CONCURRENCY Total Concurrent Jobs"
@@ -133,11 +135,11 @@ JOBLOG="$LOG_WORK_DIR/joblog.txt"
 # ==============================================================================
 SEEDS=(1 2 3 4 5)
 DATASETS=(
-    "cifar"
-    "medmnist:bloodmnist"
-    "medmnist:retinamnist"
-    "medmnist:pathmnist"
-    # "fed_isic2019"
+    # "cifar"
+    # "medmnist:bloodmnist"
+    # "medmnist:retinamnist"
+    # "medmnist:pathmnist"
+    "fed_isic2019"
 )
 PARTITIONS=("silos") # TODO: "dirichlet" in the future
 INFER_MODES=("local") # TODO: "server" in the L40
@@ -149,7 +151,7 @@ CLF_EPOCHS=300 # TODO: 300
 SAMPLES_PER_CLASS=10000 # TODO: 10000
 MODEL="diffusion"
 ALPHA_VAL=0.1
-BATCH_SIZE=128
+BATCH_SIZE=64
 
 echo ">>> GENERATING COMMANDS..."
 
