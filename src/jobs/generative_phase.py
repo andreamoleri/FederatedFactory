@@ -45,6 +45,7 @@ import time
 from typing import Dict, List, Tuple, Any, Optional, Union, Callable
 from pathlib import Path
 import json
+import re  # Added for resolution inference
 
 import torch
 import torch.nn as nn
@@ -325,6 +326,27 @@ def run_generative_training(
     return gen_models, client_gen_models, client_sample_counts, gen_step_total, gen_start
 
 
+def _infer_resolution_from_weights(state_dict: Dict[str, Any]) -> int:
+    """
+    Scans state_dict keys to find the highest resolution layer (e.g., '128x128').
+    Used to adapt the model architecture to the specific checkpoint being loaded.
+    """
+    max_res = 32
+    # Pattern looks for "128x128" inside keys like "unet.enc.128x128_block..."
+    pattern = re.compile(r"(\d+)x(\d+)")
+    
+    # EDM2 models might be wrapped in 'ema', 'net' or direct.
+    # The keys passed here are expected to be the direct state_dict of the Precond/DiT.
+    for k in state_dict.keys():
+        match = pattern.search(k)
+        if match:
+            # e.g., match groups ('128', '128')
+            res = int(match.group(1))
+            if res > max_res:
+                max_res = res
+    return max_res
+
+
 def load_generative_checkpoints(
         args,
         device: torch.device,
@@ -342,6 +364,7 @@ def load_generative_checkpoints(
     1. Uses args.latent_dim explicitly (fixes 64 vs 128 channel mismatch).
     2. Handles EDM2 checkpoint structure (nested dictionaries).
     3. Handles client naming mismatches (client_0 vs client0).
+    4. [NEW] Auto-detects checkpoint resolution to resolve 128 vs 224 mismatches.
     """
     logger.info(f"[GEN-LOAD] Loading checkpoints for Family: {epoch_family}")
 
@@ -399,29 +422,40 @@ def load_generative_checkpoints(
                 continue
 
             try:
+                # 1. Load Data to CPU first to inspect structure
+                data = torch.load(ckpt_path, map_location="cpu")
+
+                weights = None
+                final_model = None
+
                 if args.model == "diffusion":
-                    # [CRITICAL FIX] Use the helper to ensures correct embed_dim (e.g. 64)
-                    cfg = _get_diffusion_config(args, chans, img_shape)
-                    model = DiT(cfg).to(device)
-
-                    data = torch.load(ckpt_path, map_location=device)
-
-                    # [CRITICAL FIX] Handle EDM2 nested dictionary structure
+                    # Handle EDM2/Standard structure
                     if 'ema' in data and isinstance(data['ema'], dict) and 'emas' in data['ema']:
-                         # EDM2 stores EMA weights in a list inside a dict
                          weights = data['ema']['emas'][0]
-                         model.edm_net.load_state_dict(weights)
                     elif 'net' in data:
-                         model.edm_net.load_state_dict(data['net'])
+                         weights = data['net']
                     else:
-                         model.load_state_dict(data)
+                         weights = data
 
+                    # 2. AUTO-DETECT RESOLUTION
+                    # We scan the keys in the weights to find the max resolution layer
+                    detected_res = _infer_resolution_from_weights(weights)
+                    
+                    if detected_res != img_shape[-1]:
+                        logger.info(f"   [Auto-Detect] Checkpoint Class {class_id} is {detected_res}x{detected_res} (Config was {img_shape[-1]}). Adapting model...")
+
+                    # 3. Configure Model with DETECTED resolution
+                    cfg = _get_diffusion_config(args, chans, img_shape)
+                    cfg.img_resolution = detected_res # Override config
+                    
+                    model = DiT(cfg).to(device)
+                    model.edm_net.load_state_dict(weights)
                     model.eval()
                     final_model = model
 
                 elif args.model == "vae":
                     model = VAE(chans, args.latent_dim).to(device)
-                    model.load_state_dict(torch.load(ckpt_path, map_location=device))
+                    model.load_state_dict(data)
                     model.eval()
                     final_model = model.decoder
                 else:

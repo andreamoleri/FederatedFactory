@@ -319,7 +319,7 @@ def process_dataset_page(pdf, dataset_name, batch_metas, data_dir):
 # ----------------------------------------------------------------------------
 def main():
     import argparse
-    default_ckpt_dir = project_root / "commands" / "checkpoints"
+    default_ckpt_dir = project_root / "checkpoints"
     default_data_dir = project_root / "data"
 
     parser = argparse.ArgumentParser()

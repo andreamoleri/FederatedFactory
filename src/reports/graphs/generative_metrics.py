@@ -282,7 +282,7 @@ def generate_generative_metrics_pages(
             'recall_per_class': {...},
             'tsne2': {'x': [[x,y], ...], 'labels': [...], 'domain': [...]},
             'reconstruction': {'mse_mean': float, ...},
-            ...
+            '...
         }
     args : Any
         Configuration namespace containing model parameters (e.g., `args.model`).
@@ -837,36 +837,48 @@ def generate_generative_metrics_pages(
             pages_added += 1
 
         # -------------------------------------------------------------------------
-        # 11. t-SNE 2D Projection (Colored by Domain)
+        # 11. t-SNE 2D Projection (Colored by Domain) - Nature Style
         # -------------------------------------------------------------------------
         if "tsne2" in gm:
             ts = gm["tsne2"]
             emb = np.array(ts["x"])
             y_cls = np.array(ts["labels"], dtype=int)
             y_dom = np.array(ts["domain"])
+            
+            # Create figure with extra width for external legend
             fig, ax = plt.subplots(
-                figsize=(7, 5),
+                figsize=(9, 6), 
                 dpi=_DEF_FIG_DPI,
             )
+            # Adjust subplot to leave room on the right for legend
+            fig.subplots_adjust(right=0.75)
 
+            # Nature Style Configuration
+            # Soft ivory background
+            ax.set_facecolor("#FDFCF0")
+            # Soft dotted grid
+            ax.grid(True, linestyle=":", alpha=0.6, color="#8c8c8c", zorder=0)
+
+            # Nature colors: Moss Green (Real) vs Terracotta/Clay (Synthetic)
             colors = {
-                "Real": "#1f77b4",
-                "Synthetic": "#ff7f0e"
+                "Real": "#3E6953",      # Moss/Forest Green
+                "Synthetic": "#C76652"  # Terracotta/Clay Red
             }
 
-            # Separate masks for Real vs Synthetic to control plotting order and style
+            # Separate masks for Real vs Synthetic
             mask_real = y_dom == "Real"
             if np.any(mask_real):
                 ax.scatter(
                     emb[mask_real, 0],
                     emb[mask_real, 1],
-                    s=16,
-                    alpha=0.75,
+                    s=20,  # Slightly larger but transparent
+                    alpha=0.6,
                     color=colors["Real"],
                     marker="o",
                     edgecolors="none",
                     linewidths=0,
-                    label="Real"
+                    label="Real",
+                    zorder=2
                 )
 
             mask_synth = y_dom == "Synthetic"
@@ -874,19 +886,28 @@ def generate_generative_metrics_pages(
                 ax.scatter(
                     emb[mask_synth, 0],
                     emb[mask_synth, 1],
-                    s=16,
-                    alpha=0.75,
+                    s=20,
+                    alpha=0.6,
                     color=colors["Synthetic"],
                     marker="^",
                     edgecolors="none",
                     linewidths=0,
-                    label="Synthetic"
+                    label="Synthetic",
+                    zorder=3
                 )
 
-            ax.set_title("t-SNE (feature space): Real vs Synthetic (2D)")
+            ax.set_title("t-SNE (feature space): Real vs Synthetic (2D)", pad=15)
             ax.set_xlabel("t-SNE 1")
             ax.set_ylabel("t-SNE 2")
-            ax.legend(title="Domain", loc="best")
+            
+            # Clean Legend placed outside to right
+            ax.legend(
+                title="Domain", 
+                loc="upper left", 
+                bbox_to_anchor=(1.02, 1),
+                frameon=False,
+                borderaxespad=0.
+            )
 
             if figures_dir:
                 fig.savefig(figures_dir / "generative_tsne2_domain_colored.png",
@@ -898,111 +919,103 @@ def generate_generative_metrics_pages(
             pages_added += 1
 
         # -------------------------------------------------------------------------
-        # 12. t-SNE 2D Projection (Colored by Class, Marker by Domain)
+        # 12. t-SNE 2D Projection (Colored by Class) - Nature Style
         # -------------------------------------------------------------------------
         if "tsne2" in gm:
             ts = gm["tsne2"]
             emb = np.array(ts["x"])
             y_cls = np.array(ts["labels"])
             y_dom = np.array(ts["domain"])
+            
             fig, ax = plt.subplots(
-                figsize=(7, 5),
+                figsize=(9, 6),
                 dpi=_DEF_FIG_DPI,
             )
+            fig.subplots_adjust(right=0.75)
+
+            # Nature Style Background
+            ax.set_facecolor("#FDFCF0")
+            ax.grid(True, linestyle=":", alpha=0.6, color="#8c8c8c", zorder=0)
+
             cmap = plt.get_cmap("tab10")
             uniq_cls = sorted(np.unique(y_cls))
 
-            # Iterate over classes to assign colors, then split by domain for markers
+            # Iterate over classes
             for i, cval in enumerate(uniq_cls):
                 color = cmap(i % 10)
                 mr = (y_cls == cval) & (y_dom == "Real")
                 ms = (y_cls == cval) & (y_dom == "Synthetic")
+                
                 if np.any(mr):
                     ax.scatter(
                         emb[mr, 0],
                         emb[mr, 1],
-                        s=16,
-                        alpha=0.75,
+                        s=18,
+                        alpha=0.6,
                         color=color,
                         marker="o",
                         edgecolors="none",
                         linewidths=0,
+                        zorder=2
                     )
                 if np.any(ms):
                     ax.scatter(
                         emb[ms, 0],
                         emb[ms, 1],
-                        s=16,
-                        alpha=0.75,
+                        s=18,
+                        alpha=0.6,
                         color=color,
                         marker="^",
                         edgecolors="none",
                         linewidths=0,
+                        zorder=3
                     )
-            ax.set_title(
-                "t-SNE (feature space): by Class (2D)"
-            )
+            
+            ax.set_title("t-SNE (feature space): by Class (2D)", pad=15)
             ax.set_xlabel("t-SNE 1")
             ax.set_ylabel("t-SNE 2")
 
-            # Construct custom legend for class colors
-            if len(uniq_cls) <= 10:
-                class_handles = []
-                class_labels = []
-                for i, cval in enumerate(uniq_cls):
-                    class_handles.append(
-                        Line2D(
-                            [0],
-                            [0],
-                            marker="o",
-                            linestyle="",
-                            markerfacecolor=cmap(i % 10),
-                            markeredgecolor="none",
-                        )
+            # Custom Legend 1: Classes (Outside Right, Top)
+            class_handles = []
+            class_labels = []
+            for i, cval in enumerate(uniq_cls):
+                class_handles.append(
+                    Line2D(
+                        [0], [0],
+                        marker="o", linestyle="",
+                        markerfacecolor=cmap(i % 10),
+                        markeredgecolor="none",
+                        alpha=0.8
                     )
-                    class_labels.append(str(cval))
-                leg1 = ax.legend(
-                    handles=class_handles,
-                    labels=class_labels,
-                    title="Class (color)",
-                    fontsize=8,
-                    ncol=2,
-                    loc="lower left",
                 )
-                ax.add_artist(leg1)
-            else:
-                cbar = plt.colorbar(
-                    plt.cm.ScalarMappable(cmap=cmap),
-                    ax=ax,
-                )
-                cbar.set_label("Class")
+                class_labels.append(str(cval))
+            
+            leg1 = ax.legend(
+                handles=class_handles,
+                labels=class_labels,
+                title="Class (Color)",
+                fontsize=9,
+                loc="upper left",
+                bbox_to_anchor=(1.02, 1),
+                frameon=False
+            )
+            ax.add_artist(leg1)
 
-            # Construct custom legend for domain markers
+            # Custom Legend 2: Domain (Outside Right, Below Class Legend)
             domain_handles = [
-                Line2D(
-                    [0],
-                    [0],
-                    marker="o",
-                    linestyle="",
-                    markerfacecolor="#9e9e9e",
-                    markeredgecolor="none",
-                    label="Real (circles)",
-                ),
-                Line2D(
-                    [0],
-                    [0],
-                    marker="^",
-                    linestyle="",
-                    markerfacecolor="#9e9e9e",
-                    markeredgecolor="none",
-                    label="Synthetic (triangles)",
-                ),
+                Line2D([0], [0], marker="o", linestyle="", color='gray', markerfacecolor="gray", 
+                       markeredgecolor="none", label="Real", markersize=8),
+                Line2D([0], [0], marker="^", linestyle="", color='gray', markerfacecolor="gray", 
+                       markeredgecolor="none", label="Synthetic", markersize=8),
             ]
+            
             ax.legend(
                 handles=domain_handles,
-                title="Domain (marker)",
-                fontsize=8,
-                loc="lower right",
+                title="Domain (Marker)",
+                fontsize=9,
+                loc="upper left",
+                bbox_to_anchor=(1.02, 0.4), # Positioned lower
+                frameon=False
             )
 
             if figures_dir:
@@ -1015,47 +1028,65 @@ def generate_generative_metrics_pages(
             pages_added += 1
 
         # -------------------------------------------------------------------------
-        # 13. t-SNE 3D Projection (Colored by Domain)
+        # 13. t-SNE 3D Projection (Colored by Domain) - Nature Style
         # -------------------------------------------------------------------------
         if "tsne3" in gm:
             ts3 = gm["tsne3"]
             emb3 = np.array(ts3["x"])
             y_dom3 = np.array(ts3["domain"])
 
+            # Create figure with extra width
             fig = plt.figure(
-                figsize=(7, 5),
+                figsize=(10, 6),
                 dpi=_DEF_FIG_DPI,
             )
             ax = fig.add_subplot(111, projection="3d")
-            mdom = {"Real": "o", "Synthetic": "^"}
+            
+            # Nature Style Colors
             colors = {
-                "Real": "#1f77b4",
-                "Synthetic": "#ff7f0e",
+                "Real": "#3E6953",      # Moss/Forest Green
+                "Synthetic": "#C76652"  # Terracotta/Clay Red
             }
+            mdom = {"Real": "o", "Synthetic": "^"}
+            
+            # Soft background for 3D pane
+            ax.set_facecolor("#FDFCF0") 
+            # Make the panes transparent/white to not clash
+            ax.xaxis.pane.fill = False
+            ax.yaxis.pane.fill = False
+            ax.zaxis.pane.fill = False
+            ax.grid(True, linestyle=":", alpha=0.4)
+
             for dom in ("Real", "Synthetic"):
                 mask = y_dom3 == dom
                 ax.scatter(
                     emb3[mask, 0],
                     emb3[mask, 1],
                     emb3[mask, 2],
-                    s=14,
-                    alpha=0.7,
+                    s=15, # Smaller points to avoid clutter in 3D
+                    alpha=0.6,
                     marker=mdom[dom],
                     color=colors[dom],
                     edgecolors="none",
                     linewidths=0,
                     label=dom,
+                    depthshade=True # Helps perception of depth
                 )
-            ax.set_title(
-                "t-SNE-like Embedding (3D): Real vs Synthetic"
-            )
+            
+            ax.set_title("t-SNE-like Embedding (3D): Real vs Synthetic", pad=20)
             ax.set_xlabel("t-SNE 1")
             ax.set_ylabel("t-SNE 2")
             ax.set_zlabel("t-SNE 3")
+            
+            # Legend outside to the right
             ax.legend(
                 title="Domain",
-                loc="upper left",
+                loc="center left",
+                bbox_to_anchor=(1.05, 0.5),
+                frameon=False
             )
+            # Adjust layout to accommodate external legend
+            plt.subplots_adjust(right=0.8)
 
             if figures_dir:
                 fig.savefig(figures_dir / "generative_tsne3_domain_colored.png",
@@ -1067,7 +1098,7 @@ def generate_generative_metrics_pages(
             pages_added += 1
 
         # -------------------------------------------------------------------------
-        # 14. t-SNE 3D Projection (Colored by Class)
+        # 14. t-SNE 3D Projection (Colored by Class) - Nature Style
         # -------------------------------------------------------------------------
         if "tsne3" in gm:
             ts3 = gm["tsne3"]
@@ -1076,10 +1107,18 @@ def generate_generative_metrics_pages(
             y_dom3 = np.array(ts3["domain"])
 
             fig = plt.figure(
-                figsize=(7, 5),
+                figsize=(10, 6),
                 dpi=_DEF_FIG_DPI,
             )
             ax = fig.add_subplot(111, projection="3d")
+            
+            # Nature Style Background
+            ax.set_facecolor("#FDFCF0")
+            ax.xaxis.pane.fill = False
+            ax.yaxis.pane.fill = False
+            ax.zaxis.pane.fill = False
+            ax.grid(True, linestyle=":", alpha=0.4)
+
             cmap = plt.get_cmap("tab10")
             uniq_cls3 = sorted(np.unique(y_cls3))
 
@@ -1087,13 +1126,14 @@ def generate_generative_metrics_pages(
                 color = cmap(i % 10)
                 mr = (y_cls3 == cval) & (y_dom3 == "Real")
                 ms = (y_cls3 == cval) & (y_dom3 == "Synthetic")
+                
                 if np.any(mr):
                     ax.scatter(
                         emb3[mr, 0],
                         emb3[mr, 1],
                         emb3[mr, 2],
-                        s=12,
-                        alpha=0.75,
+                        s=15,
+                        alpha=0.6,
                         color=color,
                         marker="o",
                         edgecolors="none",
@@ -1104,78 +1144,60 @@ def generate_generative_metrics_pages(
                         emb3[ms, 0],
                         emb3[ms, 1],
                         emb3[ms, 2],
-                        s=12,
-                        alpha=0.75,
+                        s=15,
+                        alpha=0.6,
                         color=color,
                         marker="^",
                         edgecolors="none",
                         linewidths=0,
                     )
-            ax.set_title(
-                "t-SNE-like Embedding (3D): by Class"
-            )
+            
+            ax.set_title("t-SNE-like Embedding (3D): by Class", pad=20)
             ax.set_xlabel("t-SNE 1")
             ax.set_ylabel("t-SNE 2")
             ax.set_zlabel("t-SNE 3")
 
-            if len(uniq_cls3) <= 10:
-                class_handles = []
-                class_labels = []
-                for i, cval in enumerate(uniq_cls3):
-                    class_handles.append(
-                        Line2D(
-                            [0],
-                            [0],
-                            marker="o",
-                            linestyle="",
-                            markerfacecolor=cmap(i % 10),
-                            markeredgecolor="none",
-                        )
+            # Legends
+            class_handles = []
+            class_labels = []
+            for i, cval in enumerate(uniq_cls3):
+                class_handles.append(
+                    Line2D(
+                        [0], [0], marker="o", linestyle="",
+                        markerfacecolor=cmap(i % 10),
+                        markeredgecolor="none", alpha=0.8
                     )
-                    class_labels.append(str(cval))
-                leg1 = ax.legend(
-                    handles=class_handles,
-                    labels=class_labels,
-                    title="Class (color)",
-                    loc="upper left",
-                    fontsize=8,
-                    ncol=2,
                 )
-                ax.add_artist(leg1)
-            else:
-                cbar = plt.colorbar(
-                    plt.cm.ScalarMappable(cmap=cmap),
-                    ax=ax,
-                    shrink=0.6,
-                )
-                cbar.set_label("Class")
+                class_labels.append(str(cval))
+            
+            leg1 = ax.legend(
+                handles=class_handles,
+                labels=class_labels,
+                title="Class",
+                loc="upper left",
+                bbox_to_anchor=(1.05, 0.9),
+                fontsize=9,
+                frameon=False
+            )
+            ax.add_artist(leg1)
 
             domain_handles = [
-                Line2D(
-                    [0],
-                    [0],
-                    marker="o",
-                    linestyle="",
-                    markerfacecolor="#9e9e9e",
-                    markeredgecolor="none",
-                    label="Real (circles)",
-                ),
-                Line2D(
-                    [0],
-                    [0],
-                    marker="^",
-                    linestyle="",
-                    markerfacecolor="#9e9e9e",
-                    markeredgecolor="none",
-                    label="Synthetic (triangles)",
-                ),
+                Line2D([0], [0], marker="o", linestyle="", color='gray', markerfacecolor="gray", 
+                       markeredgecolor="none", label="Real"),
+                Line2D([0], [0], marker="^", linestyle="", color='gray', markerfacecolor="gray", 
+                       markeredgecolor="none", label="Synthetic"),
             ]
             ax.legend(
                 handles=domain_handles,
-                title="Domain (marker)",
-                loc="lower left",
-                fontsize=8,
+                title="Domain",
+                loc="upper left",
+                bbox_to_anchor=(1.05, 0.4),
+                fontsize=9,
+                frameon=False
             )
+            
+            # Adjust layout
+            plt.subplots_adjust(right=0.75)
 
             if figures_dir:
                 fig.savefig(figures_dir / "generative_tsne3_class_colored.png",

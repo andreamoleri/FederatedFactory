@@ -13,10 +13,10 @@ experiment performance.
     visualizations and structured reports.
 
 🔧 Core Functionalities:
-    • Recursive discovery of experiment directories (timestamped or run-based)
+    • Recursive discovery of experiment directories (permissive search)
     • Aggregation of training history, classification metrics, and generative metrics
     • Orchestration of matplotlib-based page generators
-    • production of multi-page PDF reports and extraction of raw PNG figures
+    • Production of multi-page PDF reports and extraction of raw PNG figures
 
 🎯 Intended Use:
     • Post-training analysis to summarize results
@@ -36,7 +36,7 @@ experiment performance.
 
 Author: Andrea Moleri
 File Location: src/reports/pdf_report.py
-Last Modified: 20/11/2025
+Last Modified: 24/01/2026
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ if str(ROOT) not in sys.path:
 import argparse
 import json
 import shutil
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Set
 
 import numpy as np
 import torch
@@ -75,7 +75,6 @@ from imports.data_management import DATASET_META, get_dataset
 from utils import grid_from_tensors
 
 # Data Augmentation Imports
-# NEW CODE (Fixed)
 from imports.data_augmentation import build_transform
 
 # Graph Generation Modules
@@ -104,25 +103,31 @@ def _get_meta_channels(ds_name: str) -> int | None:
 
     This function attempts to resolve the channel count by checking the
     global dataset metadata. It handles both exact matches and base name
-    matches (e.g., stripping parentheses).
-
-    Args:
-        ds_name (str): The name of the dataset (e.g., 'cifar10', 'mnist').
-
-    Returns:
-        int | None: The number of channels (usually 1 or 3) if found,
-        otherwise None.
+    matches (e.g., stripping parentheses or colons).
     """
-    # Attempt exact match against metadata dictionary
+    # 1. Attempt exact match
     if ds_name in DATASET_META:
-        return int(DATASET_META[ds_name].get("channels", 3))
+        val = DATASET_META[ds_name].get("channels")
+        if val is not None:
+            return int(val)
 
-    # Attempt base name match (e.g., "dataset(cleaned)" -> "dataset")
-    base = ds_name.split("(", 1)[0].strip()
+    # 2. Attempt base name match (e.g., "medmnist:bloodmnist" -> "medmnist")
+    base = ds_name.split("(", 1)[0].split(":", 1)[0].strip().lower()
+    
     if base in DATASET_META:
-        return int(DATASET_META[base].get("channels", 3))
+        val = DATASET_META[base].get("channels")
+        if val is not None:
+            return int(val)
 
-    return None
+    # 3. Heuristic Fallback
+    # If the metadata explicitly says None (common in MedMNIST before init),
+    # or if the key wasn't found, default to 3 for visualization purposes.
+    if "mnist" in base and "med" in base:
+         return 3 
+    if "isic" in base or "camelyon" in base:
+        return 3
+
+    return 3 # Safe default for visualization
 
 
 def _get_targets(test_set: Any) -> np.ndarray:
@@ -186,11 +191,6 @@ def export_individual_figures(
     """
     Render and save individual figure files (PNG) to a dedicated directory.
 
-    This function mimics the report generation process but saves high-resolution
-    images instead of compiling them into a PDF. It utilizes a dummy PDF context
-    because the underlying plotting functions utilize `PdfPages` logic, though
-    the primary artifact here is the file output.
-
     Args:
         out (Path): The root output directory for the experiment.
         args (argparse.Namespace): Experiment configuration arguments.
@@ -199,9 +199,6 @@ def export_individual_figures(
         y_true (np.ndarray): Ground truth labels.
         y_pred (np.ndarray): Predicted labels.
         num_classes (int): Total number of classes in the dataset.
-
-    Returns:
-        None
     """
     logger.info("Exporting individual figures to figures/ folder")
 
@@ -241,14 +238,22 @@ def export_individual_figures(
         # -------------------------------------------------------------
         # Data Preparation: Real vs Synthetic samples
         # -------------------------------------------------------------
-        test_set = get_dataset(args.dataset, args.data_dir, False, tfm)
-        tgt_all = _get_targets(test_set)
-        tgt_all = _adjust_emnist_labels(args, tgt_all)
-        classes_present = sorted(np.unique(tgt_all))
+        try:
+            test_set = get_dataset(args.dataset, args.data_dir, False, tfm)
+            tgt_all = _get_targets(test_set)
+            tgt_all = _adjust_emnist_labels(args, tgt_all)
+            classes_present = sorted(np.unique(tgt_all))
 
-        generate_real_vs_synthetic_page(
-            pdf, out, args, classes_present, test_set, tgt_all, figures_dir
-        )
+            generate_real_vs_synthetic_page(
+                pdf, out, args, classes_present, test_set, tgt_all, figures_dir
+            )
+        except Exception as e:
+            # MedMNIST often fails here if raw .npz not found or folders missing.
+            # We catch it so we can still print the other charts.
+            logger.warning(f"Could not load dataset/images for visuals ({e}). Skipping Real/Synth page.")
+            test_set = None
+            tgt_all = None
+            classes_present = []
 
         # -------------------------------------------------------------
         # Classification Metrics
@@ -261,9 +266,10 @@ def export_individual_figures(
         # -------------------------------------------------------------
         # Intensity Distributions
         # -------------------------------------------------------------
-        generate_intensity_distributions_pages(
-            pdf, out, classes_present, test_set, tgt_all, figures_dir
-        )
+        if test_set is not None:
+            generate_intensity_distributions_pages(
+                pdf, out, classes_present, test_set, tgt_all, figures_dir
+            )
 
         # -------------------------------------------------------------
         # Client Class Distribution
@@ -322,9 +328,6 @@ def generate_pdf_report(
     """
     Orchestrate the generation of the complete PDF report.
 
-    This function sets up the visualization style, processes data transformations,
-    and sequentially calls specific page generators to build the final PDF document.
-
     Args:
         out (Path): The output directory for the report.
         args (argparse.Namespace): Experiment arguments.
@@ -373,17 +376,23 @@ def generate_pdf_report(
         # -------------------------------------------------------------
         # Dataset Preparation
         # -------------------------------------------------------------
-        test_set = get_dataset(args.dataset, args.data_dir, False, tfm)
-        tgt_all = _get_targets(test_set)
-        tgt_all = _adjust_emnist_labels(args, tgt_all)
-        classes_present = sorted(np.unique(tgt_all))
+        try:
+            test_set = get_dataset(args.dataset, args.data_dir, False, tfm)
+            tgt_all = _get_targets(test_set)
+            tgt_all = _adjust_emnist_labels(args, tgt_all)
+            classes_present = sorted(np.unique(tgt_all))
 
-        # -------------------------------------------------------------
-        # Visualisation: Real vs Synthetic Samples
-        # -------------------------------------------------------------
-        generate_real_vs_synthetic_page(
-            pdf, out, args, classes_present, test_set, tgt_all, figures_dir if export_individual else None
-        )
+            # -------------------------------------------------------------
+            # Visualisation: Real vs Synthetic Samples
+            # -------------------------------------------------------------
+            generate_real_vs_synthetic_page(
+                pdf, out, args, classes_present, test_set, tgt_all, figures_dir if export_individual else None
+            )
+        except Exception as e:
+            logger.warning(f"Could not load dataset for visuals ({e}). Skipping Real/Synth page.")
+            test_set = None
+            tgt_all = None
+            classes_present = []
 
         # -------------------------------------------------------------
         # Visualisation: Classification Metrics
@@ -398,9 +407,10 @@ def generate_pdf_report(
         # -------------------------------------------------------------
         # Visualisation: Intensity Distributions
         # -------------------------------------------------------------
-        generate_intensity_distributions_pages(
-            pdf, out, classes_present, test_set, tgt_all, figures_dir if export_individual else None
-        )
+        if test_set is not None:
+            generate_intensity_distributions_pages(
+                pdf, out, classes_present, test_set, tgt_all, figures_dir if export_individual else None
+            )
 
         # -------------------------------------------------------------
         # Visualisation: Client Class Distribution
@@ -461,68 +471,53 @@ def generate_pdf_report(
 # Standalone Script Functionality
 # =====================================================================
 
-def find_experiment_folders(base_dir: Path) -> List[Path]:
+def find_experiment_folders(base_dirs: List[Path]) -> List[Path]:
     """
-    Recursively scan a base directory to identify valid experiment folders.
-
-    This function employs heuristics to distinguish between different types of
-    output folders (e.g., timestamped execution folders vs. numbered run folders).
-
+    Recursively scan provided paths to identify ALL valid experiment folders.
+    
+    A folder is considered an experiment if it contains a 'metrics' subdirectory.
+    This function is permissive to ensure every subfolder is analyzed as requested.
+    
     Args:
-        base_dir (Path): The root directory to start the search.
-
+        base_dirs (List[Path]): A list of root directories to scan.
+        
     Returns:
-        List[Path]: A list of Path objects pointing to valid experiment directories.
+        List[Path]: A sorted list of unique experiment directories found.
     """
-    experiment_folders = []
+    experiment_folders = set()
 
-    if (base_dir / "datasets").exists() and (base_dir / "metrics").exists():
-        return [base_dir]  # Return immediately if base_dir is the target
+    for base_dir in base_dirs:
+        path = Path(base_dir)
+        if not path.exists():
+            logger.warning(f"⚠️ Search path not found: {path}")
+            continue
 
-    # Iterate through all subdirectories
-    for folder in base_dir.rglob("*"):
-        if folder.is_dir():
-            has_datasets = (folder / "datasets").exists()
-            has_metrics = (folder / "metrics").exists()
+        logger.info(f"🔍 Scanning: {path}")
 
-            # Heuristic: Timestamp folders contain colons (e.g., HH:MM:SS)
-            is_timestamp_folder = ":" in folder.name
-            # Heuristic: Run folders match pattern 'runN'
-            is_run_folder = folder.name.startswith("run") and folder.name[3:].isdigit()
+        # 1. Direct check: Is the path itself an experiment?
+        if (path / "metrics").exists():
+            experiment_folders.add(path)
 
-            if has_datasets and has_metrics:
-                if is_timestamp_folder:
-                    # Timestamped folders strictly require args.json
-                    has_args = (folder / "args.json").exists()
-                    if has_args:
-                        experiment_folders.append(folder)
-                elif is_run_folder:
-                    # Run folders (often baselines) might lack args.json
-                    experiment_folders.append(folder)
-                else:
-                    # Generic fallback: valid if args.json exists
-                    has_args = (folder / "args.json").exists()
-                    if has_args:
-                        experiment_folders.append(folder)
+        # 2. Recursive search: Find all nested 'metrics' folders
+        # This will catch everything inside H100 and L40 directories
+        for metrics_dir in path.rglob("metrics"):
+            if metrics_dir.is_dir():
+                experiment_folders.add(metrics_dir.parent)
 
-    return experiment_folders
+    return sorted(list(experiment_folders))
 
 
-def load_experiment_data(experiment_dir: Path) -> tuple | None:
+def load_experiment_data(experiment_dir: Path, override_data_dir: str | None = None) -> tuple | None:
     """
     Load and reconstruct experiment state from persistent storage (JSON/CSV).
 
-    This function acts as an ETL (Extract, Transform, Load) utility for
-    experiment artifacts. It handles missing configuration files by creating
-    reasonable defaults (useful for baseline runs) and reconstructs synthetic
-    labels from confusion matrix data.
-
     Args:
         experiment_dir (Path): The directory containing experiment artifacts.
+        override_data_dir (str | None): Optional data directory path to override what's in args.json.
 
     Returns:
-        tuple | None: A tuple containing (args, hist, metrics, y_true, y_pred, num_classes)
-        on success, or None if a critical loading error occurs.
+        tuple | None: (args, hist, metrics, y_true, y_pred, num_classes) on success,
+                      or None if critical error.
     """
     try:
         # 1. Load Configuration (args.json)
@@ -535,13 +530,24 @@ def load_experiment_data(experiment_dir: Path) -> tuple | None:
             # Handle baseline runs lacking explicit configuration
             logger.info(f"No args.json found in {experiment_dir}, creating minimal args for baseline")
             args = argparse.Namespace()
-
+            
             # Infer dataset context from directory path structure
             path_parts = experiment_dir.parts
             if "mnist" in path_parts:
-                args.dataset = "mnist"
+                if any("medmnist" in p for p in path_parts):
+                    # Try to extract the full medmnist string from path (e.g. medmnist:pathmnist)
+                    for part in path_parts:
+                        if "medmnist" in part:
+                            args.dataset = part
+                            break
+                    else:
+                        args.dataset = "medmnist"
+                else:
+                    args.dataset = "mnist"
             elif "cifar" in path_parts:
                 args.dataset = "cifar10"
+            elif "isic" in path_parts:
+                args.dataset = "fed_isic2019"
             elif "femnist" in path_parts or "emnist" in path_parts:
                 args.dataset = "femnist"
             else:
@@ -549,6 +555,10 @@ def load_experiment_data(experiment_dir: Path) -> tuple | None:
 
             args.data_dir = "../../data"  # Project default
             args.grayscale = False
+
+        # OVERRIDE data_dir if provided via CLI
+        if override_data_dir:
+            args.data_dir = override_data_dir
 
         # 2. Load Classifier Metrics
         classifier_metrics_path = experiment_dir / "metrics" / "classifier.json"
@@ -582,7 +592,6 @@ def load_experiment_data(experiment_dir: Path) -> tuple | None:
         if cm_path.exists():
             cm_data = np.loadtxt(cm_path, delimiter=",")
             # Reconstruct y_true and y_pred vectors from the aggregate confusion matrix
-            # Note: This reconstruction loses per-sample fidelity but preserves aggregate stats.
             y_true = []
             y_pred = []
             num_classes = cm_data.shape[0]
@@ -598,8 +607,8 @@ def load_experiment_data(experiment_dir: Path) -> tuple | None:
         else:
             # Fallback: Generate random data to prevent report crash (use with caution)
             num_classes = metrics.get("num_classes", 10)
-            y_true = np.random.randint(0, num_classes, 100)
-            y_pred = np.random.randint(0, num_classes, 100)
+            y_true = np.array([0])
+            y_pred = np.array([0])
 
         # 5. Load Generative Metrics
         gen_metrics_path = experiment_dir / "metrics" / "generative.json"
@@ -612,22 +621,19 @@ def load_experiment_data(experiment_dir: Path) -> tuple | None:
 
     except Exception as e:
         logger.error(f"Error loading experiment data from {experiment_dir}: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
         return None
 
 
 def main():
     """
     Execute the module as a standalone CLI script.
-
-    Scans the specified output directory for experiments and generates PDF reports
-    for them. It also manages a global 'reports/' directory containing symlinks
-    to the generated reports for easy access.
     """
     parser = argparse.ArgumentParser(description="Generate PDF reports for all experiments")
-    parser.add_argument("--base-dir", type=str, default="../output",
-                        help="Base directory containing experiment folders")
+    # Updated: accept multiple directories via nargs='+'
+    parser.add_argument("--base-dir", type=str, nargs='+', default=["../output"],
+                        help="One or more base directories to scan for experiments")
+    parser.add_argument("--data-dir", type=str, default=None,
+                        help="Override the data directory found in args.json (useful for MedMNIST)")
     parser.add_argument("--skip-existing", action="store_true",
                         help="Skip experiments that already have reports")
     parser.add_argument("--export-figures", action="store_true",
@@ -637,22 +643,12 @@ def main():
 
     args = parser.parse_args()
 
-    base_dir = Path(args.base_dir)
-
-    # ---------------------------------------------------------
-    # FIX: Create the directory if it doesn't exist
-    # ---------------------------------------------------------
-    if not base_dir.exists():
-        logger.info(f"Base directory {base_dir} does not exist. Creating it...")
-        base_dir.mkdir(parents=True, exist_ok=True)
-    # ---------------------------------------------------------
-
-    # Setup global aggregation directory for reports
-    global_reports_dir = base_dir / "reports"
-    global_reports_dir.mkdir(exist_ok=True)
+    # Handle single string input compatibility
+    raw_dirs = args.base_dir if isinstance(args.base_dir, list) else [args.base_dir]
+    search_paths = [Path(p) for p in raw_dirs]
 
     # Locate targets
-    experiment_folders = find_experiment_folders(base_dir)
+    experiment_folders = find_experiment_folders(search_paths)
     logger.info(f"Found {len(experiment_folders)} experiment folders")
 
     for exp_dir in experiment_folders:
@@ -661,12 +657,15 @@ def main():
         # Conditional Skip Logic
         report_pdf = exp_dir / "report.pdf"
         figures_dir = exp_dir / "figures"
-        if args.skip_existing and report_pdf.exists() and (not args.export_figures or figures_dir.exists()):
-            logger.info(f"Skipping {exp_dir} - report already exists")
-            continue
+        
+        # Skip if report exists AND (we aren't exporting figures OR figures already exist)
+        if args.skip_existing and report_pdf.exists():
+            if not args.export_figures or (args.export_figures and figures_dir.exists()):
+                logger.info(f"Skipping {exp_dir} - report already exists")
+                continue
 
         # Data Loading Phase
-        experiment_data = load_experiment_data(exp_dir)
+        experiment_data = load_experiment_data(exp_dir, override_data_dir=args.data_dir)
         if experiment_data is None:
             logger.error(f"Failed to load data for {exp_dir}, skipping")
             continue
@@ -685,25 +684,12 @@ def main():
                 generate_pdf_report(exp_dir, exp_args, hist, metrics, y_true, y_pred, num_classes, args.export_figures)
                 logger.info(f"Successfully generated report for {exp_dir}")
 
-                # Create a symlink in the global reports directory
-                # Flatten path structure for uniqueness: e.g., "output_run1" -> "output_run1.pdf"
-                exp_name = exp_dir.relative_to(base_dir)
-                safe_exp_name = str(exp_name).replace("/", "_").replace("\\", "_")
-                link_path = global_reports_dir / f"{safe_exp_name}.pdf"
-
-                try:
-                    if link_path.exists():
-                        link_path.unlink()
-                    link_path.symlink_to(report_pdf.absolute())
-                except Exception as e:
-                    logger.warning(f"Could not create symlink for {exp_dir}: {e}")
-
         except Exception as e:
             logger.error(f"Error generating report for {exp_dir}: {e}")
             import traceback
             logger.error(traceback.format_exc())
 
-    logger.info("PDF report generation completed")
+    logger.info("PDF report generation batch completed")
 
 
 if __name__ == "__main__":

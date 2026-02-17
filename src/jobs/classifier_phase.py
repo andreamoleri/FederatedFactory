@@ -579,7 +579,7 @@ def run_classifier_training(
                 )
 
                 if tracker: tracker.start_phase(f"client_{cname}_clf")
-                clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs,
+                clf, steps = train_classifier(SimpleCNN(chans, num_classes, input_resolution=img_shape[-1]), tr_ld, val_ld, device, args.clf_epochs,
                                               hist, cname, tracker=tracker)
                 if tracker: tracker.end_phase(f"client_{cname}_clf")
 
@@ -689,7 +689,7 @@ def run_classifier_training(
                 )
 
                 if tracker: tracker.start_phase("server_classifier")
-                clf, steps = train_classifier(SimpleCNN(chans, len(present_in_synth)), tr_ld, val_ld, device,
+                clf, steps = train_classifier(SimpleCNN(chans, len(present_in_synth), input_resolution=img_shape[-1]), tr_ld, val_ld, device,
                                               args.clf_epochs, hist, "server", tracker=tracker)
                 if tracker: tracker.end_phase("server_classifier")
 
@@ -832,7 +832,7 @@ def run_classifier_training(
                 )
 
                 if tracker: tracker.start_phase(f"client_{d:03d}_clf")
-                clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs,
+                clf, steps = train_classifier(SimpleCNN(chans, num_classes, input_resolution=img_shape[-1]), tr_ld, val_ld, device, args.clf_epochs,
                                               hist, d, tracker=tracker)
                 if tracker: tracker.end_phase(f"client_{d:03d}_clf")
 
@@ -925,7 +925,7 @@ def run_classifier_training(
             )
 
             if tracker: tracker.start_phase("server_classifier")
-            clf, steps = train_classifier(SimpleCNN(chans, num_classes), tr_ld, val_ld, device, args.clf_epochs, hist,
+            clf, steps = train_classifier(SimpleCNN(chans, num_classes, input_resolution=img_shape[-1]), tr_ld, val_ld, device, args.clf_epochs, hist,
                                           "server", tracker=tracker)
             if tracker: tracker.end_phase("server_classifier")
 
