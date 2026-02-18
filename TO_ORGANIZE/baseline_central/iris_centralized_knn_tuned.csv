@@ -1,0 +1,2 @@
+Method,AUROC,Accuracy,Precision,Recall,F1-Score
+Centralized K-NN (Tuned),0.9683 ± 0.0319,0.8889 ± 0.0880,0.9812 ± 0.0184,0.8537 ± 0.1036,0.9086 ± 0.0691

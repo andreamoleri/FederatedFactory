@@ -1,0 +1,26 @@
+[codecarbon WARNING @ 16:30:24] Multiple instances of codecarbon are allowed to run at the same time.
+2026-01-18 16:30:30 | INFO     | jobs.experiment_setup | [DATA] Overriding input_size -> 128 for dataset 'fed_isic2019'
+2026-01-18 16:30:30 | INFO     | jobs.experiment_runner | [EXPERIMENT] Using FIXED Partition Seed 42 to align with loaded checkpoints.
+2026-01-18 16:30:35 | INFO     | jobs.experiment_setup | [DATA] ⚠️ Large dataset detected: Using Lazy Loading for Test Set to prevent OOM.
+2026-01-18 16:30:35 | INFO     | jobs.experiment_setup | [DATA] Partitioning using seed: 42
+/home/amoleri/miniconda3/envs/federatedfactory_env/lib/python3.10/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/home/amoleri/miniconda3/envs/federatedfactory_env/lib/python3.10/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=VGG16_Weights.IMAGENET1K_V1`. You can also use `weights=VGG16_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+2026-01-18 16:30:45 | INFO     | jobs.experiment_runner | [GEN-PHASE] Attempting to load checkpoints with Epoch Family: 25001
+2026-01-18 16:30:45 | INFO     | jobs.generative_phase | [GEN-LOAD] Loading checkpoints for Family: 25001
+2026-01-18 16:31:06 | INFO     | jobs.generative_phase | [GEN-LOAD] Successfully loaded 8 client models.
+2026-01-18 16:31:06 | INFO     | jobs.evaluation_phase | [Metrics] Computing FID, KID, Precision/Recall, IS, pairwise distances and t-SNE...
+2026-01-18 16:31:08 | INFO     | metrics.evaluation | [Metrics] InceptionV3 (ImageNet) loaded for features & logits.
+2026-01-18 16:39:44 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=0: 5.34s  (n=3844)
+2026-01-18 16:39:58 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=1: 13.70s  (n=9596)
+2026-01-18 16:40:01 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=2: 3.51s  (n=3161)
+2026-01-18 16:40:02 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=3: 0.94s  (n=867)
+2026-01-18 16:40:05 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=4: 2.63s  (n=2426)
+2026-01-18 16:40:05 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=5: 0.22s  (n=239)
+2026-01-18 16:40:06 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=6: 0.32s  (n=253)
+2026-01-18 16:40:07 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=7: 0.95s  (n=628)
+2026-01-18 16:56:53 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Class 0: Generated 10000 synthetic samples (target: 10000)
+2026-01-18 17:13:39 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Class 1: Generated 10000 synthetic samples (target: 10000)
+2026-01-18 17:30:25 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Class 2: Generated 10000 synthetic samples (target: 10000)
+2026-01-18 17:47:11 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Class 3: Generated 10000 synthetic samples (target: 10000)

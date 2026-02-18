@@ -1,0 +1,1549 @@
+[codecarbon WARNING @ 08:25:40] Multiple instances of codecarbon are allowed to run at the same time.
+2026-01-14 08:25:46 | INFO     | jobs.experiment_setup | [DATA] Overriding input_size -> 32 for dataset 'medmnist:retinamnist'
+2026-01-14 08:25:46 | INFO     | jobs.experiment_runner | [EXPERIMENT] Using FIXED Partition Seed 42 to align with loaded checkpoints.
+2026-01-14 08:25:46 | INFO     | jobs.experiment_setup | [DATA] Partitioning using seed: 42
+/home/amoleri/miniconda3/envs/federatedfactory_env/lib/python3.10/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/home/amoleri/miniconda3/envs/federatedfactory_env/lib/python3.10/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=VGG16_Weights.IMAGENET1K_V1`. You can also use `weights=VGG16_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+2026-01-14 08:25:48 | INFO     | jobs.experiment_runner | [GEN-PHASE] Attempting to load checkpoints with Epoch Family: 25001
+2026-01-14 08:25:48 | INFO     | jobs.generative_phase | [GEN-LOAD] Loading checkpoints for Family: 25001
+2026-01-14 08:26:10 | INFO     | jobs.generative_phase | [GEN-LOAD] Successfully loaded 5 client models.
+2026-01-14 08:26:10 | INFO     | jobs.evaluation_phase | [Metrics] Computing FID, KID, Precision/Recall, IS, pairwise distances and t-SNE...
+2026-01-14 08:26:10 | INFO     | metrics.evaluation | [Metrics] InceptionV3 (ImageNet) loaded for features & logits.
+2026-01-14 08:29:22 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=0: 0.06s  (n=660)
+2026-01-14 08:29:22 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=1: 0.01s  (n=174)
+2026-01-14 08:29:22 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=2: 0.02s  (n=298)
+2026-01-14 08:29:22 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=3: 0.02s  (n=262)
+2026-01-14 08:29:22 | INFO     | jobs.evaluation_phase | [TIMING] real_full_by_class class=4: 0.01s  (n=86)
+2026-01-14 08:37:38 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Class 0: Generated 10000 synthetic samples (target: 10000)
+2026-01-14 08:48:13 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Class 1: Generated 10000 synthetic samples (target: 10000)
+2026-01-14 08:58:48 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Class 2: Generated 10000 synthetic samples (target: 10000)
+2026-01-14 09:09:23 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Class 3: Generated 10000 synthetic samples (target: 10000)
+2026-01-14 09:19:59 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Class 4: Generated 10000 synthetic samples (target: 10000)
+Saving real dataset:   0%|          | 0/1480 [00:00<?, ?img/s]Saving real dataset:  17%|█▋        | 256/1480 [00:01<00:05, 209.77img/s]Saving real dataset:  35%|███▍      | 512/1480 [00:02<00:04, 213.68img/s]Saving real dataset:  45%|████▍     | 660/1480 [00:03<00:03, 212.35img/s]Saving real dataset:  56%|█████▋    | 834/1480 [00:03<00:02, 215.59img/s]Saving real dataset:  74%|███████▎  | 1090/1480 [00:05<00:01, 208.70img/s]Saving real dataset:  76%|███████▋  | 1132/1480 [00:05<00:01, 208.71img/s]Saving real dataset:  94%|█████████▍| 1388/1480 [00:06<00:00, 203.70img/s]Saving real dataset: 100%|██████████| 1480/1480 [00:07<00:00, 204.54img/s]Saving real dataset: 100%|██████████| 1480/1480 [00:07<00:00, 208.15img/s]
+Saving synthetic dataset:   0%|          | 0/50000 [00:00<?, ?img/s]Saving synthetic dataset:   1%|          | 256/50000 [00:01<04:23, 189.04img/s]Saving synthetic dataset:   1%|          | 512/50000 [00:02<04:18, 191.69img/s]Saving synthetic dataset:   2%|▏         | 768/50000 [00:03<04:15, 192.64img/s]Saving synthetic dataset:   2%|▏         | 1024/50000 [00:05<04:20, 188.18img/s]Saving synthetic dataset:   3%|▎         | 1280/50000 [00:07<04:35, 176.88img/s]Saving synthetic dataset:   3%|▎         | 1536/50000 [00:08<04:26, 181.98img/s]Saving synthetic dataset:   4%|▎         | 1792/50000 [00:09<04:37, 173.65img/s]Saving synthetic dataset:   4%|▍         | 2048/50000 [00:11<04:28, 178.38img/s]Saving synthetic dataset:   5%|▍         | 2304/50000 [00:12<04:20, 183.18img/s]Saving synthetic dataset:   5%|▌         | 2560/50000 [00:13<04:16, 184.71img/s]Saving synthetic dataset:   6%|▌         | 2816/50000 [00:15<04:12, 186.58img/s]Saving synthetic dataset:   6%|▌         | 3072/50000 [00:16<04:08, 188.94img/s]Saving synthetic dataset:   7%|▋         | 3328/50000 [00:18<04:22, 177.80img/s]Saving synthetic dataset:   7%|▋         | 3584/50000 [00:19<04:26, 173.97img/s]Saving synthetic dataset:   8%|▊         | 3840/50000 [00:21<04:29, 171.54img/s]Saving synthetic dataset:   8%|▊         | 4096/50000 [00:22<04:18, 177.32img/s]Saving synthetic dataset:   9%|▊         | 4352/50000 [00:23<04:07, 184.61img/s]Saving synthetic dataset:   9%|▉         | 4608/50000 [00:25<04:09, 182.26img/s]Saving synthetic dataset:  10%|▉         | 4864/50000 [00:26<04:02, 185.86img/s]Saving synthetic dataset:  10%|█         | 5120/50000 [00:27<03:51, 193.84img/s]Saving synthetic dataset:  11%|█         | 5376/50000 [00:29<03:43, 199.70img/s]Saving synthetic dataset:  11%|█▏        | 5632/50000 [00:30<03:42, 199.60img/s]Saving synthetic dataset:  12%|█▏        | 5888/50000 [00:31<03:42, 198.50img/s]Saving synthetic dataset:  12%|█▏        | 6144/50000 [00:33<03:56, 185.31img/s]Saving synthetic dataset:  13%|█▎        | 6400/50000 [00:34<04:00, 181.03img/s]Saving synthetic dataset:  13%|█▎        | 6656/50000 [00:36<03:57, 182.14img/s]Saving synthetic dataset:  14%|█▍        | 6912/50000 [00:37<03:52, 185.05img/s]Saving synthetic dataset:  14%|█▍        | 7168/50000 [00:38<03:56, 181.18img/s]Saving synthetic dataset:  15%|█▍        | 7424/50000 [00:40<03:51, 184.01img/s]Saving synthetic dataset:  15%|█▌        | 7680/50000 [00:41<03:54, 180.62img/s]Saving synthetic dataset:  16%|█▌        | 7936/50000 [00:43<03:48, 184.18img/s]Saving synthetic dataset:  16%|█▋        | 8192/50000 [00:44<03:43, 187.32img/s]Saving synthetic dataset:  17%|█▋        | 8448/50000 [00:45<03:46, 183.55img/s]Saving synthetic dataset:  17%|█▋        | 8704/50000 [00:47<03:45, 183.40img/s]Saving synthetic dataset:  18%|█▊        | 8960/50000 [00:48<03:39, 187.30img/s]Saving synthetic dataset:  18%|█▊        | 9216/50000 [00:50<03:54, 173.76img/s]Saving synthetic dataset:  19%|█▉        | 9472/50000 [00:51<03:50, 175.94img/s]Saving synthetic dataset:  19%|█▉        | 9728/50000 [00:52<03:41, 182.20img/s]Saving synthetic dataset:  20%|█▉        | 9984/50000 [00:54<03:33, 187.62img/s]Saving synthetic dataset:  21%|██        | 10256/50000 [00:55<03:33, 186.58img/s]Saving synthetic dataset:  21%|██        | 10512/50000 [00:57<03:29, 188.69img/s]Saving synthetic dataset:  22%|██▏       | 10768/50000 [00:58<03:23, 193.19img/s]Saving synthetic dataset:  22%|██▏       | 11024/50000 [00:59<03:25, 189.25img/s]Saving synthetic dataset:  23%|██▎       | 11280/50000 [01:01<03:21, 192.41img/s]Saving synthetic dataset:  23%|██▎       | 11536/50000 [01:02<03:24, 188.47img/s]Saving synthetic dataset:  24%|██▎       | 11792/50000 [01:03<03:17, 193.29img/s]Saving synthetic dataset:  24%|██▍       | 12048/50000 [01:05<03:22, 187.63img/s]Saving synthetic dataset:  25%|██▍       | 12304/50000 [01:06<03:15, 193.11img/s]Saving synthetic dataset:  25%|██▌       | 12560/50000 [01:07<03:15, 191.70img/s]Saving synthetic dataset:  26%|██▌       | 12816/50000 [01:09<03:17, 188.59img/s]Saving synthetic dataset:  26%|██▌       | 13072/50000 [01:10<03:08, 196.19img/s]Saving synthetic dataset:  27%|██▋       | 13328/50000 [01:11<03:10, 192.84img/s]Saving synthetic dataset:  27%|██▋       | 13584/50000 [01:13<03:16, 185.46img/s]Saving synthetic dataset:  28%|██▊       | 13840/50000 [01:14<03:23, 177.73img/s]Saving synthetic dataset:  28%|██▊       | 14096/50000 [01:16<03:29, 171.64img/s]Saving synthetic dataset:  29%|██▊       | 14352/50000 [01:17<03:20, 178.16img/s]Saving synthetic dataset:  29%|██▉       | 14608/50000 [01:19<03:21, 175.69img/s]Saving synthetic dataset:  30%|██▉       | 14864/50000 [01:20<03:21, 174.20img/s]Saving synthetic dataset:  30%|███       | 15120/50000 [01:21<03:12, 181.45img/s]Saving synthetic dataset:  31%|███       | 15376/50000 [01:23<03:09, 182.56img/s]Saving synthetic dataset:  31%|███▏      | 15632/50000 [01:24<03:04, 185.93img/s]Saving synthetic dataset:  32%|███▏      | 15888/50000 [01:25<02:57, 191.67img/s]Saving synthetic dataset:  32%|███▏      | 16144/50000 [01:27<02:52, 196.65img/s]Saving synthetic dataset:  33%|███▎      | 16400/50000 [01:28<02:49, 198.77img/s]Saving synthetic dataset:  33%|███▎      | 16656/50000 [01:29<02:46, 200.10img/s]Saving synthetic dataset:  34%|███▍      | 16912/50000 [01:31<02:59, 184.21img/s]Saving synthetic dataset:  34%|███▍      | 17168/50000 [01:32<02:56, 185.51img/s]Saving synthetic dataset:  35%|███▍      | 17424/50000 [01:33<02:52, 189.11img/s]Saving synthetic dataset:  35%|███▌      | 17680/50000 [01:35<02:52, 186.93img/s]Saving synthetic dataset:  36%|███▌      | 17936/50000 [01:36<02:45, 194.05img/s]Saving synthetic dataset:  36%|███▋      | 18192/50000 [01:37<02:42, 195.51img/s]Saving synthetic dataset:  37%|███▋      | 18448/50000 [01:39<02:43, 192.52img/s]Saving synthetic dataset:  37%|███▋      | 18704/50000 [01:40<02:38, 197.66img/s]Saving synthetic dataset:  38%|███▊      | 18960/50000 [01:41<02:34, 200.61img/s]Saving synthetic dataset:  38%|███▊      | 19216/50000 [01:42<02:34, 199.73img/s]Saving synthetic dataset:  39%|███▉      | 19472/50000 [01:44<02:32, 199.83img/s]Saving synthetic dataset:  39%|███▉      | 19728/50000 [01:45<02:29, 201.89img/s]Saving synthetic dataset:  40%|███▉      | 19984/50000 [01:46<02:26, 204.69img/s]Saving synthetic dataset:  41%|████      | 20256/50000 [01:48<02:24, 205.20img/s]Saving synthetic dataset:  41%|████      | 20512/50000 [01:49<02:45, 177.66img/s]Saving synthetic dataset:  42%|████▏     | 20768/50000 [01:53<03:40, 132.34img/s]Saving synthetic dataset:  42%|████▏     | 21024/50000 [01:54<03:16, 147.63img/s]Saving synthetic dataset:  43%|████▎     | 21280/50000 [01:55<03:03, 156.28img/s]Saving synthetic dataset:  43%|████▎     | 21536/50000 [01:57<02:53, 164.33img/s]Saving synthetic dataset:  44%|████▎     | 21792/50000 [01:58<02:44, 171.49img/s]Saving synthetic dataset:  44%|████▍     | 22048/50000 [01:59<02:33, 181.89img/s]Saving synthetic dataset:  45%|████▍     | 22304/50000 [02:00<02:24, 191.33img/s]Saving synthetic dataset:  45%|████▌     | 22560/50000 [02:02<02:20, 195.61img/s]Saving synthetic dataset:  46%|████▌     | 22816/50000 [02:03<02:17, 197.55img/s]Saving synthetic dataset:  46%|████▌     | 23072/50000 [02:04<02:13, 202.45img/s]Saving synthetic dataset:  47%|████▋     | 23328/50000 [02:05<02:10, 204.91img/s]Saving synthetic dataset:  47%|████▋     | 23584/50000 [02:07<02:11, 201.18img/s]Saving synthetic dataset:  48%|████▊     | 23840/50000 [02:08<02:10, 200.58img/s]Saving synthetic dataset:  48%|████▊     | 24096/50000 [02:09<02:10, 197.80img/s]Saving synthetic dataset:  49%|████▊     | 24352/50000 [02:11<02:14, 191.39img/s]Saving synthetic dataset:  49%|████▉     | 24608/50000 [02:12<02:12, 191.18img/s]Saving synthetic dataset:  50%|████▉     | 24864/50000 [02:13<02:10, 193.26img/s]Saving synthetic dataset:  50%|█████     | 25120/50000 [02:14<02:05, 198.11img/s]Saving synthetic dataset:  51%|█████     | 25376/50000 [02:16<02:03, 198.95img/s]Saving synthetic dataset:  51%|█████▏    | 25632/50000 [02:17<01:59, 203.57img/s]Saving synthetic dataset:  52%|█████▏    | 25888/50000 [02:18<02:04, 193.27img/s]Saving synthetic dataset:  52%|█████▏    | 26144/50000 [02:20<02:04, 192.11img/s]Saving synthetic dataset:  53%|█████▎    | 26400/50000 [02:21<02:02, 192.38img/s]Saving synthetic dataset:  53%|█████▎    | 26656/50000 [02:22<01:58, 197.57img/s]Saving synthetic dataset:  54%|█████▍    | 26912/50000 [02:24<02:06, 183.20img/s]Saving synthetic dataset:  54%|█████▍    | 27168/50000 [02:25<02:00, 188.83img/s]Saving synthetic dataset:  55%|█████▍    | 27424/50000 [02:27<02:00, 187.08img/s]Saving synthetic dataset:  55%|█████▌    | 27680/50000 [02:28<01:55, 193.19img/s]Saving synthetic dataset:  56%|█████▌    | 27936/50000 [02:29<01:53, 194.58img/s]Saving synthetic dataset:  56%|█████▋    | 28192/50000 [02:31<01:55, 189.26img/s]Saving synthetic dataset:  57%|█████▋    | 28448/50000 [02:32<01:50, 194.17img/s]Saving synthetic dataset:  57%|█████▋    | 28704/50000 [02:33<01:46, 199.27img/s]Saving synthetic dataset:  58%|█████▊    | 28960/50000 [02:34<01:44, 200.76img/s]Saving synthetic dataset:  58%|█████▊    | 29216/50000 [02:35<01:43, 200.60img/s]Saving synthetic dataset:  59%|█████▉    | 29472/50000 [02:37<01:43, 199.00img/s]Saving synthetic dataset:  59%|█████▉    | 29728/50000 [02:38<01:46, 190.18img/s]Saving synthetic dataset:  60%|█████▉    | 29984/50000 [02:40<01:42, 194.92img/s]Saving synthetic dataset:  61%|██████    | 30256/50000 [02:41<01:43, 190.71img/s]Saving synthetic dataset:  61%|██████    | 30512/50000 [02:42<01:40, 193.75img/s]Saving synthetic dataset:  62%|██████▏   | 30768/50000 [02:44<01:40, 191.25img/s]Saving synthetic dataset:  62%|██████▏   | 31024/50000 [02:45<01:36, 196.12img/s]Saving synthetic dataset:  63%|██████▎   | 31280/50000 [02:46<01:37, 191.93img/s]Saving synthetic dataset:  63%|██████▎   | 31536/50000 [02:48<01:41, 181.28img/s]Saving synthetic dataset:  64%|██████▎   | 31792/50000 [02:49<01:41, 178.91img/s]Saving synthetic dataset:  64%|██████▍   | 32048/50000 [02:51<01:41, 176.43img/s]Saving synthetic dataset:  65%|██████▍   | 32304/50000 [02:52<01:37, 181.83img/s]Saving synthetic dataset:  65%|██████▌   | 32560/50000 [02:54<01:36, 181.55img/s]Saving synthetic dataset:  66%|██████▌   | 32816/50000 [02:55<01:31, 188.20img/s]Saving synthetic dataset:  66%|██████▌   | 33072/50000 [02:56<01:29, 190.02img/s]Saving synthetic dataset:  67%|██████▋   | 33328/50000 [02:57<01:26, 192.61img/s]Saving synthetic dataset:  67%|██████▋   | 33584/50000 [02:59<01:22, 199.46img/s]Saving synthetic dataset:  68%|██████▊   | 33840/50000 [03:01<01:42, 157.50img/s]Saving synthetic dataset:  68%|██████▊   | 34096/50000 [03:02<01:33, 169.94img/s]Saving synthetic dataset:  69%|██████▊   | 34352/50000 [03:04<01:29, 174.57img/s]Saving synthetic dataset:  69%|██████▉   | 34608/50000 [03:05<01:23, 185.08img/s]Saving synthetic dataset:  70%|██████▉   | 34864/50000 [03:06<01:19, 189.55img/s]Saving synthetic dataset:  70%|███████   | 35120/50000 [03:07<01:16, 193.28img/s]Saving synthetic dataset:  71%|███████   | 35376/50000 [03:09<01:17, 188.56img/s]Saving synthetic dataset:  71%|███████▏  | 35632/50000 [03:10<01:18, 183.91img/s]Saving synthetic dataset:  72%|███████▏  | 35888/50000 [03:12<01:15, 188.13img/s]Saving synthetic dataset:  72%|███████▏  | 36144/50000 [03:13<01:12, 192.14img/s]Saving synthetic dataset:  73%|███████▎  | 36400/50000 [03:14<01:10, 191.97img/s]Saving synthetic dataset:  73%|███████▎  | 36656/50000 [03:15<01:08, 194.81img/s]Saving synthetic dataset:  74%|███████▍  | 36912/50000 [03:17<01:12, 180.63img/s]Saving synthetic dataset:  74%|███████▍  | 37168/50000 [03:18<01:10, 182.35img/s]Saving synthetic dataset:  75%|███████▍  | 37424/50000 [03:20<01:08, 182.51img/s]Saving synthetic dataset:  75%|███████▌  | 37680/50000 [03:21<01:08, 180.62img/s]Saving synthetic dataset:  76%|███████▌  | 37936/50000 [03:23<01:04, 187.71img/s]Saving synthetic dataset:  76%|███████▋  | 38192/50000 [03:24<01:01, 191.65img/s]Saving synthetic dataset:  77%|███████▋  | 38448/50000 [03:25<01:00, 191.50img/s]Saving synthetic dataset:  77%|███████▋  | 38704/50000 [03:27<00:59, 190.51img/s]Saving synthetic dataset:  78%|███████▊  | 38960/50000 [03:28<00:56, 195.25img/s]Saving synthetic dataset:  78%|███████▊  | 39216/50000 [03:29<00:54, 196.52img/s]Saving synthetic dataset:  79%|███████▉  | 39472/50000 [03:30<00:52, 198.77img/s]Saving synthetic dataset:  79%|███████▉  | 39728/50000 [03:32<00:51, 198.74img/s]Saving synthetic dataset:  80%|███████▉  | 39984/50000 [03:33<00:50, 199.13img/s]Saving synthetic dataset:  81%|████████  | 40256/50000 [03:34<00:49, 195.74img/s]Saving synthetic dataset:  81%|████████  | 40512/50000 [03:36<00:47, 198.40img/s]Saving synthetic dataset:  82%|████████▏ | 40768/50000 [03:37<00:46, 199.57img/s]Saving synthetic dataset:  82%|████████▏ | 41024/50000 [03:38<00:45, 196.62img/s]Saving synthetic dataset:  83%|████████▎ | 41280/50000 [03:39<00:44, 197.74img/s]Saving synthetic dataset:  83%|████████▎ | 41536/50000 [03:41<00:43, 196.48img/s]Saving synthetic dataset:  84%|████████▎ | 41792/50000 [03:42<00:43, 187.02img/s]Saving synthetic dataset:  84%|████████▍ | 42048/50000 [03:44<00:41, 191.33img/s]Saving synthetic dataset:  85%|████████▍ | 42304/50000 [03:45<00:40, 187.81img/s]Saving synthetic dataset:  85%|████████▌ | 42560/50000 [03:46<00:40, 184.79img/s]Saving synthetic dataset:  86%|████████▌ | 42816/50000 [03:48<00:37, 189.87img/s]Saving synthetic dataset:  86%|████████▌ | 43072/50000 [03:49<00:35, 197.75img/s]Saving synthetic dataset:  87%|████████▋ | 43328/50000 [03:50<00:33, 197.37img/s]Saving synthetic dataset:  87%|████████▋ | 43584/50000 [03:51<00:31, 203.24img/s]Saving synthetic dataset:  88%|████████▊ | 43840/50000 [03:53<00:30, 202.25img/s]Saving synthetic dataset:  88%|████████▊ | 44096/50000 [03:54<00:28, 204.20img/s]Saving synthetic dataset:  89%|████████▊ | 44352/50000 [03:55<00:28, 198.56img/s]Saving synthetic dataset:  89%|████████▉ | 44608/50000 [03:56<00:27, 198.64img/s]Saving synthetic dataset:  90%|████████▉ | 44864/50000 [03:58<00:25, 200.81img/s]Saving synthetic dataset:  90%|█████████ | 45120/50000 [03:59<00:25, 192.58img/s]Saving synthetic dataset:  91%|█████████ | 45376/50000 [04:01<00:24, 191.60img/s]Saving synthetic dataset:  91%|█████████▏| 45632/50000 [04:02<00:21, 200.24img/s]Saving synthetic dataset:  92%|█████████▏| 45888/50000 [04:03<00:20, 195.81img/s]Saving synthetic dataset:  92%|█████████▏| 46144/50000 [04:04<00:19, 198.22img/s]Saving synthetic dataset:  93%|█████████▎| 46400/50000 [04:06<00:17, 200.04img/s]Saving synthetic dataset:  93%|█████████▎| 46656/50000 [04:07<00:16, 198.48img/s]Saving synthetic dataset:  94%|█████████▍| 46912/50000 [04:08<00:16, 189.89img/s]Saving synthetic dataset:  94%|█████████▍| 47168/50000 [04:10<00:15, 184.67img/s]Saving synthetic dataset:  95%|█████████▍| 47424/50000 [04:11<00:13, 186.29img/s]Saving synthetic dataset:  95%|█████████▌| 47680/50000 [04:13<00:13, 166.80img/s]Saving synthetic dataset:  96%|█████████▌| 47936/50000 [04:14<00:11, 173.77img/s]Saving synthetic dataset:  96%|█████████▋| 48192/50000 [04:16<00:10, 176.61img/s]Saving synthetic dataset:  97%|█████████▋| 48448/50000 [04:17<00:08, 180.97img/s]Saving synthetic dataset:  97%|█████████▋| 48704/50000 [04:18<00:07, 183.64img/s]Saving synthetic dataset:  98%|█████████▊| 48960/50000 [04:20<00:05, 182.51img/s]Saving synthetic dataset:  98%|█████████▊| 49216/50000 [04:21<00:04, 185.08img/s]Saving synthetic dataset:  99%|█████████▉| 49472/50000 [04:23<00:02, 185.36img/s]Saving synthetic dataset:  99%|█████████▉| 49728/50000 [04:24<00:01, 175.68img/s]Saving synthetic dataset: 100%|█████████▉| 49984/50000 [04:26<00:00, 179.82img/s]Saving synthetic dataset: 100%|██████████| 50000/50000 [04:26<00:00, 187.85img/s]
+2026-01-14 09:24:32 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Datasets saved under: federatedfactory_output_H100/diffusion/medmnist:retinamnist/seed-1/local-L128/silos/2026-01-14/T07-25-46Z/datasets
+2026-01-14 09:24:32 | INFO     | jobs.evaluation_phase | [DATASET EXPORT] Total synthetic images saved: 50000
+2026-01-14 09:24:32 | INFO     | jobs.classifier_phase | [CLF-PHASE] Partition: silos, Local Inference: True
+2026-01-14 09:24:32 | INFO     | jobs.classifier_phase | [MEMORY] Offloading Generative Models to CPU to free VRAM for Classifier...
+2026-01-14 09:24:32 | INFO     | jobs.classifier_phase | [MEMORY] VRAM Flushed. Allocated: 0.06 GB
+2026-01-14 09:24:32 | INFO     | jobs.classifier_phase | [SILOS-LOCAL] Preparing Client 0 (Class 0)...
+2026-01-14 09:24:32 | INFO     | jobs.classifier_phase |   Generating 10000 synthetic images from 4 external models...
+Client 0 Synth Gen:   0%|          | 0/4 [00:00<?, ?it/s]Client 0 Synth Gen:  50%|█████     | 2/4 [00:00<00:00, 13.18it/s]Client 0 Synth Gen: 100%|██████████| 4/4 [00:00<00:00, 15.12it/s]Client 0 Synth Gen: 100%|██████████| 4/4 [00:00<00:00, 14.78it/s]
+2026-01-14 09:24:46 | INFO     | models.trainers | [CLF] Client 0 | Ep 1/300 | LR: 0.1000 | TrAcc: 0.2903
+2026-01-14 09:24:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 2/300 | LR: 0.1000 | TrAcc: 0.3055
+2026-01-14 09:25:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 3/300 | LR: 0.1000 | TrAcc: 0.3566
+2026-01-14 09:25:19 | INFO     | models.trainers | [CLF] Client 0 | Ep 4/300 | LR: 0.1000 | TrAcc: 0.3965
+2026-01-14 09:25:31 | INFO     | models.trainers | [CLF] Client 0 | Ep 5/300 | LR: 0.0999 | TrAcc: 0.4283
+2026-01-14 09:25:41 | INFO     | models.trainers | [CLF] Client 0 | Ep 6/300 | LR: 0.0999 | TrAcc: 0.4611
+2026-01-14 09:25:53 | INFO     | models.trainers | [CLF] Client 0 | Ep 7/300 | LR: 0.0999 | TrAcc: 0.4438
+2026-01-14 09:26:04 | INFO     | models.trainers | [CLF] Client 0 | Ep 8/300 | LR: 0.0998 | TrAcc: 0.5206
+2026-01-14 09:26:15 | INFO     | models.trainers | [CLF] Client 0 | Ep 9/300 | LR: 0.0998 | TrAcc: 0.4779
+2026-01-14 09:26:26 | INFO     | models.trainers | [CLF] Client 0 | Ep 10/300 | LR: 0.0997 | TrAcc: 0.5529
+2026-01-14 09:26:38 | INFO     | models.trainers | [CLF] Client 0 | Ep 11/300 | LR: 0.0997 | TrAcc: 0.6405
+2026-01-14 09:26:49 | INFO     | models.trainers | [CLF] Client 0 | Ep 12/300 | LR: 0.0996 | TrAcc: 0.7024
+2026-01-14 09:27:00 | INFO     | models.trainers | [CLF] Client 0 | Ep 13/300 | LR: 0.0995 | TrAcc: 0.7671
+2026-01-14 09:27:11 | INFO     | models.trainers | [CLF] Client 0 | Ep 14/300 | LR: 0.0995 | TrAcc: 0.8059
+2026-01-14 09:27:23 | INFO     | models.trainers | [CLF] Client 0 | Ep 15/300 | LR: 0.0994 | TrAcc: 0.7809
+2026-01-14 09:27:34 | INFO     | models.trainers | [CLF] Client 0 | Ep 16/300 | LR: 0.0993 | TrAcc: 0.8600
+2026-01-14 09:27:45 | INFO     | models.trainers | [CLF] Client 0 | Ep 17/300 | LR: 0.0992 | TrAcc: 0.8884
+2026-01-14 09:27:56 | INFO     | models.trainers | [CLF] Client 0 | Ep 18/300 | LR: 0.0991 | TrAcc: 0.8840
+2026-01-14 09:28:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 19/300 | LR: 0.0990 | TrAcc: 0.8593
+2026-01-14 09:28:19 | INFO     | models.trainers | [CLF] Client 0 | Ep 20/300 | LR: 0.0989 | TrAcc: 0.9218
+2026-01-14 09:28:30 | INFO     | models.trainers | [CLF] Client 0 | Ep 21/300 | LR: 0.0988 | TrAcc: 0.7601
+2026-01-14 09:28:42 | INFO     | models.trainers | [CLF] Client 0 | Ep 22/300 | LR: 0.0987 | TrAcc: 0.9103
+2026-01-14 09:28:53 | INFO     | models.trainers | [CLF] Client 0 | Ep 23/300 | LR: 0.0986 | TrAcc: 0.9354
+2026-01-14 09:29:04 | INFO     | models.trainers | [CLF] Client 0 | Ep 24/300 | LR: 0.0984 | TrAcc: 0.9316
+2026-01-14 09:29:16 | INFO     | models.trainers | [CLF] Client 0 | Ep 25/300 | LR: 0.0983 | TrAcc: 0.9417
+2026-01-14 09:29:27 | INFO     | models.trainers | [CLF] Client 0 | Ep 26/300 | LR: 0.0982 | TrAcc: 0.9508
+2026-01-14 09:29:38 | INFO     | models.trainers | [CLF] Client 0 | Ep 27/300 | LR: 0.0980 | TrAcc: 0.9762
+2026-01-14 09:29:50 | INFO     | models.trainers | [CLF] Client 0 | Ep 28/300 | LR: 0.0979 | TrAcc: 0.9168
+2026-01-14 09:30:01 | INFO     | models.trainers | [CLF] Client 0 | Ep 29/300 | LR: 0.0977 | TrAcc: 0.9539
+2026-01-14 09:30:12 | INFO     | models.trainers | [CLF] Client 0 | Ep 30/300 | LR: 0.0976 | TrAcc: 0.9563
+2026-01-14 09:30:23 | INFO     | models.trainers | [CLF] Client 0 | Ep 31/300 | LR: 0.0974 | TrAcc: 0.9719
+2026-01-14 09:30:35 | INFO     | models.trainers | [CLF] Client 0 | Ep 32/300 | LR: 0.0972 | TrAcc: 0.9709
+2026-01-14 09:30:46 | INFO     | models.trainers | [CLF] Client 0 | Ep 33/300 | LR: 0.0970 | TrAcc: 0.9613
+2026-01-14 09:30:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 34/300 | LR: 0.0969 | TrAcc: 0.9383
+2026-01-14 09:31:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 35/300 | LR: 0.0967 | TrAcc: 0.9666
+2026-01-14 09:31:19 | INFO     | models.trainers | [CLF] Client 0 | Ep 36/300 | LR: 0.0965 | TrAcc: 0.9769
+2026-01-14 09:31:30 | INFO     | models.trainers | [CLF] Client 0 | Ep 37/300 | LR: 0.0963 | TrAcc: 0.9876
+2026-01-14 09:31:42 | INFO     | models.trainers | [CLF] Client 0 | Ep 38/300 | LR: 0.0961 | TrAcc: 0.9842
+2026-01-14 09:31:53 | INFO     | models.trainers | [CLF] Client 0 | Ep 39/300 | LR: 0.0959 | TrAcc: 0.9885
+2026-01-14 09:32:04 | INFO     | models.trainers | [CLF] Client 0 | Ep 40/300 | LR: 0.0957 | TrAcc: 0.9134
+2026-01-14 09:32:15 | INFO     | models.trainers | [CLF] Client 0 | Ep 41/300 | LR: 0.0955 | TrAcc: 0.9647
+2026-01-14 09:32:27 | INFO     | models.trainers | [CLF] Client 0 | Ep 42/300 | LR: 0.0952 | TrAcc: 0.9815
+2026-01-14 09:32:38 | INFO     | models.trainers | [CLF] Client 0 | Ep 43/300 | LR: 0.0950 | TrAcc: 0.9532
+2026-01-14 09:32:49 | INFO     | models.trainers | [CLF] Client 0 | Ep 44/300 | LR: 0.0948 | TrAcc: 0.9839
+2026-01-14 09:33:00 | INFO     | models.trainers | [CLF] Client 0 | Ep 45/300 | LR: 0.0946 | TrAcc: 0.9466
+2026-01-14 09:33:12 | INFO     | models.trainers | [CLF] Client 0 | Ep 46/300 | LR: 0.0943 | TrAcc: 0.9858
+2026-01-14 09:33:23 | INFO     | models.trainers | [CLF] Client 0 | Ep 47/300 | LR: 0.0941 | TrAcc: 0.9471
+2026-01-14 09:33:34 | INFO     | models.trainers | [CLF] Client 0 | Ep 48/300 | LR: 0.0938 | TrAcc: 0.9807
+2026-01-14 09:33:46 | INFO     | models.trainers | [CLF] Client 0 | Ep 49/300 | LR: 0.0936 | TrAcc: 0.9565
+2026-01-14 09:33:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 50/300 | LR: 0.0933 | TrAcc: 0.9678
+2026-01-14 09:34:09 | INFO     | models.trainers | [CLF] Client 0 | Ep 51/300 | LR: 0.0930 | TrAcc: 0.9467
+2026-01-14 09:34:20 | INFO     | models.trainers | [CLF] Client 0 | Ep 52/300 | LR: 0.0928 | TrAcc: 0.9766
+2026-01-14 09:34:31 | INFO     | models.trainers | [CLF] Client 0 | Ep 53/300 | LR: 0.0925 | TrAcc: 0.9885
+2026-01-14 09:34:42 | INFO     | models.trainers | [CLF] Client 0 | Ep 54/300 | LR: 0.0922 | TrAcc: 0.9873
+2026-01-14 09:34:54 | INFO     | models.trainers | [CLF] Client 0 | Ep 55/300 | LR: 0.0919 | TrAcc: 0.9861
+2026-01-14 09:35:05 | INFO     | models.trainers | [CLF] Client 0 | Ep 56/300 | LR: 0.0916 | TrAcc: 0.9719
+2026-01-14 09:35:16 | INFO     | models.trainers | [CLF] Client 0 | Ep 57/300 | LR: 0.0914 | TrAcc: 0.9753
+2026-01-14 09:35:27 | INFO     | models.trainers | [CLF] Client 0 | Ep 58/300 | LR: 0.0911 | TrAcc: 0.9685
+2026-01-14 09:35:38 | INFO     | models.trainers | [CLF] Client 0 | Ep 59/300 | LR: 0.0908 | TrAcc: 0.9445
+2026-01-14 09:35:50 | INFO     | models.trainers | [CLF] Client 0 | Ep 60/300 | LR: 0.0905 | TrAcc: 0.9704
+2026-01-14 09:36:01 | INFO     | models.trainers | [CLF] Client 0 | Ep 61/300 | LR: 0.0901 | TrAcc: 0.9890
+2026-01-14 09:36:12 | INFO     | models.trainers | [CLF] Client 0 | Ep 62/300 | LR: 0.0898 | TrAcc: 0.9395
+2026-01-14 09:36:24 | INFO     | models.trainers | [CLF] Client 0 | Ep 63/300 | LR: 0.0895 | TrAcc: 0.9863
+2026-01-14 09:36:35 | INFO     | models.trainers | [CLF] Client 0 | Ep 64/300 | LR: 0.0892 | TrAcc: 0.9789
+2026-01-14 09:36:46 | INFO     | models.trainers | [CLF] Client 0 | Ep 65/300 | LR: 0.0889 | TrAcc: 0.9584
+2026-01-14 09:36:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 66/300 | LR: 0.0885 | TrAcc: 0.9746
+2026-01-14 09:37:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 67/300 | LR: 0.0882 | TrAcc: 0.9912
+2026-01-14 09:37:20 | INFO     | models.trainers | [CLF] Client 0 | Ep 68/300 | LR: 0.0878 | TrAcc: 0.9926
+2026-01-14 09:37:31 | INFO     | models.trainers | [CLF] Client 0 | Ep 69/300 | LR: 0.0875 | TrAcc: 0.9670
+2026-01-14 09:37:42 | INFO     | models.trainers | [CLF] Client 0 | Ep 70/300 | LR: 0.0872 | TrAcc: 0.9778
+2026-01-14 09:37:54 | INFO     | models.trainers | [CLF] Client 0 | Ep 71/300 | LR: 0.0868 | TrAcc: 0.9862
+2026-01-14 09:38:05 | INFO     | models.trainers | [CLF] Client 0 | Ep 72/300 | LR: 0.0864 | TrAcc: 0.9927
+2026-01-14 09:38:16 | INFO     | models.trainers | [CLF] Client 0 | Ep 73/300 | LR: 0.0861 | TrAcc: 0.9894
+2026-01-14 09:38:27 | INFO     | models.trainers | [CLF] Client 0 | Ep 74/300 | LR: 0.0857 | TrAcc: 0.9648
+2026-01-14 09:38:38 | INFO     | models.trainers | [CLF] Client 0 | Ep 75/300 | LR: 0.0854 | TrAcc: 0.9844
+2026-01-14 09:38:49 | INFO     | models.trainers | [CLF] Client 0 | Ep 76/300 | LR: 0.0850 | TrAcc: 0.9768
+2026-01-14 09:39:01 | INFO     | models.trainers | [CLF] Client 0 | Ep 77/300 | LR: 0.0846 | TrAcc: 0.9853
+2026-01-14 09:39:12 | INFO     | models.trainers | [CLF] Client 0 | Ep 78/300 | LR: 0.0842 | TrAcc: 0.9307
+2026-01-14 09:39:23 | INFO     | models.trainers | [CLF] Client 0 | Ep 79/300 | LR: 0.0838 | TrAcc: 0.9705
+2026-01-14 09:39:35 | INFO     | models.trainers | [CLF] Client 0 | Ep 80/300 | LR: 0.0835 | TrAcc: 0.9528
+2026-01-14 09:39:46 | INFO     | models.trainers | [CLF] Client 0 | Ep 81/300 | LR: 0.0831 | TrAcc: 0.9794
+2026-01-14 09:39:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 82/300 | LR: 0.0827 | TrAcc: 0.9918
+2026-01-14 09:40:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 83/300 | LR: 0.0823 | TrAcc: 0.9717
+2026-01-14 09:40:19 | INFO     | models.trainers | [CLF] Client 0 | Ep 84/300 | LR: 0.0819 | TrAcc: 0.9916
+2026-01-14 09:40:31 | INFO     | models.trainers | [CLF] Client 0 | Ep 85/300 | LR: 0.0815 | TrAcc: 0.9857
+2026-01-14 09:40:42 | INFO     | models.trainers | [CLF] Client 0 | Ep 86/300 | LR: 0.0811 | TrAcc: 0.9950
+2026-01-14 09:40:53 | INFO     | models.trainers | [CLF] Client 0 | Ep 87/300 | LR: 0.0806 | TrAcc: 0.9952
+2026-01-14 09:41:04 | INFO     | models.trainers | [CLF] Client 0 | Ep 88/300 | LR: 0.0802 | TrAcc: 0.9950
+2026-01-14 09:41:15 | INFO     | models.trainers | [CLF] Client 0 | Ep 89/300 | LR: 0.0798 | TrAcc: 0.9956
+2026-01-14 09:41:27 | INFO     | models.trainers | [CLF] Client 0 | Ep 90/300 | LR: 0.0794 | TrAcc: 0.9773
+2026-01-14 09:41:38 | INFO     | models.trainers | [CLF] Client 0 | Ep 91/300 | LR: 0.0790 | TrAcc: 0.9773
+2026-01-14 09:41:49 | INFO     | models.trainers | [CLF] Client 0 | Ep 92/300 | LR: 0.0785 | TrAcc: 0.9793
+2026-01-14 09:42:01 | INFO     | models.trainers | [CLF] Client 0 | Ep 93/300 | LR: 0.0781 | TrAcc: 0.9905
+2026-01-14 09:42:12 | INFO     | models.trainers | [CLF] Client 0 | Ep 94/300 | LR: 0.0777 | TrAcc: 0.9916
+2026-01-14 09:42:23 | INFO     | models.trainers | [CLF] Client 0 | Ep 95/300 | LR: 0.0772 | TrAcc: 0.9960
+2026-01-14 09:42:34 | INFO     | models.trainers | [CLF] Client 0 | Ep 96/300 | LR: 0.0768 | TrAcc: 0.9960
+2026-01-14 09:42:45 | INFO     | models.trainers | [CLF] Client 0 | Ep 97/300 | LR: 0.0763 | TrAcc: 0.9798
+2026-01-14 09:42:56 | INFO     | models.trainers | [CLF] Client 0 | Ep 98/300 | LR: 0.0759 | TrAcc: 0.9849
+2026-01-14 09:43:07 | INFO     | models.trainers | [CLF] Client 0 | Ep 99/300 | LR: 0.0755 | TrAcc: 0.9847
+2026-01-14 09:43:18 | INFO     | models.trainers | [CLF] Client 0 | Ep 100/300 | LR: 0.0750 | TrAcc: 0.9880
+2026-01-14 09:43:30 | INFO     | models.trainers | [CLF] Client 0 | Ep 101/300 | LR: 0.0745 | TrAcc: 0.9960
+2026-01-14 09:43:41 | INFO     | models.trainers | [CLF] Client 0 | Ep 102/300 | LR: 0.0741 | TrAcc: 0.9875
+2026-01-14 09:43:52 | INFO     | models.trainers | [CLF] Client 0 | Ep 103/300 | LR: 0.0736 | TrAcc: 0.9893
+2026-01-14 09:44:03 | INFO     | models.trainers | [CLF] Client 0 | Ep 104/300 | LR: 0.0732 | TrAcc: 0.9820
+2026-01-14 09:44:15 | INFO     | models.trainers | [CLF] Client 0 | Ep 105/300 | LR: 0.0727 | TrAcc: 0.9957
+2026-01-14 09:44:26 | INFO     | models.trainers | [CLF] Client 0 | Ep 106/300 | LR: 0.0722 | TrAcc: 0.9825
+2026-01-14 09:44:37 | INFO     | models.trainers | [CLF] Client 0 | Ep 107/300 | LR: 0.0718 | TrAcc: 0.9831
+2026-01-14 09:44:48 | INFO     | models.trainers | [CLF] Client 0 | Ep 108/300 | LR: 0.0713 | TrAcc: 0.9819
+2026-01-14 09:45:00 | INFO     | models.trainers | [CLF] Client 0 | Ep 109/300 | LR: 0.0708 | TrAcc: 0.9821
+2026-01-14 09:45:11 | INFO     | models.trainers | [CLF] Client 0 | Ep 110/300 | LR: 0.0703 | TrAcc: 0.9839
+2026-01-14 09:45:22 | INFO     | models.trainers | [CLF] Client 0 | Ep 111/300 | LR: 0.0699 | TrAcc: 0.9835
+2026-01-14 09:45:33 | INFO     | models.trainers | [CLF] Client 0 | Ep 112/300 | LR: 0.0694 | TrAcc: 0.9874
+2026-01-14 09:45:44 | INFO     | models.trainers | [CLF] Client 0 | Ep 113/300 | LR: 0.0689 | TrAcc: 0.9555
+2026-01-14 09:45:56 | INFO     | models.trainers | [CLF] Client 0 | Ep 114/300 | LR: 0.0684 | TrAcc: 0.9841
+2026-01-14 09:46:07 | INFO     | models.trainers | [CLF] Client 0 | Ep 115/300 | LR: 0.0679 | TrAcc: 0.9893
+2026-01-14 09:46:18 | INFO     | models.trainers | [CLF] Client 0 | Ep 116/300 | LR: 0.0674 | TrAcc: 0.9949
+2026-01-14 09:46:29 | INFO     | models.trainers | [CLF] Client 0 | Ep 117/300 | LR: 0.0669 | TrAcc: 0.9939
+2026-01-14 09:46:40 | INFO     | models.trainers | [CLF] Client 0 | Ep 118/300 | LR: 0.0664 | TrAcc: 0.9795
+2026-01-14 09:46:52 | INFO     | models.trainers | [CLF] Client 0 | Ep 119/300 | LR: 0.0659 | TrAcc: 0.9751
+2026-01-14 09:47:03 | INFO     | models.trainers | [CLF] Client 0 | Ep 120/300 | LR: 0.0655 | TrAcc: 0.9931
+2026-01-14 09:47:14 | INFO     | models.trainers | [CLF] Client 0 | Ep 121/300 | LR: 0.0650 | TrAcc: 0.9967
+2026-01-14 09:47:25 | INFO     | models.trainers | [CLF] Client 0 | Ep 122/300 | LR: 0.0645 | TrAcc: 0.9896
+2026-01-14 09:47:37 | INFO     | models.trainers | [CLF] Client 0 | Ep 123/300 | LR: 0.0639 | TrAcc: 0.9872
+2026-01-14 09:47:48 | INFO     | models.trainers | [CLF] Client 0 | Ep 124/300 | LR: 0.0634 | TrAcc: 0.9912
+2026-01-14 09:47:59 | INFO     | models.trainers | [CLF] Client 0 | Ep 125/300 | LR: 0.0629 | TrAcc: 0.9970
+2026-01-14 09:48:10 | INFO     | models.trainers | [CLF] Client 0 | Ep 126/300 | LR: 0.0624 | TrAcc: 0.9972
+2026-01-14 09:48:21 | INFO     | models.trainers | [CLF] Client 0 | Ep 127/300 | LR: 0.0619 | TrAcc: 0.9381
+2026-01-14 09:48:33 | INFO     | models.trainers | [CLF] Client 0 | Ep 128/300 | LR: 0.0614 | TrAcc: 0.9237
+2026-01-14 09:48:44 | INFO     | models.trainers | [CLF] Client 0 | Ep 129/300 | LR: 0.0609 | TrAcc: 0.9917
+2026-01-14 09:48:55 | INFO     | models.trainers | [CLF] Client 0 | Ep 130/300 | LR: 0.0604 | TrAcc: 0.9673
+2026-01-14 09:49:06 | INFO     | models.trainers | [CLF] Client 0 | Ep 131/300 | LR: 0.0599 | TrAcc: 0.9842
+2026-01-14 09:49:17 | INFO     | models.trainers | [CLF] Client 0 | Ep 132/300 | LR: 0.0594 | TrAcc: 0.9664
+2026-01-14 09:49:29 | INFO     | models.trainers | [CLF] Client 0 | Ep 133/300 | LR: 0.0589 | TrAcc: 0.9678
+2026-01-14 09:49:40 | INFO     | models.trainers | [CLF] Client 0 | Ep 134/300 | LR: 0.0583 | TrAcc: 0.9876
+2026-01-14 09:49:51 | INFO     | models.trainers | [CLF] Client 0 | Ep 135/300 | LR: 0.0578 | TrAcc: 0.9835
+2026-01-14 09:50:02 | INFO     | models.trainers | [CLF] Client 0 | Ep 136/300 | LR: 0.0573 | TrAcc: 0.9824
+2026-01-14 09:50:14 | INFO     | models.trainers | [CLF] Client 0 | Ep 137/300 | LR: 0.0568 | TrAcc: 0.9839
+2026-01-14 09:50:25 | INFO     | models.trainers | [CLF] Client 0 | Ep 138/300 | LR: 0.0563 | TrAcc: 0.9938
+2026-01-14 09:50:36 | INFO     | models.trainers | [CLF] Client 0 | Ep 139/300 | LR: 0.0557 | TrAcc: 0.9977
+2026-01-14 09:50:48 | INFO     | models.trainers | [CLF] Client 0 | Ep 140/300 | LR: 0.0552 | TrAcc: 0.9349
+2026-01-14 09:50:59 | INFO     | models.trainers | [CLF] Client 0 | Ep 141/300 | LR: 0.0547 | TrAcc: 0.9808
+2026-01-14 09:51:10 | INFO     | models.trainers | [CLF] Client 0 | Ep 142/300 | LR: 0.0542 | TrAcc: 0.9895
+2026-01-14 09:51:21 | INFO     | models.trainers | [CLF] Client 0 | Ep 143/300 | LR: 0.0537 | TrAcc: 0.9768
+2026-01-14 09:51:32 | INFO     | models.trainers | [CLF] Client 0 | Ep 144/300 | LR: 0.0531 | TrAcc: 0.9867
+2026-01-14 09:51:44 | INFO     | models.trainers | [CLF] Client 0 | Ep 145/300 | LR: 0.0526 | TrAcc: 0.9845
+2026-01-14 09:51:55 | INFO     | models.trainers | [CLF] Client 0 | Ep 146/300 | LR: 0.0521 | TrAcc: 0.9952
+2026-01-14 09:52:06 | INFO     | models.trainers | [CLF] Client 0 | Ep 147/300 | LR: 0.0516 | TrAcc: 0.9975
+2026-01-14 09:52:18 | INFO     | models.trainers | [CLF] Client 0 | Ep 148/300 | LR: 0.0510 | TrAcc: 0.9799
+2026-01-14 09:52:29 | INFO     | models.trainers | [CLF] Client 0 | Ep 149/300 | LR: 0.0505 | TrAcc: 0.9851
+2026-01-14 09:52:40 | INFO     | models.trainers | [CLF] Client 0 | Ep 150/300 | LR: 0.0500 | TrAcc: 0.9961
+2026-01-14 09:52:51 | INFO     | models.trainers | [CLF] Client 0 | Ep 151/300 | LR: 0.0495 | TrAcc: 0.9977
+2026-01-14 09:53:03 | INFO     | models.trainers | [CLF] Client 0 | Ep 152/300 | LR: 0.0490 | TrAcc: 0.9977
+2026-01-14 09:53:14 | INFO     | models.trainers | [CLF] Client 0 | Ep 153/300 | LR: 0.0484 | TrAcc: 0.9965
+2026-01-14 09:53:25 | INFO     | models.trainers | [CLF] Client 0 | Ep 154/300 | LR: 0.0479 | TrAcc: 0.9952
+2026-01-14 09:53:37 | INFO     | models.trainers | [CLF] Client 0 | Ep 155/300 | LR: 0.0474 | TrAcc: 0.9983
+2026-01-14 09:53:48 | INFO     | models.trainers | [CLF] Client 0 | Ep 156/300 | LR: 0.0469 | TrAcc: 0.9984
+2026-01-14 09:53:59 | INFO     | models.trainers | [CLF] Client 0 | Ep 157/300 | LR: 0.0463 | TrAcc: 0.9982
+2026-01-14 09:54:11 | INFO     | models.trainers | [CLF] Client 0 | Ep 158/300 | LR: 0.0458 | TrAcc: 0.9988
+2026-01-14 09:54:21 | INFO     | models.trainers | [CLF] Client 0 | Ep 159/300 | LR: 0.0453 | TrAcc: 0.9874
+2026-01-14 09:54:33 | INFO     | models.trainers | [CLF] Client 0 | Ep 160/300 | LR: 0.0448 | TrAcc: 0.9916
+2026-01-14 09:54:44 | INFO     | models.trainers | [CLF] Client 0 | Ep 161/300 | LR: 0.0443 | TrAcc: 0.9861
+2026-01-14 09:54:55 | INFO     | models.trainers | [CLF] Client 0 | Ep 162/300 | LR: 0.0437 | TrAcc: 0.9969
+2026-01-14 09:55:06 | INFO     | models.trainers | [CLF] Client 0 | Ep 163/300 | LR: 0.0432 | TrAcc: 0.9859
+2026-01-14 09:55:18 | INFO     | models.trainers | [CLF] Client 0 | Ep 164/300 | LR: 0.0427 | TrAcc: 0.9878
+2026-01-14 09:55:29 | INFO     | models.trainers | [CLF] Client 0 | Ep 165/300 | LR: 0.0422 | TrAcc: 0.9975
+2026-01-14 09:55:40 | INFO     | models.trainers | [CLF] Client 0 | Ep 166/300 | LR: 0.0417 | TrAcc: 0.9940
+2026-01-14 09:55:52 | INFO     | models.trainers | [CLF] Client 0 | Ep 167/300 | LR: 0.0411 | TrAcc: 0.9982
+2026-01-14 09:56:03 | INFO     | models.trainers | [CLF] Client 0 | Ep 168/300 | LR: 0.0406 | TrAcc: 0.9899
+2026-01-14 09:56:14 | INFO     | models.trainers | [CLF] Client 0 | Ep 169/300 | LR: 0.0401 | TrAcc: 0.9982
+2026-01-14 09:56:25 | INFO     | models.trainers | [CLF] Client 0 | Ep 170/300 | LR: 0.0396 | TrAcc: 0.9919
+2026-01-14 09:56:37 | INFO     | models.trainers | [CLF] Client 0 | Ep 171/300 | LR: 0.0391 | TrAcc: 0.9988
+2026-01-14 09:56:48 | INFO     | models.trainers | [CLF] Client 0 | Ep 172/300 | LR: 0.0386 | TrAcc: 0.9507
+2026-01-14 09:56:59 | INFO     | models.trainers | [CLF] Client 0 | Ep 173/300 | LR: 0.0381 | TrAcc: 0.9713
+2026-01-14 09:57:10 | INFO     | models.trainers | [CLF] Client 0 | Ep 174/300 | LR: 0.0376 | TrAcc: 0.9939
+2026-01-14 09:57:21 | INFO     | models.trainers | [CLF] Client 0 | Ep 175/300 | LR: 0.0371 | TrAcc: 0.9967
+2026-01-14 09:57:33 | INFO     | models.trainers | [CLF] Client 0 | Ep 176/300 | LR: 0.0366 | TrAcc: 0.9634
+2026-01-14 09:57:44 | INFO     | models.trainers | [CLF] Client 0 | Ep 177/300 | LR: 0.0361 | TrAcc: 0.9475
+2026-01-14 09:57:55 | INFO     | models.trainers | [CLF] Client 0 | Ep 178/300 | LR: 0.0355 | TrAcc: 0.9887
+2026-01-14 09:58:07 | INFO     | models.trainers | [CLF] Client 0 | Ep 179/300 | LR: 0.0350 | TrAcc: 0.9871
+2026-01-14 09:58:18 | INFO     | models.trainers | [CLF] Client 0 | Ep 180/300 | LR: 0.0345 | TrAcc: 0.9696
+2026-01-14 09:58:29 | INFO     | models.trainers | [CLF] Client 0 | Ep 181/300 | LR: 0.0341 | TrAcc: 0.9859
+2026-01-14 09:58:40 | INFO     | models.trainers | [CLF] Client 0 | Ep 182/300 | LR: 0.0336 | TrAcc: 0.9956
+2026-01-14 09:58:51 | INFO     | models.trainers | [CLF] Client 0 | Ep 183/300 | LR: 0.0331 | TrAcc: 0.9792
+2026-01-14 09:59:02 | INFO     | models.trainers | [CLF] Client 0 | Ep 184/300 | LR: 0.0326 | TrAcc: 0.9975
+2026-01-14 09:59:14 | INFO     | models.trainers | [CLF] Client 0 | Ep 185/300 | LR: 0.0321 | TrAcc: 0.9976
+2026-01-14 09:59:25 | INFO     | models.trainers | [CLF] Client 0 | Ep 186/300 | LR: 0.0316 | TrAcc: 0.9902
+2026-01-14 09:59:36 | INFO     | models.trainers | [CLF] Client 0 | Ep 187/300 | LR: 0.0311 | TrAcc: 0.9924
+2026-01-14 09:59:47 | INFO     | models.trainers | [CLF] Client 0 | Ep 188/300 | LR: 0.0306 | TrAcc: 0.9906
+2026-01-14 09:59:59 | INFO     | models.trainers | [CLF] Client 0 | Ep 189/300 | LR: 0.0301 | TrAcc: 0.9886
+2026-01-14 10:00:10 | INFO     | models.trainers | [CLF] Client 0 | Ep 190/300 | LR: 0.0297 | TrAcc: 0.9878
+2026-01-14 10:00:21 | INFO     | models.trainers | [CLF] Client 0 | Ep 191/300 | LR: 0.0292 | TrAcc: 0.9893
+2026-01-14 10:00:32 | INFO     | models.trainers | [CLF] Client 0 | Ep 192/300 | LR: 0.0287 | TrAcc: 0.9848
+2026-01-14 10:00:44 | INFO     | models.trainers | [CLF] Client 0 | Ep 193/300 | LR: 0.0282 | TrAcc: 0.9980
+2026-01-14 10:00:55 | INFO     | models.trainers | [CLF] Client 0 | Ep 194/300 | LR: 0.0278 | TrAcc: 0.9886
+2026-01-14 10:01:06 | INFO     | models.trainers | [CLF] Client 0 | Ep 195/300 | LR: 0.0273 | TrAcc: 0.9839
+2026-01-14 10:01:17 | INFO     | models.trainers | [CLF] Client 0 | Ep 196/300 | LR: 0.0268 | TrAcc: 0.9966
+2026-01-14 10:01:29 | INFO     | models.trainers | [CLF] Client 0 | Ep 197/300 | LR: 0.0264 | TrAcc: 0.9890
+2026-01-14 10:01:40 | INFO     | models.trainers | [CLF] Client 0 | Ep 198/300 | LR: 0.0259 | TrAcc: 0.9986
+2026-01-14 10:01:51 | INFO     | models.trainers | [CLF] Client 0 | Ep 199/300 | LR: 0.0255 | TrAcc: 0.9939
+2026-01-14 10:02:02 | INFO     | models.trainers | [CLF] Client 0 | Ep 200/300 | LR: 0.0250 | TrAcc: 0.9889
+2026-01-14 10:02:13 | INFO     | models.trainers | [CLF] Client 0 | Ep 201/300 | LR: 0.0245 | TrAcc: 0.9896
+2026-01-14 10:02:25 | INFO     | models.trainers | [CLF] Client 0 | Ep 202/300 | LR: 0.0241 | TrAcc: 0.9986
+2026-01-14 10:02:36 | INFO     | models.trainers | [CLF] Client 0 | Ep 203/300 | LR: 0.0237 | TrAcc: 0.9988
+2026-01-14 10:02:47 | INFO     | models.trainers | [CLF] Client 0 | Ep 204/300 | LR: 0.0232 | TrAcc: 0.9945
+2026-01-14 10:02:58 | INFO     | models.trainers | [CLF] Client 0 | Ep 205/300 | LR: 0.0228 | TrAcc: 0.9917
+2026-01-14 10:03:10 | INFO     | models.trainers | [CLF] Client 0 | Ep 206/300 | LR: 0.0223 | TrAcc: 0.9917
+2026-01-14 10:03:21 | INFO     | models.trainers | [CLF] Client 0 | Ep 207/300 | LR: 0.0219 | TrAcc: 0.9946
+2026-01-14 10:03:32 | INFO     | models.trainers | [CLF] Client 0 | Ep 208/300 | LR: 0.0215 | TrAcc: 0.9988
+2026-01-14 10:03:43 | INFO     | models.trainers | [CLF] Client 0 | Ep 209/300 | LR: 0.0210 | TrAcc: 0.9988
+2026-01-14 10:03:54 | INFO     | models.trainers | [CLF] Client 0 | Ep 210/300 | LR: 0.0206 | TrAcc: 0.9994
+2026-01-14 10:04:05 | INFO     | models.trainers | [CLF] Client 0 | Ep 211/300 | LR: 0.0202 | TrAcc: 0.9996
+2026-01-14 10:04:16 | INFO     | models.trainers | [CLF] Client 0 | Ep 212/300 | LR: 0.0198 | TrAcc: 0.9903
+2026-01-14 10:04:28 | INFO     | models.trainers | [CLF] Client 0 | Ep 213/300 | LR: 0.0194 | TrAcc: 0.9992
+2026-01-14 10:04:39 | INFO     | models.trainers | [CLF] Client 0 | Ep 214/300 | LR: 0.0189 | TrAcc: 0.9987
+2026-01-14 10:04:50 | INFO     | models.trainers | [CLF] Client 0 | Ep 215/300 | LR: 0.0185 | TrAcc: 0.9957
+2026-01-14 10:05:01 | INFO     | models.trainers | [CLF] Client 0 | Ep 216/300 | LR: 0.0181 | TrAcc: 0.9989
+2026-01-14 10:05:13 | INFO     | models.trainers | [CLF] Client 0 | Ep 217/300 | LR: 0.0177 | TrAcc: 0.9971
+2026-01-14 10:05:24 | INFO     | models.trainers | [CLF] Client 0 | Ep 218/300 | LR: 0.0173 | TrAcc: 0.9972
+2026-01-14 10:05:35 | INFO     | models.trainers | [CLF] Client 0 | Ep 219/300 | LR: 0.0169 | TrAcc: 0.9922
+2026-01-14 10:05:46 | INFO     | models.trainers | [CLF] Client 0 | Ep 220/300 | LR: 0.0165 | TrAcc: 0.9931
+2026-01-14 10:05:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 221/300 | LR: 0.0162 | TrAcc: 0.9918
+2026-01-14 10:06:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 222/300 | LR: 0.0158 | TrAcc: 0.9989
+2026-01-14 10:06:19 | INFO     | models.trainers | [CLF] Client 0 | Ep 223/300 | LR: 0.0154 | TrAcc: 0.9961
+2026-01-14 10:06:31 | INFO     | models.trainers | [CLF] Client 0 | Ep 224/300 | LR: 0.0150 | TrAcc: 0.9971
+2026-01-14 10:06:42 | INFO     | models.trainers | [CLF] Client 0 | Ep 225/300 | LR: 0.0146 | TrAcc: 0.9992
+2026-01-14 10:06:53 | INFO     | models.trainers | [CLF] Client 0 | Ep 226/300 | LR: 0.0143 | TrAcc: 0.9996
+2026-01-14 10:07:04 | INFO     | models.trainers | [CLF] Client 0 | Ep 227/300 | LR: 0.0139 | TrAcc: 0.9990
+2026-01-14 10:07:16 | INFO     | models.trainers | [CLF] Client 0 | Ep 228/300 | LR: 0.0136 | TrAcc: 0.9954
+2026-01-14 10:07:27 | INFO     | models.trainers | [CLF] Client 0 | Ep 229/300 | LR: 0.0132 | TrAcc: 0.9974
+2026-01-14 10:07:38 | INFO     | models.trainers | [CLF] Client 0 | Ep 230/300 | LR: 0.0128 | TrAcc: 0.9864
+2026-01-14 10:07:49 | INFO     | models.trainers | [CLF] Client 0 | Ep 231/300 | LR: 0.0125 | TrAcc: 0.9993
+2026-01-14 10:08:01 | INFO     | models.trainers | [CLF] Client 0 | Ep 232/300 | LR: 0.0122 | TrAcc: 0.9995
+2026-01-14 10:08:12 | INFO     | models.trainers | [CLF] Client 0 | Ep 233/300 | LR: 0.0118 | TrAcc: 0.9973
+2026-01-14 10:08:23 | INFO     | models.trainers | [CLF] Client 0 | Ep 234/300 | LR: 0.0115 | TrAcc: 0.9968
+2026-01-14 10:08:34 | INFO     | models.trainers | [CLF] Client 0 | Ep 235/300 | LR: 0.0111 | TrAcc: 0.9992
+2026-01-14 10:08:46 | INFO     | models.trainers | [CLF] Client 0 | Ep 236/300 | LR: 0.0108 | TrAcc: 0.9985
+2026-01-14 10:08:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 237/300 | LR: 0.0105 | TrAcc: 0.9993
+2026-01-14 10:09:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 238/300 | LR: 0.0102 | TrAcc: 0.9997
+2026-01-14 10:09:19 | INFO     | models.trainers | [CLF] Client 0 | Ep 239/300 | LR: 0.0099 | TrAcc: 0.9962
+2026-01-14 10:09:31 | INFO     | models.trainers | [CLF] Client 0 | Ep 240/300 | LR: 0.0095 | TrAcc: 0.9993
+2026-01-14 10:09:42 | INFO     | models.trainers | [CLF] Client 0 | Ep 241/300 | LR: 0.0092 | TrAcc: 0.9994
+2026-01-14 10:09:53 | INFO     | models.trainers | [CLF] Client 0 | Ep 242/300 | LR: 0.0089 | TrAcc: 0.9993
+2026-01-14 10:10:05 | INFO     | models.trainers | [CLF] Client 0 | Ep 243/300 | LR: 0.0086 | TrAcc: 0.9996
+2026-01-14 10:10:16 | INFO     | models.trainers | [CLF] Client 0 | Ep 244/300 | LR: 0.0084 | TrAcc: 0.9958
+2026-01-14 10:10:27 | INFO     | models.trainers | [CLF] Client 0 | Ep 245/300 | LR: 0.0081 | TrAcc: 0.9995
+2026-01-14 10:10:38 | INFO     | models.trainers | [CLF] Client 0 | Ep 246/300 | LR: 0.0078 | TrAcc: 0.9995
+2026-01-14 10:10:50 | INFO     | models.trainers | [CLF] Client 0 | Ep 247/300 | LR: 0.0075 | TrAcc: 0.9994
+2026-01-14 10:11:01 | INFO     | models.trainers | [CLF] Client 0 | Ep 248/300 | LR: 0.0072 | TrAcc: 0.9968
+2026-01-14 10:11:12 | INFO     | models.trainers | [CLF] Client 0 | Ep 249/300 | LR: 0.0070 | TrAcc: 0.9980
+2026-01-14 10:11:23 | INFO     | models.trainers | [CLF] Client 0 | Ep 250/300 | LR: 0.0067 | TrAcc: 0.9976
+2026-01-14 10:11:35 | INFO     | models.trainers | [CLF] Client 0 | Ep 251/300 | LR: 0.0064 | TrAcc: 0.9991
+2026-01-14 10:11:46 | INFO     | models.trainers | [CLF] Client 0 | Ep 252/300 | LR: 0.0062 | TrAcc: 0.9989
+2026-01-14 10:11:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 253/300 | LR: 0.0059 | TrAcc: 0.9964
+2026-01-14 10:12:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 254/300 | LR: 0.0057 | TrAcc: 0.9975
+2026-01-14 10:12:19 | INFO     | models.trainers | [CLF] Client 0 | Ep 255/300 | LR: 0.0054 | TrAcc: 0.9993
+2026-01-14 10:12:31 | INFO     | models.trainers | [CLF] Client 0 | Ep 256/300 | LR: 0.0052 | TrAcc: 0.9997
+2026-01-14 10:12:42 | INFO     | models.trainers | [CLF] Client 0 | Ep 257/300 | LR: 0.0050 | TrAcc: 0.9997
+2026-01-14 10:12:53 | INFO     | models.trainers | [CLF] Client 0 | Ep 258/300 | LR: 0.0048 | TrAcc: 0.9994
+2026-01-14 10:13:04 | INFO     | models.trainers | [CLF] Client 0 | Ep 259/300 | LR: 0.0045 | TrAcc: 0.9993
+2026-01-14 10:13:16 | INFO     | models.trainers | [CLF] Client 0 | Ep 260/300 | LR: 0.0043 | TrAcc: 0.9996
+2026-01-14 10:13:27 | INFO     | models.trainers | [CLF] Client 0 | Ep 261/300 | LR: 0.0041 | TrAcc: 0.9998
+2026-01-14 10:13:38 | INFO     | models.trainers | [CLF] Client 0 | Ep 262/300 | LR: 0.0039 | TrAcc: 0.9997
+2026-01-14 10:13:49 | INFO     | models.trainers | [CLF] Client 0 | Ep 263/300 | LR: 0.0037 | TrAcc: 0.9991
+2026-01-14 10:14:01 | INFO     | models.trainers | [CLF] Client 0 | Ep 264/300 | LR: 0.0035 | TrAcc: 0.9985
+2026-01-14 10:14:12 | INFO     | models.trainers | [CLF] Client 0 | Ep 265/300 | LR: 0.0033 | TrAcc: 0.9997
+2026-01-14 10:14:23 | INFO     | models.trainers | [CLF] Client 0 | Ep 266/300 | LR: 0.0031 | TrAcc: 0.9996
+2026-01-14 10:14:34 | INFO     | models.trainers | [CLF] Client 0 | Ep 267/300 | LR: 0.0030 | TrAcc: 0.9996
+2026-01-14 10:14:46 | INFO     | models.trainers | [CLF] Client 0 | Ep 268/300 | LR: 0.0028 | TrAcc: 0.9997
+2026-01-14 10:14:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 269/300 | LR: 0.0026 | TrAcc: 0.9995
+2026-01-14 10:15:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 270/300 | LR: 0.0024 | TrAcc: 0.9998
+2026-01-14 10:15:19 | INFO     | models.trainers | [CLF] Client 0 | Ep 271/300 | LR: 0.0023 | TrAcc: 0.9996
+2026-01-14 10:15:31 | INFO     | models.trainers | [CLF] Client 0 | Ep 272/300 | LR: 0.0021 | TrAcc: 0.9995
+2026-01-14 10:15:42 | INFO     | models.trainers | [CLF] Client 0 | Ep 273/300 | LR: 0.0020 | TrAcc: 0.9997
+2026-01-14 10:15:53 | INFO     | models.trainers | [CLF] Client 0 | Ep 274/300 | LR: 0.0018 | TrAcc: 0.9996
+2026-01-14 10:16:04 | INFO     | models.trainers | [CLF] Client 0 | Ep 275/300 | LR: 0.0017 | TrAcc: 0.9997
+2026-01-14 10:16:16 | INFO     | models.trainers | [CLF] Client 0 | Ep 276/300 | LR: 0.0016 | TrAcc: 0.9995
+2026-01-14 10:16:26 | INFO     | models.trainers | [CLF] Client 0 | Ep 277/300 | LR: 0.0014 | TrAcc: 0.9996
+2026-01-14 10:16:37 | INFO     | models.trainers | [CLF] Client 0 | Ep 278/300 | LR: 0.0013 | TrAcc: 0.9998
+2026-01-14 10:16:49 | INFO     | models.trainers | [CLF] Client 0 | Ep 279/300 | LR: 0.0012 | TrAcc: 0.9997
+2026-01-14 10:17:00 | INFO     | models.trainers | [CLF] Client 0 | Ep 280/300 | LR: 0.0011 | TrAcc: 0.9997
+2026-01-14 10:17:11 | INFO     | models.trainers | [CLF] Client 0 | Ep 281/300 | LR: 0.0010 | TrAcc: 0.9997
+2026-01-14 10:17:22 | INFO     | models.trainers | [CLF] Client 0 | Ep 282/300 | LR: 0.0009 | TrAcc: 0.9997
+2026-01-14 10:17:31 | INFO     | models.trainers | [CLF] Client 0 | Ep 283/300 | LR: 0.0008 | TrAcc: 0.9998
+2026-01-14 10:17:40 | INFO     | models.trainers | [CLF] Client 0 | Ep 284/300 | LR: 0.0007 | TrAcc: 0.9998
+2026-01-14 10:17:49 | INFO     | models.trainers | [CLF] Client 0 | Ep 285/300 | LR: 0.0006 | TrAcc: 0.9999
+2026-01-14 10:17:58 | INFO     | models.trainers | [CLF] Client 0 | Ep 286/300 | LR: 0.0005 | TrAcc: 0.9999
+2026-01-14 10:18:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 287/300 | LR: 0.0005 | TrAcc: 0.9999
+2026-01-14 10:18:17 | INFO     | models.trainers | [CLF] Client 0 | Ep 288/300 | LR: 0.0004 | TrAcc: 0.9998
+2026-01-14 10:18:26 | INFO     | models.trainers | [CLF] Client 0 | Ep 289/300 | LR: 0.0003 | TrAcc: 0.9998
+2026-01-14 10:18:35 | INFO     | models.trainers | [CLF] Client 0 | Ep 290/300 | LR: 0.0003 | TrAcc: 0.9998
+2026-01-14 10:18:44 | INFO     | models.trainers | [CLF] Client 0 | Ep 291/300 | LR: 0.0002 | TrAcc: 0.9999
+2026-01-14 10:18:53 | INFO     | models.trainers | [CLF] Client 0 | Ep 292/300 | LR: 0.0002 | TrAcc: 0.9998
+2026-01-14 10:19:02 | INFO     | models.trainers | [CLF] Client 0 | Ep 293/300 | LR: 0.0001 | TrAcc: 0.9999
+2026-01-14 10:19:11 | INFO     | models.trainers | [CLF] Client 0 | Ep 294/300 | LR: 0.0001 | TrAcc: 0.9999
+2026-01-14 10:19:21 | INFO     | models.trainers | [CLF] Client 0 | Ep 295/300 | LR: 0.0001 | TrAcc: 0.9998
+2026-01-14 10:19:30 | INFO     | models.trainers | [CLF] Client 0 | Ep 296/300 | LR: 0.0000 | TrAcc: 0.9998
+2026-01-14 10:19:39 | INFO     | models.trainers | [CLF] Client 0 | Ep 297/300 | LR: 0.0000 | TrAcc: 0.9998
+2026-01-14 10:19:48 | INFO     | models.trainers | [CLF] Client 0 | Ep 298/300 | LR: 0.0000 | TrAcc: 0.9998
+2026-01-14 10:19:57 | INFO     | models.trainers | [CLF] Client 0 | Ep 299/300 | LR: 0.0000 | TrAcc: 0.9999
+2026-01-14 10:20:08 | INFO     | models.trainers | [CLF] Client 0 | Ep 300/300 | LR: 0.0000 | TrAcc: 0.9997 | ValAcc: 0.9959
+2026-01-14 10:20:09 | INFO     | jobs.classifier_phase | [SILOS-LOCAL] Preparing Client 1 (Class 1)...
+2026-01-14 10:20:09 | INFO     | jobs.classifier_phase |   Generating 10000 synthetic images from 4 external models...
+Client 1 Synth Gen:   0%|          | 0/4 [00:00<?, ?it/s]Client 1 Synth Gen:  25%|██▌       | 1/4 [00:00<00:00,  7.07it/s]Client 1 Synth Gen:  75%|███████▌  | 3/4 [00:00<00:00, 12.78it/s]Client 1 Synth Gen: 100%|██████████| 4/4 [00:00<00:00, 12.83it/s]
+2026-01-14 10:20:20 | INFO     | models.trainers | [CLF] Client 1 | Ep 1/300 | LR: 0.1000 | TrAcc: 0.3321
+2026-01-14 10:20:29 | INFO     | models.trainers | [CLF] Client 1 | Ep 2/300 | LR: 0.1000 | TrAcc: 0.4619
+2026-01-14 10:20:38 | INFO     | models.trainers | [CLF] Client 1 | Ep 3/300 | LR: 0.1000 | TrAcc: 0.5184
+2026-01-14 10:20:47 | INFO     | models.trainers | [CLF] Client 1 | Ep 4/300 | LR: 0.1000 | TrAcc: 0.5800
+2026-01-14 10:20:56 | INFO     | models.trainers | [CLF] Client 1 | Ep 5/300 | LR: 0.0999 | TrAcc: 0.6294
+2026-01-14 10:21:05 | INFO     | models.trainers | [CLF] Client 1 | Ep 6/300 | LR: 0.0999 | TrAcc: 0.6836
+2026-01-14 10:21:14 | INFO     | models.trainers | [CLF] Client 1 | Ep 7/300 | LR: 0.0999 | TrAcc: 0.7394
+2026-01-14 10:21:23 | INFO     | models.trainers | [CLF] Client 1 | Ep 8/300 | LR: 0.0998 | TrAcc: 0.7793
+2026-01-14 10:21:32 | INFO     | models.trainers | [CLF] Client 1 | Ep 9/300 | LR: 0.0998 | TrAcc: 0.8175
+2026-01-14 10:21:41 | INFO     | models.trainers | [CLF] Client 1 | Ep 10/300 | LR: 0.0997 | TrAcc: 0.8483
+2026-01-14 10:21:50 | INFO     | models.trainers | [CLF] Client 1 | Ep 11/300 | LR: 0.0997 | TrAcc: 0.8818
+2026-01-14 10:21:59 | INFO     | models.trainers | [CLF] Client 1 | Ep 12/300 | LR: 0.0996 | TrAcc: 0.8989
+2026-01-14 10:22:08 | INFO     | models.trainers | [CLF] Client 1 | Ep 13/300 | LR: 0.0995 | TrAcc: 0.9134
+2026-01-14 10:22:17 | INFO     | models.trainers | [CLF] Client 1 | Ep 14/300 | LR: 0.0995 | TrAcc: 0.9310
+2026-01-14 10:22:26 | INFO     | models.trainers | [CLF] Client 1 | Ep 15/300 | LR: 0.0994 | TrAcc: 0.9413
+2026-01-14 10:22:35 | INFO     | models.trainers | [CLF] Client 1 | Ep 16/300 | LR: 0.0993 | TrAcc: 0.9503
+2026-01-14 10:22:44 | INFO     | models.trainers | [CLF] Client 1 | Ep 17/300 | LR: 0.0992 | TrAcc: 0.9591
+2026-01-14 10:22:53 | INFO     | models.trainers | [CLF] Client 1 | Ep 18/300 | LR: 0.0991 | TrAcc: 0.9638
+2026-01-14 10:23:02 | INFO     | models.trainers | [CLF] Client 1 | Ep 19/300 | LR: 0.0990 | TrAcc: 0.9637
+2026-01-14 10:23:11 | INFO     | models.trainers | [CLF] Client 1 | Ep 20/300 | LR: 0.0989 | TrAcc: 0.9693
+2026-01-14 10:23:20 | INFO     | models.trainers | [CLF] Client 1 | Ep 21/300 | LR: 0.0988 | TrAcc: 0.9730
+2026-01-14 10:23:30 | INFO     | models.trainers | [CLF] Client 1 | Ep 22/300 | LR: 0.0987 | TrAcc: 0.9788
+2026-01-14 10:23:39 | INFO     | models.trainers | [CLF] Client 1 | Ep 23/300 | LR: 0.0986 | TrAcc: 0.9756
+2026-01-14 10:23:48 | INFO     | models.trainers | [CLF] Client 1 | Ep 24/300 | LR: 0.0984 | TrAcc: 0.9784
+2026-01-14 10:23:57 | INFO     | models.trainers | [CLF] Client 1 | Ep 25/300 | LR: 0.0983 | TrAcc: 0.9780
+2026-01-14 10:24:06 | INFO     | models.trainers | [CLF] Client 1 | Ep 26/300 | LR: 0.0982 | TrAcc: 0.9817
+2026-01-14 10:24:15 | INFO     | models.trainers | [CLF] Client 1 | Ep 27/300 | LR: 0.0980 | TrAcc: 0.9786
+2026-01-14 10:24:24 | INFO     | models.trainers | [CLF] Client 1 | Ep 28/300 | LR: 0.0979 | TrAcc: 0.9815
+2026-01-14 10:24:33 | INFO     | models.trainers | [CLF] Client 1 | Ep 29/300 | LR: 0.0977 | TrAcc: 0.9847
+2026-01-14 10:24:42 | INFO     | models.trainers | [CLF] Client 1 | Ep 30/300 | LR: 0.0976 | TrAcc: 0.9812
+2026-01-14 10:24:51 | INFO     | models.trainers | [CLF] Client 1 | Ep 31/300 | LR: 0.0974 | TrAcc: 0.9865
+2026-01-14 10:25:00 | INFO     | models.trainers | [CLF] Client 1 | Ep 32/300 | LR: 0.0972 | TrAcc: 0.9833
+2026-01-14 10:25:09 | INFO     | models.trainers | [CLF] Client 1 | Ep 33/300 | LR: 0.0970 | TrAcc: 0.9882
+2026-01-14 10:25:18 | INFO     | models.trainers | [CLF] Client 1 | Ep 34/300 | LR: 0.0969 | TrAcc: 0.9864
+2026-01-14 10:25:27 | INFO     | models.trainers | [CLF] Client 1 | Ep 35/300 | LR: 0.0967 | TrAcc: 0.9824
+2026-01-14 10:25:36 | INFO     | models.trainers | [CLF] Client 1 | Ep 36/300 | LR: 0.0965 | TrAcc: 0.9873
+2026-01-14 10:25:45 | INFO     | models.trainers | [CLF] Client 1 | Ep 37/300 | LR: 0.0963 | TrAcc: 0.9831
+2026-01-14 10:25:53 | INFO     | models.trainers | [CLF] Client 1 | Ep 38/300 | LR: 0.0961 | TrAcc: 0.9892
+2026-01-14 10:26:01 | INFO     | models.trainers | [CLF] Client 1 | Ep 39/300 | LR: 0.0959 | TrAcc: 0.9859
+2026-01-14 10:26:08 | INFO     | models.trainers | [CLF] Client 1 | Ep 40/300 | LR: 0.0957 | TrAcc: 0.9868
+2026-01-14 10:26:16 | INFO     | models.trainers | [CLF] Client 1 | Ep 41/300 | LR: 0.0955 | TrAcc: 0.9889
+2026-01-14 10:26:23 | INFO     | models.trainers | [CLF] Client 1 | Ep 42/300 | LR: 0.0952 | TrAcc: 0.9888
+2026-01-14 10:26:31 | INFO     | models.trainers | [CLF] Client 1 | Ep 43/300 | LR: 0.0950 | TrAcc: 0.9884
+2026-01-14 10:26:38 | INFO     | models.trainers | [CLF] Client 1 | Ep 44/300 | LR: 0.0948 | TrAcc: 0.9869
+2026-01-14 10:26:45 | INFO     | models.trainers | [CLF] Client 1 | Ep 45/300 | LR: 0.0946 | TrAcc: 0.9894
+2026-01-14 10:26:53 | INFO     | models.trainers | [CLF] Client 1 | Ep 46/300 | LR: 0.0943 | TrAcc: 0.9869
+2026-01-14 10:27:00 | INFO     | models.trainers | [CLF] Client 1 | Ep 47/300 | LR: 0.0941 | TrAcc: 0.9909
+2026-01-14 10:27:08 | INFO     | models.trainers | [CLF] Client 1 | Ep 48/300 | LR: 0.0938 | TrAcc: 0.9915
+2026-01-14 10:27:15 | INFO     | models.trainers | [CLF] Client 1 | Ep 49/300 | LR: 0.0936 | TrAcc: 0.9912
+2026-01-14 10:27:23 | INFO     | models.trainers | [CLF] Client 1 | Ep 50/300 | LR: 0.0933 | TrAcc: 0.9892
+2026-01-14 10:27:31 | INFO     | models.trainers | [CLF] Client 1 | Ep 51/300 | LR: 0.0930 | TrAcc: 0.9905
+2026-01-14 10:27:38 | INFO     | models.trainers | [CLF] Client 1 | Ep 52/300 | LR: 0.0928 | TrAcc: 0.9902
+2026-01-14 10:27:46 | INFO     | models.trainers | [CLF] Client 1 | Ep 53/300 | LR: 0.0925 | TrAcc: 0.9903
+2026-01-14 10:27:54 | INFO     | models.trainers | [CLF] Client 1 | Ep 54/300 | LR: 0.0922 | TrAcc: 0.9901
+2026-01-14 10:28:01 | INFO     | models.trainers | [CLF] Client 1 | Ep 55/300 | LR: 0.0919 | TrAcc: 0.9899
+2026-01-14 10:28:09 | INFO     | models.trainers | [CLF] Client 1 | Ep 56/300 | LR: 0.0916 | TrAcc: 0.9899
+2026-01-14 10:28:16 | INFO     | models.trainers | [CLF] Client 1 | Ep 57/300 | LR: 0.0914 | TrAcc: 0.9911
+2026-01-14 10:28:24 | INFO     | models.trainers | [CLF] Client 1 | Ep 58/300 | LR: 0.0911 | TrAcc: 0.9916
+2026-01-14 10:28:31 | INFO     | models.trainers | [CLF] Client 1 | Ep 59/300 | LR: 0.0908 | TrAcc: 0.9926
+2026-01-14 10:28:39 | INFO     | models.trainers | [CLF] Client 1 | Ep 60/300 | LR: 0.0905 | TrAcc: 0.9917
+2026-01-14 10:28:46 | INFO     | models.trainers | [CLF] Client 1 | Ep 61/300 | LR: 0.0901 | TrAcc: 0.9927
+2026-01-14 10:28:54 | INFO     | models.trainers | [CLF] Client 1 | Ep 62/300 | LR: 0.0898 | TrAcc: 0.9914
+2026-01-14 10:29:01 | INFO     | models.trainers | [CLF] Client 1 | Ep 63/300 | LR: 0.0895 | TrAcc: 0.9891
+2026-01-14 10:29:09 | INFO     | models.trainers | [CLF] Client 1 | Ep 64/300 | LR: 0.0892 | TrAcc: 0.9936
+2026-01-14 10:29:16 | INFO     | models.trainers | [CLF] Client 1 | Ep 65/300 | LR: 0.0889 | TrAcc: 0.9919
+2026-01-14 10:29:24 | INFO     | models.trainers | [CLF] Client 1 | Ep 66/300 | LR: 0.0885 | TrAcc: 0.9919
+2026-01-14 10:29:31 | INFO     | models.trainers | [CLF] Client 1 | Ep 67/300 | LR: 0.0882 | TrAcc: 0.9913
+2026-01-14 10:29:39 | INFO     | models.trainers | [CLF] Client 1 | Ep 68/300 | LR: 0.0878 | TrAcc: 0.9932
+2026-01-14 10:29:46 | INFO     | models.trainers | [CLF] Client 1 | Ep 69/300 | LR: 0.0875 | TrAcc: 0.9938
+2026-01-14 10:29:54 | INFO     | models.trainers | [CLF] Client 1 | Ep 70/300 | LR: 0.0872 | TrAcc: 0.9917
+2026-01-14 10:30:02 | INFO     | models.trainers | [CLF] Client 1 | Ep 71/300 | LR: 0.0868 | TrAcc: 0.9938
+2026-01-14 10:30:09 | INFO     | models.trainers | [CLF] Client 1 | Ep 72/300 | LR: 0.0864 | TrAcc: 0.9915
+2026-01-14 10:30:17 | INFO     | models.trainers | [CLF] Client 1 | Ep 73/300 | LR: 0.0861 | TrAcc: 0.9938
+2026-01-14 10:30:25 | INFO     | models.trainers | [CLF] Client 1 | Ep 74/300 | LR: 0.0857 | TrAcc: 0.9926
+2026-01-14 10:30:32 | INFO     | models.trainers | [CLF] Client 1 | Ep 75/300 | LR: 0.0854 | TrAcc: 0.9918
+2026-01-14 10:30:40 | INFO     | models.trainers | [CLF] Client 1 | Ep 76/300 | LR: 0.0850 | TrAcc: 0.9939
+2026-01-14 10:30:48 | INFO     | models.trainers | [CLF] Client 1 | Ep 77/300 | LR: 0.0846 | TrAcc: 0.9933
+2026-01-14 10:30:56 | INFO     | models.trainers | [CLF] Client 1 | Ep 78/300 | LR: 0.0842 | TrAcc: 0.9943
+2026-01-14 10:31:03 | INFO     | models.trainers | [CLF] Client 1 | Ep 79/300 | LR: 0.0838 | TrAcc: 0.9937
+2026-01-14 10:31:11 | INFO     | models.trainers | [CLF] Client 1 | Ep 80/300 | LR: 0.0835 | TrAcc: 0.9915
+2026-01-14 10:31:19 | INFO     | models.trainers | [CLF] Client 1 | Ep 81/300 | LR: 0.0831 | TrAcc: 0.9949
+2026-01-14 10:31:27 | INFO     | models.trainers | [CLF] Client 1 | Ep 82/300 | LR: 0.0827 | TrAcc: 0.9951
+2026-01-14 10:31:35 | INFO     | models.trainers | [CLF] Client 1 | Ep 83/300 | LR: 0.0823 | TrAcc: 0.9944
+2026-01-14 10:31:43 | INFO     | models.trainers | [CLF] Client 1 | Ep 84/300 | LR: 0.0819 | TrAcc: 0.9933
+2026-01-14 10:31:50 | INFO     | models.trainers | [CLF] Client 1 | Ep 85/300 | LR: 0.0815 | TrAcc: 0.9924
+2026-01-14 10:31:58 | INFO     | models.trainers | [CLF] Client 1 | Ep 86/300 | LR: 0.0811 | TrAcc: 0.9943
+2026-01-14 10:32:06 | INFO     | models.trainers | [CLF] Client 1 | Ep 87/300 | LR: 0.0806 | TrAcc: 0.9924
+2026-01-14 10:32:13 | INFO     | models.trainers | [CLF] Client 1 | Ep 88/300 | LR: 0.0802 | TrAcc: 0.9927
+2026-01-14 10:32:21 | INFO     | models.trainers | [CLF] Client 1 | Ep 89/300 | LR: 0.0798 | TrAcc: 0.9935
+2026-01-14 10:32:29 | INFO     | models.trainers | [CLF] Client 1 | Ep 90/300 | LR: 0.0794 | TrAcc: 0.9941
+2026-01-14 10:32:36 | INFO     | models.trainers | [CLF] Client 1 | Ep 91/300 | LR: 0.0790 | TrAcc: 0.9946
+2026-01-14 10:32:44 | INFO     | models.trainers | [CLF] Client 1 | Ep 92/300 | LR: 0.0785 | TrAcc: 0.9917
+2026-01-14 10:32:52 | INFO     | models.trainers | [CLF] Client 1 | Ep 93/300 | LR: 0.0781 | TrAcc: 0.9933
+2026-01-14 10:32:59 | INFO     | models.trainers | [CLF] Client 1 | Ep 94/300 | LR: 0.0777 | TrAcc: 0.9957
+2026-01-14 10:33:07 | INFO     | models.trainers | [CLF] Client 1 | Ep 95/300 | LR: 0.0772 | TrAcc: 0.9976
+2026-01-14 10:33:14 | INFO     | models.trainers | [CLF] Client 1 | Ep 96/300 | LR: 0.0768 | TrAcc: 0.9956
+2026-01-14 10:33:22 | INFO     | models.trainers | [CLF] Client 1 | Ep 97/300 | LR: 0.0763 | TrAcc: 0.9928
+2026-01-14 10:33:29 | INFO     | models.trainers | [CLF] Client 1 | Ep 98/300 | LR: 0.0759 | TrAcc: 0.9945
+2026-01-14 10:33:37 | INFO     | models.trainers | [CLF] Client 1 | Ep 99/300 | LR: 0.0755 | TrAcc: 0.9947
+2026-01-14 10:33:45 | INFO     | models.trainers | [CLF] Client 1 | Ep 100/300 | LR: 0.0750 | TrAcc: 0.9944
+2026-01-14 10:33:53 | INFO     | models.trainers | [CLF] Client 1 | Ep 101/300 | LR: 0.0745 | TrAcc: 0.9957
+2026-01-14 10:34:01 | INFO     | models.trainers | [CLF] Client 1 | Ep 102/300 | LR: 0.0741 | TrAcc: 0.9954
+2026-01-14 10:34:09 | INFO     | models.trainers | [CLF] Client 1 | Ep 103/300 | LR: 0.0736 | TrAcc: 0.9947
+2026-01-14 10:34:19 | INFO     | models.trainers | [CLF] Client 1 | Ep 104/300 | LR: 0.0732 | TrAcc: 0.9953
+2026-01-14 10:34:30 | INFO     | models.trainers | [CLF] Client 1 | Ep 105/300 | LR: 0.0727 | TrAcc: 0.9948
+2026-01-14 10:34:40 | INFO     | models.trainers | [CLF] Client 1 | Ep 106/300 | LR: 0.0722 | TrAcc: 0.9920
+2026-01-14 10:34:51 | INFO     | models.trainers | [CLF] Client 1 | Ep 107/300 | LR: 0.0718 | TrAcc: 0.9936
+2026-01-14 10:35:02 | INFO     | models.trainers | [CLF] Client 1 | Ep 108/300 | LR: 0.0713 | TrAcc: 0.9976
+2026-01-14 10:35:12 | INFO     | models.trainers | [CLF] Client 1 | Ep 109/300 | LR: 0.0708 | TrAcc: 0.9952
+2026-01-14 10:35:23 | INFO     | models.trainers | [CLF] Client 1 | Ep 110/300 | LR: 0.0703 | TrAcc: 0.9944
+2026-01-14 10:35:33 | INFO     | models.trainers | [CLF] Client 1 | Ep 111/300 | LR: 0.0699 | TrAcc: 0.9965
+2026-01-14 10:35:44 | INFO     | models.trainers | [CLF] Client 1 | Ep 112/300 | LR: 0.0694 | TrAcc: 0.9969
+2026-01-14 10:35:54 | INFO     | models.trainers | [CLF] Client 1 | Ep 113/300 | LR: 0.0689 | TrAcc: 0.9956
+2026-01-14 10:36:05 | INFO     | models.trainers | [CLF] Client 1 | Ep 114/300 | LR: 0.0684 | TrAcc: 0.9941
+2026-01-14 10:36:16 | INFO     | models.trainers | [CLF] Client 1 | Ep 115/300 | LR: 0.0679 | TrAcc: 0.9932
+2026-01-14 10:36:26 | INFO     | models.trainers | [CLF] Client 1 | Ep 116/300 | LR: 0.0674 | TrAcc: 0.9961
+2026-01-14 10:36:37 | INFO     | models.trainers | [CLF] Client 1 | Ep 117/300 | LR: 0.0669 | TrAcc: 0.9964
+2026-01-14 10:36:47 | INFO     | models.trainers | [CLF] Client 1 | Ep 118/300 | LR: 0.0664 | TrAcc: 0.9943
+2026-01-14 10:36:58 | INFO     | models.trainers | [CLF] Client 1 | Ep 119/300 | LR: 0.0659 | TrAcc: 0.9951
+2026-01-14 10:37:08 | INFO     | models.trainers | [CLF] Client 1 | Ep 120/300 | LR: 0.0655 | TrAcc: 0.9975
+2026-01-14 10:37:19 | INFO     | models.trainers | [CLF] Client 1 | Ep 121/300 | LR: 0.0650 | TrAcc: 0.9978
+2026-01-14 10:37:30 | INFO     | models.trainers | [CLF] Client 1 | Ep 122/300 | LR: 0.0645 | TrAcc: 0.9956
+2026-01-14 10:37:40 | INFO     | models.trainers | [CLF] Client 1 | Ep 123/300 | LR: 0.0639 | TrAcc: 0.9967
+2026-01-14 10:37:51 | INFO     | models.trainers | [CLF] Client 1 | Ep 124/300 | LR: 0.0634 | TrAcc: 0.9965
+2026-01-14 10:38:01 | INFO     | models.trainers | [CLF] Client 1 | Ep 125/300 | LR: 0.0629 | TrAcc: 0.9951
+2026-01-14 10:38:12 | INFO     | models.trainers | [CLF] Client 1 | Ep 126/300 | LR: 0.0624 | TrAcc: 0.9952
+2026-01-14 10:38:22 | INFO     | models.trainers | [CLF] Client 1 | Ep 127/300 | LR: 0.0619 | TrAcc: 0.9974
+2026-01-14 10:38:33 | INFO     | models.trainers | [CLF] Client 1 | Ep 128/300 | LR: 0.0614 | TrAcc: 0.9980
+2026-01-14 10:38:44 | INFO     | models.trainers | [CLF] Client 1 | Ep 129/300 | LR: 0.0609 | TrAcc: 0.9981
+2026-01-14 10:38:54 | INFO     | models.trainers | [CLF] Client 1 | Ep 130/300 | LR: 0.0604 | TrAcc: 0.9982
+2026-01-14 10:39:05 | INFO     | models.trainers | [CLF] Client 1 | Ep 131/300 | LR: 0.0599 | TrAcc: 0.9982
+2026-01-14 10:39:15 | INFO     | models.trainers | [CLF] Client 1 | Ep 132/300 | LR: 0.0594 | TrAcc: 0.9979
+2026-01-14 10:39:26 | INFO     | models.trainers | [CLF] Client 1 | Ep 133/300 | LR: 0.0589 | TrAcc: 0.9974
+2026-01-14 10:39:36 | INFO     | models.trainers | [CLF] Client 1 | Ep 134/300 | LR: 0.0583 | TrAcc: 0.9957
+2026-01-14 10:39:47 | INFO     | models.trainers | [CLF] Client 1 | Ep 135/300 | LR: 0.0578 | TrAcc: 0.9957
+2026-01-14 10:39:58 | INFO     | models.trainers | [CLF] Client 1 | Ep 136/300 | LR: 0.0573 | TrAcc: 0.9980
+2026-01-14 10:40:08 | INFO     | models.trainers | [CLF] Client 1 | Ep 137/300 | LR: 0.0568 | TrAcc: 0.9971
+2026-01-14 10:40:19 | INFO     | models.trainers | [CLF] Client 1 | Ep 138/300 | LR: 0.0563 | TrAcc: 0.9946
+2026-01-14 10:40:29 | INFO     | models.trainers | [CLF] Client 1 | Ep 139/300 | LR: 0.0557 | TrAcc: 0.9974
+2026-01-14 10:40:40 | INFO     | models.trainers | [CLF] Client 1 | Ep 140/300 | LR: 0.0552 | TrAcc: 0.9963
+2026-01-14 10:40:51 | INFO     | models.trainers | [CLF] Client 1 | Ep 141/300 | LR: 0.0547 | TrAcc: 0.9948
+2026-01-14 10:41:01 | INFO     | models.trainers | [CLF] Client 1 | Ep 142/300 | LR: 0.0542 | TrAcc: 0.9972
+2026-01-14 10:41:12 | INFO     | models.trainers | [CLF] Client 1 | Ep 143/300 | LR: 0.0537 | TrAcc: 0.9950
+2026-01-14 10:41:22 | INFO     | models.trainers | [CLF] Client 1 | Ep 144/300 | LR: 0.0531 | TrAcc: 0.9980
+2026-01-14 10:41:33 | INFO     | models.trainers | [CLF] Client 1 | Ep 145/300 | LR: 0.0526 | TrAcc: 0.9983
+2026-01-14 10:41:43 | INFO     | models.trainers | [CLF] Client 1 | Ep 146/300 | LR: 0.0521 | TrAcc: 0.9965
+2026-01-14 10:41:54 | INFO     | models.trainers | [CLF] Client 1 | Ep 147/300 | LR: 0.0516 | TrAcc: 0.9977
+2026-01-14 10:42:08 | INFO     | models.trainers | [CLF] Client 1 | Ep 148/300 | LR: 0.0510 | TrAcc: 0.9987
+2026-01-14 10:42:23 | INFO     | models.trainers | [CLF] Client 1 | Ep 149/300 | LR: 0.0505 | TrAcc: 0.9986
+2026-01-14 10:42:38 | INFO     | models.trainers | [CLF] Client 1 | Ep 150/300 | LR: 0.0500 | TrAcc: 0.9983
+2026-01-14 10:42:54 | INFO     | models.trainers | [CLF] Client 1 | Ep 151/300 | LR: 0.0495 | TrAcc: 0.9985
+2026-01-14 10:43:09 | INFO     | models.trainers | [CLF] Client 1 | Ep 152/300 | LR: 0.0490 | TrAcc: 0.9987
+2026-01-14 10:43:24 | INFO     | models.trainers | [CLF] Client 1 | Ep 153/300 | LR: 0.0484 | TrAcc: 0.9974
+2026-01-14 10:43:40 | INFO     | models.trainers | [CLF] Client 1 | Ep 154/300 | LR: 0.0479 | TrAcc: 0.9991
+2026-01-14 10:43:55 | INFO     | models.trainers | [CLF] Client 1 | Ep 155/300 | LR: 0.0474 | TrAcc: 0.9984
+2026-01-14 10:44:10 | INFO     | models.trainers | [CLF] Client 1 | Ep 156/300 | LR: 0.0469 | TrAcc: 0.9988
+2026-01-14 10:44:26 | INFO     | models.trainers | [CLF] Client 1 | Ep 157/300 | LR: 0.0463 | TrAcc: 0.9991
+2026-01-14 10:44:41 | INFO     | models.trainers | [CLF] Client 1 | Ep 158/300 | LR: 0.0458 | TrAcc: 0.9997
+2026-01-14 10:44:56 | INFO     | models.trainers | [CLF] Client 1 | Ep 159/300 | LR: 0.0453 | TrAcc: 0.9993
+2026-01-14 10:45:12 | INFO     | models.trainers | [CLF] Client 1 | Ep 160/300 | LR: 0.0448 | TrAcc: 0.9994
+2026-01-14 10:45:27 | INFO     | models.trainers | [CLF] Client 1 | Ep 161/300 | LR: 0.0443 | TrAcc: 0.9991
+2026-01-14 10:45:42 | INFO     | models.trainers | [CLF] Client 1 | Ep 162/300 | LR: 0.0437 | TrAcc: 0.9985
+2026-01-14 10:45:58 | INFO     | models.trainers | [CLF] Client 1 | Ep 163/300 | LR: 0.0432 | TrAcc: 0.9980
+2026-01-14 10:46:13 | INFO     | models.trainers | [CLF] Client 1 | Ep 164/300 | LR: 0.0427 | TrAcc: 0.9968
+2026-01-14 10:46:29 | INFO     | models.trainers | [CLF] Client 1 | Ep 165/300 | LR: 0.0422 | TrAcc: 0.9985
+2026-01-14 10:46:44 | INFO     | models.trainers | [CLF] Client 1 | Ep 166/300 | LR: 0.0417 | TrAcc: 0.9983
+2026-01-14 10:46:59 | INFO     | models.trainers | [CLF] Client 1 | Ep 167/300 | LR: 0.0411 | TrAcc: 0.9984
+2026-01-14 10:47:15 | INFO     | models.trainers | [CLF] Client 1 | Ep 168/300 | LR: 0.0406 | TrAcc: 0.9990
+2026-01-14 10:47:30 | INFO     | models.trainers | [CLF] Client 1 | Ep 169/300 | LR: 0.0401 | TrAcc: 0.9989
+2026-01-14 10:47:46 | INFO     | models.trainers | [CLF] Client 1 | Ep 170/300 | LR: 0.0396 | TrAcc: 0.9996
+2026-01-14 10:48:01 | INFO     | models.trainers | [CLF] Client 1 | Ep 171/300 | LR: 0.0391 | TrAcc: 0.9995
+2026-01-14 10:48:16 | INFO     | models.trainers | [CLF] Client 1 | Ep 172/300 | LR: 0.0386 | TrAcc: 0.9990
+2026-01-14 10:48:32 | INFO     | models.trainers | [CLF] Client 1 | Ep 173/300 | LR: 0.0381 | TrAcc: 0.9990
+2026-01-14 10:48:47 | INFO     | models.trainers | [CLF] Client 1 | Ep 174/300 | LR: 0.0376 | TrAcc: 0.9997
+2026-01-14 10:49:02 | INFO     | models.trainers | [CLF] Client 1 | Ep 175/300 | LR: 0.0371 | TrAcc: 0.9997
+2026-01-14 10:49:18 | INFO     | models.trainers | [CLF] Client 1 | Ep 176/300 | LR: 0.0366 | TrAcc: 0.9992
+2026-01-14 10:49:33 | INFO     | models.trainers | [CLF] Client 1 | Ep 177/300 | LR: 0.0361 | TrAcc: 0.9985
+2026-01-14 10:49:49 | INFO     | models.trainers | [CLF] Client 1 | Ep 178/300 | LR: 0.0355 | TrAcc: 0.9986
+2026-01-14 10:50:04 | INFO     | models.trainers | [CLF] Client 1 | Ep 179/300 | LR: 0.0350 | TrAcc: 0.9994
+2026-01-14 10:50:19 | INFO     | models.trainers | [CLF] Client 1 | Ep 180/300 | LR: 0.0345 | TrAcc: 0.9996
+2026-01-14 10:50:35 | INFO     | models.trainers | [CLF] Client 1 | Ep 181/300 | LR: 0.0341 | TrAcc: 0.9999
+2026-01-14 10:50:50 | INFO     | models.trainers | [CLF] Client 1 | Ep 182/300 | LR: 0.0336 | TrAcc: 0.9998
+2026-01-14 10:51:06 | INFO     | models.trainers | [CLF] Client 1 | Ep 183/300 | LR: 0.0331 | TrAcc: 1.0000
+2026-01-14 10:51:21 | INFO     | models.trainers | [CLF] Client 1 | Ep 184/300 | LR: 0.0326 | TrAcc: 0.9997
+2026-01-14 10:51:36 | INFO     | models.trainers | [CLF] Client 1 | Ep 185/300 | LR: 0.0321 | TrAcc: 0.9994
+2026-01-14 10:51:52 | INFO     | models.trainers | [CLF] Client 1 | Ep 186/300 | LR: 0.0316 | TrAcc: 0.9987
+2026-01-14 10:52:07 | INFO     | models.trainers | [CLF] Client 1 | Ep 187/300 | LR: 0.0311 | TrAcc: 0.9986
+2026-01-14 10:52:23 | INFO     | models.trainers | [CLF] Client 1 | Ep 188/300 | LR: 0.0306 | TrAcc: 0.9993
+2026-01-14 10:52:38 | INFO     | models.trainers | [CLF] Client 1 | Ep 189/300 | LR: 0.0301 | TrAcc: 0.9999
+2026-01-14 10:52:53 | INFO     | models.trainers | [CLF] Client 1 | Ep 190/300 | LR: 0.0297 | TrAcc: 0.9998
+2026-01-14 10:53:09 | INFO     | models.trainers | [CLF] Client 1 | Ep 191/300 | LR: 0.0292 | TrAcc: 0.9998
+2026-01-14 10:53:24 | INFO     | models.trainers | [CLF] Client 1 | Ep 192/300 | LR: 0.0287 | TrAcc: 0.9999
+2026-01-14 10:53:40 | INFO     | models.trainers | [CLF] Client 1 | Ep 193/300 | LR: 0.0282 | TrAcc: 1.0000
+2026-01-14 10:53:55 | INFO     | models.trainers | [CLF] Client 1 | Ep 194/300 | LR: 0.0278 | TrAcc: 1.0000
+2026-01-14 10:54:10 | INFO     | models.trainers | [CLF] Client 1 | Ep 195/300 | LR: 0.0273 | TrAcc: 0.9997
+2026-01-14 10:54:26 | INFO     | models.trainers | [CLF] Client 1 | Ep 196/300 | LR: 0.0268 | TrAcc: 0.9998
+2026-01-14 10:54:41 | INFO     | models.trainers | [CLF] Client 1 | Ep 197/300 | LR: 0.0264 | TrAcc: 0.9998
+2026-01-14 10:54:56 | INFO     | models.trainers | [CLF] Client 1 | Ep 198/300 | LR: 0.0259 | TrAcc: 0.9996
+2026-01-14 10:55:12 | INFO     | models.trainers | [CLF] Client 1 | Ep 199/300 | LR: 0.0255 | TrAcc: 0.9999
+2026-01-14 10:55:27 | INFO     | models.trainers | [CLF] Client 1 | Ep 200/300 | LR: 0.0250 | TrAcc: 0.9998
+2026-01-14 10:55:43 | INFO     | models.trainers | [CLF] Client 1 | Ep 201/300 | LR: 0.0245 | TrAcc: 0.9997
+2026-01-14 10:55:58 | INFO     | models.trainers | [CLF] Client 1 | Ep 202/300 | LR: 0.0241 | TrAcc: 1.0000
+2026-01-14 10:56:14 | INFO     | models.trainers | [CLF] Client 1 | Ep 203/300 | LR: 0.0237 | TrAcc: 0.9999
+2026-01-14 10:56:29 | INFO     | models.trainers | [CLF] Client 1 | Ep 204/300 | LR: 0.0232 | TrAcc: 1.0000
+2026-01-14 10:56:44 | INFO     | models.trainers | [CLF] Client 1 | Ep 205/300 | LR: 0.0228 | TrAcc: 1.0000
+2026-01-14 10:57:00 | INFO     | models.trainers | [CLF] Client 1 | Ep 206/300 | LR: 0.0223 | TrAcc: 1.0000
+2026-01-14 10:57:15 | INFO     | models.trainers | [CLF] Client 1 | Ep 207/300 | LR: 0.0219 | TrAcc: 0.9999
+2026-01-14 10:57:31 | INFO     | models.trainers | [CLF] Client 1 | Ep 208/300 | LR: 0.0215 | TrAcc: 1.0000
+2026-01-14 10:57:46 | INFO     | models.trainers | [CLF] Client 1 | Ep 209/300 | LR: 0.0210 | TrAcc: 0.9997
+2026-01-14 10:58:01 | INFO     | models.trainers | [CLF] Client 1 | Ep 210/300 | LR: 0.0206 | TrAcc: 0.9999
+2026-01-14 10:58:17 | INFO     | models.trainers | [CLF] Client 1 | Ep 211/300 | LR: 0.0202 | TrAcc: 1.0000
+2026-01-14 10:58:32 | INFO     | models.trainers | [CLF] Client 1 | Ep 212/300 | LR: 0.0198 | TrAcc: 1.0000
+2026-01-14 10:58:48 | INFO     | models.trainers | [CLF] Client 1 | Ep 213/300 | LR: 0.0194 | TrAcc: 0.9999
+2026-01-14 10:59:03 | INFO     | models.trainers | [CLF] Client 1 | Ep 214/300 | LR: 0.0189 | TrAcc: 1.0000
+2026-01-14 10:59:18 | INFO     | models.trainers | [CLF] Client 1 | Ep 215/300 | LR: 0.0185 | TrAcc: 1.0000
+2026-01-14 10:59:34 | INFO     | models.trainers | [CLF] Client 1 | Ep 216/300 | LR: 0.0181 | TrAcc: 1.0000
+2026-01-14 10:59:49 | INFO     | models.trainers | [CLF] Client 1 | Ep 217/300 | LR: 0.0177 | TrAcc: 1.0000
+2026-01-14 11:00:04 | INFO     | models.trainers | [CLF] Client 1 | Ep 218/300 | LR: 0.0173 | TrAcc: 1.0000
+2026-01-14 11:00:20 | INFO     | models.trainers | [CLF] Client 1 | Ep 219/300 | LR: 0.0169 | TrAcc: 1.0000
+2026-01-14 11:00:35 | INFO     | models.trainers | [CLF] Client 1 | Ep 220/300 | LR: 0.0165 | TrAcc: 1.0000
+2026-01-14 11:00:51 | INFO     | models.trainers | [CLF] Client 1 | Ep 221/300 | LR: 0.0162 | TrAcc: 1.0000
+2026-01-14 11:01:06 | INFO     | models.trainers | [CLF] Client 1 | Ep 222/300 | LR: 0.0158 | TrAcc: 0.9999
+2026-01-14 11:01:21 | INFO     | models.trainers | [CLF] Client 1 | Ep 223/300 | LR: 0.0154 | TrAcc: 0.9999
+2026-01-14 11:01:37 | INFO     | models.trainers | [CLF] Client 1 | Ep 224/300 | LR: 0.0150 | TrAcc: 1.0000
+2026-01-14 11:01:52 | INFO     | models.trainers | [CLF] Client 1 | Ep 225/300 | LR: 0.0146 | TrAcc: 1.0000
+2026-01-14 11:02:08 | INFO     | models.trainers | [CLF] Client 1 | Ep 226/300 | LR: 0.0143 | TrAcc: 1.0000
+2026-01-14 11:02:23 | INFO     | models.trainers | [CLF] Client 1 | Ep 227/300 | LR: 0.0139 | TrAcc: 1.0000
+2026-01-14 11:02:38 | INFO     | models.trainers | [CLF] Client 1 | Ep 228/300 | LR: 0.0136 | TrAcc: 1.0000
+2026-01-14 11:02:54 | INFO     | models.trainers | [CLF] Client 1 | Ep 229/300 | LR: 0.0132 | TrAcc: 1.0000
+2026-01-14 11:03:09 | INFO     | models.trainers | [CLF] Client 1 | Ep 230/300 | LR: 0.0128 | TrAcc: 1.0000
+2026-01-14 11:03:24 | INFO     | models.trainers | [CLF] Client 1 | Ep 231/300 | LR: 0.0125 | TrAcc: 1.0000
+2026-01-14 11:03:40 | INFO     | models.trainers | [CLF] Client 1 | Ep 232/300 | LR: 0.0122 | TrAcc: 1.0000
+2026-01-14 11:03:55 | INFO     | models.trainers | [CLF] Client 1 | Ep 233/300 | LR: 0.0118 | TrAcc: 1.0000
+2026-01-14 11:04:11 | INFO     | models.trainers | [CLF] Client 1 | Ep 234/300 | LR: 0.0115 | TrAcc: 1.0000
+2026-01-14 11:04:26 | INFO     | models.trainers | [CLF] Client 1 | Ep 235/300 | LR: 0.0111 | TrAcc: 1.0000
+2026-01-14 11:04:41 | INFO     | models.trainers | [CLF] Client 1 | Ep 236/300 | LR: 0.0108 | TrAcc: 1.0000
+2026-01-14 11:04:57 | INFO     | models.trainers | [CLF] Client 1 | Ep 237/300 | LR: 0.0105 | TrAcc: 1.0000
+2026-01-14 11:05:12 | INFO     | models.trainers | [CLF] Client 1 | Ep 238/300 | LR: 0.0102 | TrAcc: 1.0000
+2026-01-14 11:05:28 | INFO     | models.trainers | [CLF] Client 1 | Ep 239/300 | LR: 0.0099 | TrAcc: 1.0000
+2026-01-14 11:05:43 | INFO     | models.trainers | [CLF] Client 1 | Ep 240/300 | LR: 0.0095 | TrAcc: 1.0000
+2026-01-14 11:05:58 | INFO     | models.trainers | [CLF] Client 1 | Ep 241/300 | LR: 0.0092 | TrAcc: 1.0000
+2026-01-14 11:06:14 | INFO     | models.trainers | [CLF] Client 1 | Ep 242/300 | LR: 0.0089 | TrAcc: 1.0000
+2026-01-14 11:06:29 | INFO     | models.trainers | [CLF] Client 1 | Ep 243/300 | LR: 0.0086 | TrAcc: 1.0000
+2026-01-14 11:06:44 | INFO     | models.trainers | [CLF] Client 1 | Ep 244/300 | LR: 0.0084 | TrAcc: 1.0000
+2026-01-14 11:07:00 | INFO     | models.trainers | [CLF] Client 1 | Ep 245/300 | LR: 0.0081 | TrAcc: 1.0000
+2026-01-14 11:07:15 | INFO     | models.trainers | [CLF] Client 1 | Ep 246/300 | LR: 0.0078 | TrAcc: 1.0000
+2026-01-14 11:07:31 | INFO     | models.trainers | [CLF] Client 1 | Ep 247/300 | LR: 0.0075 | TrAcc: 1.0000
+2026-01-14 11:07:46 | INFO     | models.trainers | [CLF] Client 1 | Ep 248/300 | LR: 0.0072 | TrAcc: 1.0000
+2026-01-14 11:08:01 | INFO     | models.trainers | [CLF] Client 1 | Ep 249/300 | LR: 0.0070 | TrAcc: 1.0000
+2026-01-14 11:08:17 | INFO     | models.trainers | [CLF] Client 1 | Ep 250/300 | LR: 0.0067 | TrAcc: 1.0000
+2026-01-14 11:08:32 | INFO     | models.trainers | [CLF] Client 1 | Ep 251/300 | LR: 0.0064 | TrAcc: 1.0000
+2026-01-14 11:08:48 | INFO     | models.trainers | [CLF] Client 1 | Ep 252/300 | LR: 0.0062 | TrAcc: 1.0000
+2026-01-14 11:09:03 | INFO     | models.trainers | [CLF] Client 1 | Ep 253/300 | LR: 0.0059 | TrAcc: 1.0000
+2026-01-14 11:09:18 | INFO     | models.trainers | [CLF] Client 1 | Ep 254/300 | LR: 0.0057 | TrAcc: 1.0000
+2026-01-14 11:09:34 | INFO     | models.trainers | [CLF] Client 1 | Ep 255/300 | LR: 0.0054 | TrAcc: 1.0000
+2026-01-14 11:09:49 | INFO     | models.trainers | [CLF] Client 1 | Ep 256/300 | LR: 0.0052 | TrAcc: 1.0000
+2026-01-14 11:10:05 | INFO     | models.trainers | [CLF] Client 1 | Ep 257/300 | LR: 0.0050 | TrAcc: 1.0000
+2026-01-14 11:10:20 | INFO     | models.trainers | [CLF] Client 1 | Ep 258/300 | LR: 0.0048 | TrAcc: 1.0000
+2026-01-14 11:10:35 | INFO     | models.trainers | [CLF] Client 1 | Ep 259/300 | LR: 0.0045 | TrAcc: 1.0000
+2026-01-14 11:10:51 | INFO     | models.trainers | [CLF] Client 1 | Ep 260/300 | LR: 0.0043 | TrAcc: 1.0000
+2026-01-14 11:11:06 | INFO     | models.trainers | [CLF] Client 1 | Ep 261/300 | LR: 0.0041 | TrAcc: 1.0000
+2026-01-14 11:11:22 | INFO     | models.trainers | [CLF] Client 1 | Ep 262/300 | LR: 0.0039 | TrAcc: 1.0000
+2026-01-14 11:11:37 | INFO     | models.trainers | [CLF] Client 1 | Ep 263/300 | LR: 0.0037 | TrAcc: 1.0000
+2026-01-14 11:11:52 | INFO     | models.trainers | [CLF] Client 1 | Ep 264/300 | LR: 0.0035 | TrAcc: 1.0000
+2026-01-14 11:12:08 | INFO     | models.trainers | [CLF] Client 1 | Ep 265/300 | LR: 0.0033 | TrAcc: 1.0000
+2026-01-14 11:12:23 | INFO     | models.trainers | [CLF] Client 1 | Ep 266/300 | LR: 0.0031 | TrAcc: 1.0000
+2026-01-14 11:12:38 | INFO     | models.trainers | [CLF] Client 1 | Ep 267/300 | LR: 0.0030 | TrAcc: 1.0000
+2026-01-14 11:12:54 | INFO     | models.trainers | [CLF] Client 1 | Ep 268/300 | LR: 0.0028 | TrAcc: 1.0000
+2026-01-14 11:13:09 | INFO     | models.trainers | [CLF] Client 1 | Ep 269/300 | LR: 0.0026 | TrAcc: 1.0000
+2026-01-14 11:13:25 | INFO     | models.trainers | [CLF] Client 1 | Ep 270/300 | LR: 0.0024 | TrAcc: 1.0000
+2026-01-14 11:13:40 | INFO     | models.trainers | [CLF] Client 1 | Ep 271/300 | LR: 0.0023 | TrAcc: 1.0000
+2026-01-14 11:13:55 | INFO     | models.trainers | [CLF] Client 1 | Ep 272/300 | LR: 0.0021 | TrAcc: 1.0000
+2026-01-14 11:14:11 | INFO     | models.trainers | [CLF] Client 1 | Ep 273/300 | LR: 0.0020 | TrAcc: 1.0000
+2026-01-14 11:14:26 | INFO     | models.trainers | [CLF] Client 1 | Ep 274/300 | LR: 0.0018 | TrAcc: 1.0000
+2026-01-14 11:14:42 | INFO     | models.trainers | [CLF] Client 1 | Ep 275/300 | LR: 0.0017 | TrAcc: 0.9999
+2026-01-14 11:14:57 | INFO     | models.trainers | [CLF] Client 1 | Ep 276/300 | LR: 0.0016 | TrAcc: 1.0000
+2026-01-14 11:15:12 | INFO     | models.trainers | [CLF] Client 1 | Ep 277/300 | LR: 0.0014 | TrAcc: 1.0000
+2026-01-14 11:15:28 | INFO     | models.trainers | [CLF] Client 1 | Ep 278/300 | LR: 0.0013 | TrAcc: 1.0000
+2026-01-14 11:15:43 | INFO     | models.trainers | [CLF] Client 1 | Ep 279/300 | LR: 0.0012 | TrAcc: 1.0000
+2026-01-14 11:15:59 | INFO     | models.trainers | [CLF] Client 1 | Ep 280/300 | LR: 0.0011 | TrAcc: 1.0000
+2026-01-14 11:16:14 | INFO     | models.trainers | [CLF] Client 1 | Ep 281/300 | LR: 0.0010 | TrAcc: 1.0000
+2026-01-14 11:16:29 | INFO     | models.trainers | [CLF] Client 1 | Ep 282/300 | LR: 0.0009 | TrAcc: 1.0000
+2026-01-14 11:16:45 | INFO     | models.trainers | [CLF] Client 1 | Ep 283/300 | LR: 0.0008 | TrAcc: 1.0000
+2026-01-14 11:17:00 | INFO     | models.trainers | [CLF] Client 1 | Ep 284/300 | LR: 0.0007 | TrAcc: 1.0000
+2026-01-14 11:17:16 | INFO     | models.trainers | [CLF] Client 1 | Ep 285/300 | LR: 0.0006 | TrAcc: 1.0000
+2026-01-14 11:17:31 | INFO     | models.trainers | [CLF] Client 1 | Ep 286/300 | LR: 0.0005 | TrAcc: 1.0000
+2026-01-14 11:17:46 | INFO     | models.trainers | [CLF] Client 1 | Ep 287/300 | LR: 0.0005 | TrAcc: 1.0000
+2026-01-14 11:18:02 | INFO     | models.trainers | [CLF] Client 1 | Ep 288/300 | LR: 0.0004 | TrAcc: 1.0000
+2026-01-14 11:18:17 | INFO     | models.trainers | [CLF] Client 1 | Ep 289/300 | LR: 0.0003 | TrAcc: 1.0000
+2026-01-14 11:18:33 | INFO     | models.trainers | [CLF] Client 1 | Ep 290/300 | LR: 0.0003 | TrAcc: 1.0000
+2026-01-14 11:18:48 | INFO     | models.trainers | [CLF] Client 1 | Ep 291/300 | LR: 0.0002 | TrAcc: 1.0000
+2026-01-14 11:19:03 | INFO     | models.trainers | [CLF] Client 1 | Ep 292/300 | LR: 0.0002 | TrAcc: 1.0000
+2026-01-14 11:19:19 | INFO     | models.trainers | [CLF] Client 1 | Ep 293/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 11:19:34 | INFO     | models.trainers | [CLF] Client 1 | Ep 294/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 11:19:49 | INFO     | models.trainers | [CLF] Client 1 | Ep 295/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 11:20:05 | INFO     | models.trainers | [CLF] Client 1 | Ep 296/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 11:20:20 | INFO     | models.trainers | [CLF] Client 1 | Ep 297/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 11:20:36 | INFO     | models.trainers | [CLF] Client 1 | Ep 298/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 11:20:51 | INFO     | models.trainers | [CLF] Client 1 | Ep 299/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 11:21:08 | INFO     | models.trainers | [CLF] Client 1 | Ep 300/300 | LR: 0.0000 | TrAcc: 1.0000 | ValAcc: 0.9971
+2026-01-14 11:21:09 | INFO     | jobs.classifier_phase | [SILOS-LOCAL] Preparing Client 2 (Class 2)...
+2026-01-14 11:21:09 | INFO     | jobs.classifier_phase |   Generating 10000 synthetic images from 4 external models...
+Client 2 Synth Gen:   0%|          | 0/4 [00:00<?, ?it/s]Client 2 Synth Gen:  50%|█████     | 2/4 [00:00<00:00, 13.54it/s]Client 2 Synth Gen: 100%|██████████| 4/4 [00:00<00:00, 13.65it/s]Client 2 Synth Gen: 100%|██████████| 4/4 [00:00<00:00, 13.62it/s]
+2026-01-14 11:21:27 | INFO     | models.trainers | [CLF] Client 2 | Ep 1/300 | LR: 0.1000 | TrAcc: 0.3284
+2026-01-14 11:21:42 | INFO     | models.trainers | [CLF] Client 2 | Ep 2/300 | LR: 0.1000 | TrAcc: 0.4563
+2026-01-14 11:21:58 | INFO     | models.trainers | [CLF] Client 2 | Ep 3/300 | LR: 0.1000 | TrAcc: 0.5611
+2026-01-14 11:22:13 | INFO     | models.trainers | [CLF] Client 2 | Ep 4/300 | LR: 0.1000 | TrAcc: 0.5894
+2026-01-14 11:22:29 | INFO     | models.trainers | [CLF] Client 2 | Ep 5/300 | LR: 0.0999 | TrAcc: 0.6435
+2026-01-14 11:22:44 | INFO     | models.trainers | [CLF] Client 2 | Ep 6/300 | LR: 0.0999 | TrAcc: 0.7051
+2026-01-14 11:22:59 | INFO     | models.trainers | [CLF] Client 2 | Ep 7/300 | LR: 0.0999 | TrAcc: 0.7522
+2026-01-14 11:23:15 | INFO     | models.trainers | [CLF] Client 2 | Ep 8/300 | LR: 0.0998 | TrAcc: 0.7963
+2026-01-14 11:23:30 | INFO     | models.trainers | [CLF] Client 2 | Ep 9/300 | LR: 0.0998 | TrAcc: 0.8367
+2026-01-14 11:23:46 | INFO     | models.trainers | [CLF] Client 2 | Ep 10/300 | LR: 0.0997 | TrAcc: 0.8748
+2026-01-14 11:24:01 | INFO     | models.trainers | [CLF] Client 2 | Ep 11/300 | LR: 0.0997 | TrAcc: 0.9050
+2026-01-14 11:24:17 | INFO     | models.trainers | [CLF] Client 2 | Ep 12/300 | LR: 0.0996 | TrAcc: 0.9280
+2026-01-14 11:24:32 | INFO     | models.trainers | [CLF] Client 2 | Ep 13/300 | LR: 0.0995 | TrAcc: 0.9366
+2026-01-14 11:24:47 | INFO     | models.trainers | [CLF] Client 2 | Ep 14/300 | LR: 0.0995 | TrAcc: 0.9465
+2026-01-14 11:25:03 | INFO     | models.trainers | [CLF] Client 2 | Ep 15/300 | LR: 0.0994 | TrAcc: 0.9615
+2026-01-14 11:25:18 | INFO     | models.trainers | [CLF] Client 2 | Ep 16/300 | LR: 0.0993 | TrAcc: 0.9691
+2026-01-14 11:25:34 | INFO     | models.trainers | [CLF] Client 2 | Ep 17/300 | LR: 0.0992 | TrAcc: 0.9719
+2026-01-14 11:25:49 | INFO     | models.trainers | [CLF] Client 2 | Ep 18/300 | LR: 0.0991 | TrAcc: 0.9773
+2026-01-14 11:26:05 | INFO     | models.trainers | [CLF] Client 2 | Ep 19/300 | LR: 0.0990 | TrAcc: 0.9751
+2026-01-14 11:26:20 | INFO     | models.trainers | [CLF] Client 2 | Ep 20/300 | LR: 0.0989 | TrAcc: 0.9802
+2026-01-14 11:26:35 | INFO     | models.trainers | [CLF] Client 2 | Ep 21/300 | LR: 0.0988 | TrAcc: 0.9798
+2026-01-14 11:26:51 | INFO     | models.trainers | [CLF] Client 2 | Ep 22/300 | LR: 0.0987 | TrAcc: 0.9813
+2026-01-14 11:27:06 | INFO     | models.trainers | [CLF] Client 2 | Ep 23/300 | LR: 0.0986 | TrAcc: 0.9813
+2026-01-14 11:27:22 | INFO     | models.trainers | [CLF] Client 2 | Ep 24/300 | LR: 0.0984 | TrAcc: 0.9814
+2026-01-14 11:27:37 | INFO     | models.trainers | [CLF] Client 2 | Ep 25/300 | LR: 0.0983 | TrAcc: 0.9855
+2026-01-14 11:27:53 | INFO     | models.trainers | [CLF] Client 2 | Ep 26/300 | LR: 0.0982 | TrAcc: 0.9863
+2026-01-14 11:28:08 | INFO     | models.trainers | [CLF] Client 2 | Ep 27/300 | LR: 0.0980 | TrAcc: 0.9868
+2026-01-14 11:28:24 | INFO     | models.trainers | [CLF] Client 2 | Ep 28/300 | LR: 0.0979 | TrAcc: 0.9861
+2026-01-14 11:28:39 | INFO     | models.trainers | [CLF] Client 2 | Ep 29/300 | LR: 0.0977 | TrAcc: 0.9885
+2026-01-14 11:28:55 | INFO     | models.trainers | [CLF] Client 2 | Ep 30/300 | LR: 0.0976 | TrAcc: 0.9876
+2026-01-14 11:29:10 | INFO     | models.trainers | [CLF] Client 2 | Ep 31/300 | LR: 0.0974 | TrAcc: 0.9896
+2026-01-14 11:29:25 | INFO     | models.trainers | [CLF] Client 2 | Ep 32/300 | LR: 0.0972 | TrAcc: 0.9894
+2026-01-14 11:29:41 | INFO     | models.trainers | [CLF] Client 2 | Ep 33/300 | LR: 0.0970 | TrAcc: 0.9861
+2026-01-14 11:29:56 | INFO     | models.trainers | [CLF] Client 2 | Ep 34/300 | LR: 0.0969 | TrAcc: 0.9891
+2026-01-14 11:30:12 | INFO     | models.trainers | [CLF] Client 2 | Ep 35/300 | LR: 0.0967 | TrAcc: 0.9898
+2026-01-14 11:30:27 | INFO     | models.trainers | [CLF] Client 2 | Ep 36/300 | LR: 0.0965 | TrAcc: 0.9915
+2026-01-14 11:30:42 | INFO     | models.trainers | [CLF] Client 2 | Ep 37/300 | LR: 0.0963 | TrAcc: 0.9913
+2026-01-14 11:30:58 | INFO     | models.trainers | [CLF] Client 2 | Ep 38/300 | LR: 0.0961 | TrAcc: 0.9907
+2026-01-14 11:31:13 | INFO     | models.trainers | [CLF] Client 2 | Ep 39/300 | LR: 0.0959 | TrAcc: 0.9869
+2026-01-14 11:31:29 | INFO     | models.trainers | [CLF] Client 2 | Ep 40/300 | LR: 0.0957 | TrAcc: 0.9924
+2026-01-14 11:31:44 | INFO     | models.trainers | [CLF] Client 2 | Ep 41/300 | LR: 0.0955 | TrAcc: 0.9902
+2026-01-14 11:32:00 | INFO     | models.trainers | [CLF] Client 2 | Ep 42/300 | LR: 0.0952 | TrAcc: 0.9925
+2026-01-14 11:32:15 | INFO     | models.trainers | [CLF] Client 2 | Ep 43/300 | LR: 0.0950 | TrAcc: 0.9921
+2026-01-14 11:32:31 | INFO     | models.trainers | [CLF] Client 2 | Ep 44/300 | LR: 0.0948 | TrAcc: 0.9911
+2026-01-14 11:32:46 | INFO     | models.trainers | [CLF] Client 2 | Ep 45/300 | LR: 0.0946 | TrAcc: 0.9911
+2026-01-14 11:33:02 | INFO     | models.trainers | [CLF] Client 2 | Ep 46/300 | LR: 0.0943 | TrAcc: 0.9906
+2026-01-14 11:33:17 | INFO     | models.trainers | [CLF] Client 2 | Ep 47/300 | LR: 0.0941 | TrAcc: 0.9914
+2026-01-14 11:33:32 | INFO     | models.trainers | [CLF] Client 2 | Ep 48/300 | LR: 0.0938 | TrAcc: 0.9888
+2026-01-14 11:33:48 | INFO     | models.trainers | [CLF] Client 2 | Ep 49/300 | LR: 0.0936 | TrAcc: 0.9915
+2026-01-14 11:34:03 | INFO     | models.trainers | [CLF] Client 2 | Ep 50/300 | LR: 0.0933 | TrAcc: 0.9915
+2026-01-14 11:34:19 | INFO     | models.trainers | [CLF] Client 2 | Ep 51/300 | LR: 0.0930 | TrAcc: 0.9930
+2026-01-14 11:34:34 | INFO     | models.trainers | [CLF] Client 2 | Ep 52/300 | LR: 0.0928 | TrAcc: 0.9940
+2026-01-14 11:34:50 | INFO     | models.trainers | [CLF] Client 2 | Ep 53/300 | LR: 0.0925 | TrAcc: 0.9933
+2026-01-14 11:35:05 | INFO     | models.trainers | [CLF] Client 2 | Ep 54/300 | LR: 0.0922 | TrAcc: 0.9933
+2026-01-14 11:35:20 | INFO     | models.trainers | [CLF] Client 2 | Ep 55/300 | LR: 0.0919 | TrAcc: 0.9936
+2026-01-14 11:35:36 | INFO     | models.trainers | [CLF] Client 2 | Ep 56/300 | LR: 0.0916 | TrAcc: 0.9917
+2026-01-14 11:35:51 | INFO     | models.trainers | [CLF] Client 2 | Ep 57/300 | LR: 0.0914 | TrAcc: 0.9922
+2026-01-14 11:36:07 | INFO     | models.trainers | [CLF] Client 2 | Ep 58/300 | LR: 0.0911 | TrAcc: 0.9894
+2026-01-14 11:36:22 | INFO     | models.trainers | [CLF] Client 2 | Ep 59/300 | LR: 0.0908 | TrAcc: 0.9911
+2026-01-14 11:36:38 | INFO     | models.trainers | [CLF] Client 2 | Ep 60/300 | LR: 0.0905 | TrAcc: 0.9945
+2026-01-14 11:36:53 | INFO     | models.trainers | [CLF] Client 2 | Ep 61/300 | LR: 0.0901 | TrAcc: 0.9939
+2026-01-14 11:37:09 | INFO     | models.trainers | [CLF] Client 2 | Ep 62/300 | LR: 0.0898 | TrAcc: 0.9919
+2026-01-14 11:37:24 | INFO     | models.trainers | [CLF] Client 2 | Ep 63/300 | LR: 0.0895 | TrAcc: 0.9955
+2026-01-14 11:37:39 | INFO     | models.trainers | [CLF] Client 2 | Ep 64/300 | LR: 0.0892 | TrAcc: 0.9910
+2026-01-14 11:37:55 | INFO     | models.trainers | [CLF] Client 2 | Ep 65/300 | LR: 0.0889 | TrAcc: 0.9932
+2026-01-14 11:38:10 | INFO     | models.trainers | [CLF] Client 2 | Ep 66/300 | LR: 0.0885 | TrAcc: 0.9924
+2026-01-14 11:38:26 | INFO     | models.trainers | [CLF] Client 2 | Ep 67/300 | LR: 0.0882 | TrAcc: 0.9895
+2026-01-14 11:38:41 | INFO     | models.trainers | [CLF] Client 2 | Ep 68/300 | LR: 0.0878 | TrAcc: 0.9951
+2026-01-14 11:38:57 | INFO     | models.trainers | [CLF] Client 2 | Ep 69/300 | LR: 0.0875 | TrAcc: 0.9939
+2026-01-14 11:39:12 | INFO     | models.trainers | [CLF] Client 2 | Ep 70/300 | LR: 0.0872 | TrAcc: 0.9917
+2026-01-14 11:39:27 | INFO     | models.trainers | [CLF] Client 2 | Ep 71/300 | LR: 0.0868 | TrAcc: 0.9924
+2026-01-14 11:39:43 | INFO     | models.trainers | [CLF] Client 2 | Ep 72/300 | LR: 0.0864 | TrAcc: 0.9939
+2026-01-14 11:39:58 | INFO     | models.trainers | [CLF] Client 2 | Ep 73/300 | LR: 0.0861 | TrAcc: 0.9918
+2026-01-14 11:40:14 | INFO     | models.trainers | [CLF] Client 2 | Ep 74/300 | LR: 0.0857 | TrAcc: 0.9951
+2026-01-14 11:40:29 | INFO     | models.trainers | [CLF] Client 2 | Ep 75/300 | LR: 0.0854 | TrAcc: 0.9957
+2026-01-14 11:40:45 | INFO     | models.trainers | [CLF] Client 2 | Ep 76/300 | LR: 0.0850 | TrAcc: 0.9950
+2026-01-14 11:41:00 | INFO     | models.trainers | [CLF] Client 2 | Ep 77/300 | LR: 0.0846 | TrAcc: 0.9947
+2026-01-14 11:41:16 | INFO     | models.trainers | [CLF] Client 2 | Ep 78/300 | LR: 0.0842 | TrAcc: 0.9958
+2026-01-14 11:41:31 | INFO     | models.trainers | [CLF] Client 2 | Ep 79/300 | LR: 0.0838 | TrAcc: 0.9938
+2026-01-14 11:41:46 | INFO     | models.trainers | [CLF] Client 2 | Ep 80/300 | LR: 0.0835 | TrAcc: 0.9936
+2026-01-14 11:42:02 | INFO     | models.trainers | [CLF] Client 2 | Ep 81/300 | LR: 0.0831 | TrAcc: 0.9938
+2026-01-14 11:42:17 | INFO     | models.trainers | [CLF] Client 2 | Ep 82/300 | LR: 0.0827 | TrAcc: 0.9918
+2026-01-14 11:42:33 | INFO     | models.trainers | [CLF] Client 2 | Ep 83/300 | LR: 0.0823 | TrAcc: 0.9957
+2026-01-14 11:42:48 | INFO     | models.trainers | [CLF] Client 2 | Ep 84/300 | LR: 0.0819 | TrAcc: 0.9955
+2026-01-14 11:43:03 | INFO     | models.trainers | [CLF] Client 2 | Ep 85/300 | LR: 0.0815 | TrAcc: 0.9958
+2026-01-14 11:43:19 | INFO     | models.trainers | [CLF] Client 2 | Ep 86/300 | LR: 0.0811 | TrAcc: 0.9963
+2026-01-14 11:43:34 | INFO     | models.trainers | [CLF] Client 2 | Ep 87/300 | LR: 0.0806 | TrAcc: 0.9963
+2026-01-14 11:43:50 | INFO     | models.trainers | [CLF] Client 2 | Ep 88/300 | LR: 0.0802 | TrAcc: 0.9940
+2026-01-14 11:44:05 | INFO     | models.trainers | [CLF] Client 2 | Ep 89/300 | LR: 0.0798 | TrAcc: 0.9933
+2026-01-14 11:44:21 | INFO     | models.trainers | [CLF] Client 2 | Ep 90/300 | LR: 0.0794 | TrAcc: 0.9976
+2026-01-14 11:44:36 | INFO     | models.trainers | [CLF] Client 2 | Ep 91/300 | LR: 0.0790 | TrAcc: 0.9973
+2026-01-14 11:44:51 | INFO     | models.trainers | [CLF] Client 2 | Ep 92/300 | LR: 0.0785 | TrAcc: 0.9926
+2026-01-14 11:45:07 | INFO     | models.trainers | [CLF] Client 2 | Ep 93/300 | LR: 0.0781 | TrAcc: 0.9935
+2026-01-14 11:45:22 | INFO     | models.trainers | [CLF] Client 2 | Ep 94/300 | LR: 0.0777 | TrAcc: 0.9952
+2026-01-14 11:45:38 | INFO     | models.trainers | [CLF] Client 2 | Ep 95/300 | LR: 0.0772 | TrAcc: 0.9971
+2026-01-14 11:45:53 | INFO     | models.trainers | [CLF] Client 2 | Ep 96/300 | LR: 0.0768 | TrAcc: 0.9944
+2026-01-14 11:46:09 | INFO     | models.trainers | [CLF] Client 2 | Ep 97/300 | LR: 0.0763 | TrAcc: 0.9914
+2026-01-14 11:46:24 | INFO     | models.trainers | [CLF] Client 2 | Ep 98/300 | LR: 0.0759 | TrAcc: 0.9958
+2026-01-14 11:46:40 | INFO     | models.trainers | [CLF] Client 2 | Ep 99/300 | LR: 0.0755 | TrAcc: 0.9950
+2026-01-14 11:46:55 | INFO     | models.trainers | [CLF] Client 2 | Ep 100/300 | LR: 0.0750 | TrAcc: 0.9963
+2026-01-14 11:47:10 | INFO     | models.trainers | [CLF] Client 2 | Ep 101/300 | LR: 0.0745 | TrAcc: 0.9960
+2026-01-14 11:47:26 | INFO     | models.trainers | [CLF] Client 2 | Ep 102/300 | LR: 0.0741 | TrAcc: 0.9942
+2026-01-14 11:47:41 | INFO     | models.trainers | [CLF] Client 2 | Ep 103/300 | LR: 0.0736 | TrAcc: 0.9956
+2026-01-14 11:47:57 | INFO     | models.trainers | [CLF] Client 2 | Ep 104/300 | LR: 0.0732 | TrAcc: 0.9937
+2026-01-14 11:48:12 | INFO     | models.trainers | [CLF] Client 2 | Ep 105/300 | LR: 0.0727 | TrAcc: 0.9949
+2026-01-14 11:48:28 | INFO     | models.trainers | [CLF] Client 2 | Ep 106/300 | LR: 0.0722 | TrAcc: 0.9975
+2026-01-14 11:48:43 | INFO     | models.trainers | [CLF] Client 2 | Ep 107/300 | LR: 0.0718 | TrAcc: 0.9971
+2026-01-14 11:48:58 | INFO     | models.trainers | [CLF] Client 2 | Ep 108/300 | LR: 0.0713 | TrAcc: 0.9957
+2026-01-14 11:49:14 | INFO     | models.trainers | [CLF] Client 2 | Ep 109/300 | LR: 0.0708 | TrAcc: 0.9969
+2026-01-14 11:49:29 | INFO     | models.trainers | [CLF] Client 2 | Ep 110/300 | LR: 0.0703 | TrAcc: 0.9985
+2026-01-14 11:49:45 | INFO     | models.trainers | [CLF] Client 2 | Ep 111/300 | LR: 0.0699 | TrAcc: 0.9963
+2026-01-14 11:50:00 | INFO     | models.trainers | [CLF] Client 2 | Ep 112/300 | LR: 0.0694 | TrAcc: 0.9952
+2026-01-14 11:50:16 | INFO     | models.trainers | [CLF] Client 2 | Ep 113/300 | LR: 0.0689 | TrAcc: 0.9939
+2026-01-14 11:50:31 | INFO     | models.trainers | [CLF] Client 2 | Ep 114/300 | LR: 0.0684 | TrAcc: 0.9965
+2026-01-14 11:50:47 | INFO     | models.trainers | [CLF] Client 2 | Ep 115/300 | LR: 0.0679 | TrAcc: 0.9976
+2026-01-14 11:51:02 | INFO     | models.trainers | [CLF] Client 2 | Ep 116/300 | LR: 0.0674 | TrAcc: 0.9916
+2026-01-14 11:51:17 | INFO     | models.trainers | [CLF] Client 2 | Ep 117/300 | LR: 0.0669 | TrAcc: 0.9973
+2026-01-14 11:51:33 | INFO     | models.trainers | [CLF] Client 2 | Ep 118/300 | LR: 0.0664 | TrAcc: 0.9970
+2026-01-14 11:51:48 | INFO     | models.trainers | [CLF] Client 2 | Ep 119/300 | LR: 0.0659 | TrAcc: 0.9980
+2026-01-14 11:52:04 | INFO     | models.trainers | [CLF] Client 2 | Ep 120/300 | LR: 0.0655 | TrAcc: 0.9982
+2026-01-14 11:52:19 | INFO     | models.trainers | [CLF] Client 2 | Ep 121/300 | LR: 0.0650 | TrAcc: 0.9968
+2026-01-14 11:52:35 | INFO     | models.trainers | [CLF] Client 2 | Ep 122/300 | LR: 0.0645 | TrAcc: 0.9973
+2026-01-14 11:52:50 | INFO     | models.trainers | [CLF] Client 2 | Ep 123/300 | LR: 0.0639 | TrAcc: 0.9961
+2026-01-14 11:53:05 | INFO     | models.trainers | [CLF] Client 2 | Ep 124/300 | LR: 0.0634 | TrAcc: 0.9947
+2026-01-14 11:53:21 | INFO     | models.trainers | [CLF] Client 2 | Ep 125/300 | LR: 0.0629 | TrAcc: 0.9950
+2026-01-14 11:53:36 | INFO     | models.trainers | [CLF] Client 2 | Ep 126/300 | LR: 0.0624 | TrAcc: 0.9927
+2026-01-14 11:53:52 | INFO     | models.trainers | [CLF] Client 2 | Ep 127/300 | LR: 0.0619 | TrAcc: 0.9977
+2026-01-14 11:54:07 | INFO     | models.trainers | [CLF] Client 2 | Ep 128/300 | LR: 0.0614 | TrAcc: 0.9980
+2026-01-14 11:54:23 | INFO     | models.trainers | [CLF] Client 2 | Ep 129/300 | LR: 0.0609 | TrAcc: 0.9942
+2026-01-14 11:54:38 | INFO     | models.trainers | [CLF] Client 2 | Ep 130/300 | LR: 0.0604 | TrAcc: 0.9986
+2026-01-14 11:54:54 | INFO     | models.trainers | [CLF] Client 2 | Ep 131/300 | LR: 0.0599 | TrAcc: 0.9990
+2026-01-14 11:55:09 | INFO     | models.trainers | [CLF] Client 2 | Ep 132/300 | LR: 0.0594 | TrAcc: 0.9978
+2026-01-14 11:55:24 | INFO     | models.trainers | [CLF] Client 2 | Ep 133/300 | LR: 0.0589 | TrAcc: 0.9972
+2026-01-14 11:55:40 | INFO     | models.trainers | [CLF] Client 2 | Ep 134/300 | LR: 0.0583 | TrAcc: 0.9980
+2026-01-14 11:55:55 | INFO     | models.trainers | [CLF] Client 2 | Ep 135/300 | LR: 0.0578 | TrAcc: 0.9987
+2026-01-14 11:56:11 | INFO     | models.trainers | [CLF] Client 2 | Ep 136/300 | LR: 0.0573 | TrAcc: 0.9912
+2026-01-14 11:56:26 | INFO     | models.trainers | [CLF] Client 2 | Ep 137/300 | LR: 0.0568 | TrAcc: 0.9980
+2026-01-14 11:56:42 | INFO     | models.trainers | [CLF] Client 2 | Ep 138/300 | LR: 0.0563 | TrAcc: 0.9984
+2026-01-14 11:56:57 | INFO     | models.trainers | [CLF] Client 2 | Ep 139/300 | LR: 0.0557 | TrAcc: 0.9982
+2026-01-14 11:57:12 | INFO     | models.trainers | [CLF] Client 2 | Ep 140/300 | LR: 0.0552 | TrAcc: 0.9991
+2026-01-14 11:57:28 | INFO     | models.trainers | [CLF] Client 2 | Ep 141/300 | LR: 0.0547 | TrAcc: 0.9974
+2026-01-14 11:57:43 | INFO     | models.trainers | [CLF] Client 2 | Ep 142/300 | LR: 0.0542 | TrAcc: 0.9982
+2026-01-14 11:57:59 | INFO     | models.trainers | [CLF] Client 2 | Ep 143/300 | LR: 0.0537 | TrAcc: 0.9984
+2026-01-14 11:58:14 | INFO     | models.trainers | [CLF] Client 2 | Ep 144/300 | LR: 0.0531 | TrAcc: 0.9983
+2026-01-14 11:58:30 | INFO     | models.trainers | [CLF] Client 2 | Ep 145/300 | LR: 0.0526 | TrAcc: 0.9959
+2026-01-14 11:58:45 | INFO     | models.trainers | [CLF] Client 2 | Ep 146/300 | LR: 0.0521 | TrAcc: 0.9975
+2026-01-14 11:59:00 | INFO     | models.trainers | [CLF] Client 2 | Ep 147/300 | LR: 0.0516 | TrAcc: 0.9984
+2026-01-14 11:59:16 | INFO     | models.trainers | [CLF] Client 2 | Ep 148/300 | LR: 0.0510 | TrAcc: 0.9980
+2026-01-14 11:59:31 | INFO     | models.trainers | [CLF] Client 2 | Ep 149/300 | LR: 0.0505 | TrAcc: 0.9983
+2026-01-14 11:59:47 | INFO     | models.trainers | [CLF] Client 2 | Ep 150/300 | LR: 0.0500 | TrAcc: 0.9983
+2026-01-14 12:00:02 | INFO     | models.trainers | [CLF] Client 2 | Ep 151/300 | LR: 0.0495 | TrAcc: 0.9968
+2026-01-14 12:00:18 | INFO     | models.trainers | [CLF] Client 2 | Ep 152/300 | LR: 0.0490 | TrAcc: 0.9919
+2026-01-14 12:00:33 | INFO     | models.trainers | [CLF] Client 2 | Ep 153/300 | LR: 0.0484 | TrAcc: 0.9987
+2026-01-14 12:00:49 | INFO     | models.trainers | [CLF] Client 2 | Ep 154/300 | LR: 0.0479 | TrAcc: 0.9981
+2026-01-14 12:01:04 | INFO     | models.trainers | [CLF] Client 2 | Ep 155/300 | LR: 0.0474 | TrAcc: 0.9992
+2026-01-14 12:01:19 | INFO     | models.trainers | [CLF] Client 2 | Ep 156/300 | LR: 0.0469 | TrAcc: 0.9989
+2026-01-14 12:01:35 | INFO     | models.trainers | [CLF] Client 2 | Ep 157/300 | LR: 0.0463 | TrAcc: 0.9991
+2026-01-14 12:01:50 | INFO     | models.trainers | [CLF] Client 2 | Ep 158/300 | LR: 0.0458 | TrAcc: 0.9998
+2026-01-14 12:02:06 | INFO     | models.trainers | [CLF] Client 2 | Ep 159/300 | LR: 0.0453 | TrAcc: 0.9995
+2026-01-14 12:02:21 | INFO     | models.trainers | [CLF] Client 2 | Ep 160/300 | LR: 0.0448 | TrAcc: 0.9993
+2026-01-14 12:02:37 | INFO     | models.trainers | [CLF] Client 2 | Ep 161/300 | LR: 0.0443 | TrAcc: 0.9985
+2026-01-14 12:02:52 | INFO     | models.trainers | [CLF] Client 2 | Ep 162/300 | LR: 0.0437 | TrAcc: 0.9994
+2026-01-14 12:03:07 | INFO     | models.trainers | [CLF] Client 2 | Ep 163/300 | LR: 0.0432 | TrAcc: 0.9994
+2026-01-14 12:03:23 | INFO     | models.trainers | [CLF] Client 2 | Ep 164/300 | LR: 0.0427 | TrAcc: 0.9997
+2026-01-14 12:03:38 | INFO     | models.trainers | [CLF] Client 2 | Ep 165/300 | LR: 0.0422 | TrAcc: 1.0000
+2026-01-14 12:03:54 | INFO     | models.trainers | [CLF] Client 2 | Ep 166/300 | LR: 0.0417 | TrAcc: 0.9999
+2026-01-14 12:04:09 | INFO     | models.trainers | [CLF] Client 2 | Ep 167/300 | LR: 0.0411 | TrAcc: 0.9999
+2026-01-14 12:04:25 | INFO     | models.trainers | [CLF] Client 2 | Ep 168/300 | LR: 0.0406 | TrAcc: 0.9994
+2026-01-14 12:04:40 | INFO     | models.trainers | [CLF] Client 2 | Ep 169/300 | LR: 0.0401 | TrAcc: 0.9991
+2026-01-14 12:04:55 | INFO     | models.trainers | [CLF] Client 2 | Ep 170/300 | LR: 0.0396 | TrAcc: 0.9993
+2026-01-14 12:05:11 | INFO     | models.trainers | [CLF] Client 2 | Ep 171/300 | LR: 0.0391 | TrAcc: 0.9979
+2026-01-14 12:05:26 | INFO     | models.trainers | [CLF] Client 2 | Ep 172/300 | LR: 0.0386 | TrAcc: 0.9995
+2026-01-14 12:05:42 | INFO     | models.trainers | [CLF] Client 2 | Ep 173/300 | LR: 0.0381 | TrAcc: 0.9985
+2026-01-14 12:05:57 | INFO     | models.trainers | [CLF] Client 2 | Ep 174/300 | LR: 0.0376 | TrAcc: 0.9992
+2026-01-14 12:06:13 | INFO     | models.trainers | [CLF] Client 2 | Ep 175/300 | LR: 0.0371 | TrAcc: 0.9993
+2026-01-14 12:06:28 | INFO     | models.trainers | [CLF] Client 2 | Ep 176/300 | LR: 0.0366 | TrAcc: 0.9991
+2026-01-14 12:06:44 | INFO     | models.trainers | [CLF] Client 2 | Ep 177/300 | LR: 0.0361 | TrAcc: 0.9979
+2026-01-14 12:06:59 | INFO     | models.trainers | [CLF] Client 2 | Ep 178/300 | LR: 0.0355 | TrAcc: 0.9969
+2026-01-14 12:07:14 | INFO     | models.trainers | [CLF] Client 2 | Ep 179/300 | LR: 0.0350 | TrAcc: 0.9989
+2026-01-14 12:07:30 | INFO     | models.trainers | [CLF] Client 2 | Ep 180/300 | LR: 0.0345 | TrAcc: 0.9991
+2026-01-14 12:07:45 | INFO     | models.trainers | [CLF] Client 2 | Ep 181/300 | LR: 0.0341 | TrAcc: 0.9994
+2026-01-14 12:08:01 | INFO     | models.trainers | [CLF] Client 2 | Ep 182/300 | LR: 0.0336 | TrAcc: 0.9999
+2026-01-14 12:08:16 | INFO     | models.trainers | [CLF] Client 2 | Ep 183/300 | LR: 0.0331 | TrAcc: 0.9996
+2026-01-14 12:08:32 | INFO     | models.trainers | [CLF] Client 2 | Ep 184/300 | LR: 0.0326 | TrAcc: 0.9993
+2026-01-14 12:08:47 | INFO     | models.trainers | [CLF] Client 2 | Ep 185/300 | LR: 0.0321 | TrAcc: 0.9998
+2026-01-14 12:09:03 | INFO     | models.trainers | [CLF] Client 2 | Ep 186/300 | LR: 0.0316 | TrAcc: 0.9999
+2026-01-14 12:09:18 | INFO     | models.trainers | [CLF] Client 2 | Ep 187/300 | LR: 0.0311 | TrAcc: 0.9998
+2026-01-14 12:09:33 | INFO     | models.trainers | [CLF] Client 2 | Ep 188/300 | LR: 0.0306 | TrAcc: 0.9999
+2026-01-14 12:09:49 | INFO     | models.trainers | [CLF] Client 2 | Ep 189/300 | LR: 0.0301 | TrAcc: 0.9999
+2026-01-14 12:10:04 | INFO     | models.trainers | [CLF] Client 2 | Ep 190/300 | LR: 0.0297 | TrAcc: 0.9998
+2026-01-14 12:10:20 | INFO     | models.trainers | [CLF] Client 2 | Ep 191/300 | LR: 0.0292 | TrAcc: 1.0000
+2026-01-14 12:10:35 | INFO     | models.trainers | [CLF] Client 2 | Ep 192/300 | LR: 0.0287 | TrAcc: 0.9997
+2026-01-14 12:10:51 | INFO     | models.trainers | [CLF] Client 2 | Ep 193/300 | LR: 0.0282 | TrAcc: 0.9998
+2026-01-14 12:11:06 | INFO     | models.trainers | [CLF] Client 2 | Ep 194/300 | LR: 0.0278 | TrAcc: 0.9999
+2026-01-14 12:11:21 | INFO     | models.trainers | [CLF] Client 2 | Ep 195/300 | LR: 0.0273 | TrAcc: 1.0000
+2026-01-14 12:11:37 | INFO     | models.trainers | [CLF] Client 2 | Ep 196/300 | LR: 0.0268 | TrAcc: 0.9999
+2026-01-14 12:11:52 | INFO     | models.trainers | [CLF] Client 2 | Ep 197/300 | LR: 0.0264 | TrAcc: 0.9999
+2026-01-14 12:12:08 | INFO     | models.trainers | [CLF] Client 2 | Ep 198/300 | LR: 0.0259 | TrAcc: 1.0000
+2026-01-14 12:12:23 | INFO     | models.trainers | [CLF] Client 2 | Ep 199/300 | LR: 0.0255 | TrAcc: 1.0000
+2026-01-14 12:12:39 | INFO     | models.trainers | [CLF] Client 2 | Ep 200/300 | LR: 0.0250 | TrAcc: 1.0000
+2026-01-14 12:12:54 | INFO     | models.trainers | [CLF] Client 2 | Ep 201/300 | LR: 0.0245 | TrAcc: 1.0000
+2026-01-14 12:13:10 | INFO     | models.trainers | [CLF] Client 2 | Ep 202/300 | LR: 0.0241 | TrAcc: 1.0000
+2026-01-14 12:13:25 | INFO     | models.trainers | [CLF] Client 2 | Ep 203/300 | LR: 0.0237 | TrAcc: 0.9999
+2026-01-14 12:13:40 | INFO     | models.trainers | [CLF] Client 2 | Ep 204/300 | LR: 0.0232 | TrAcc: 0.9999
+2026-01-14 12:13:56 | INFO     | models.trainers | [CLF] Client 2 | Ep 205/300 | LR: 0.0228 | TrAcc: 1.0000
+2026-01-14 12:14:11 | INFO     | models.trainers | [CLF] Client 2 | Ep 206/300 | LR: 0.0223 | TrAcc: 1.0000
+2026-01-14 12:14:27 | INFO     | models.trainers | [CLF] Client 2 | Ep 207/300 | LR: 0.0219 | TrAcc: 1.0000
+2026-01-14 12:14:42 | INFO     | models.trainers | [CLF] Client 2 | Ep 208/300 | LR: 0.0215 | TrAcc: 1.0000
+2026-01-14 12:14:58 | INFO     | models.trainers | [CLF] Client 2 | Ep 209/300 | LR: 0.0210 | TrAcc: 1.0000
+2026-01-14 12:15:13 | INFO     | models.trainers | [CLF] Client 2 | Ep 210/300 | LR: 0.0206 | TrAcc: 1.0000
+2026-01-14 12:15:28 | INFO     | models.trainers | [CLF] Client 2 | Ep 211/300 | LR: 0.0202 | TrAcc: 1.0000
+2026-01-14 12:15:44 | INFO     | models.trainers | [CLF] Client 2 | Ep 212/300 | LR: 0.0198 | TrAcc: 1.0000
+2026-01-14 12:15:59 | INFO     | models.trainers | [CLF] Client 2 | Ep 213/300 | LR: 0.0194 | TrAcc: 1.0000
+2026-01-14 12:16:15 | INFO     | models.trainers | [CLF] Client 2 | Ep 214/300 | LR: 0.0189 | TrAcc: 1.0000
+2026-01-14 12:16:30 | INFO     | models.trainers | [CLF] Client 2 | Ep 215/300 | LR: 0.0185 | TrAcc: 1.0000
+2026-01-14 12:16:45 | INFO     | models.trainers | [CLF] Client 2 | Ep 216/300 | LR: 0.0181 | TrAcc: 1.0000
+2026-01-14 12:17:01 | INFO     | models.trainers | [CLF] Client 2 | Ep 217/300 | LR: 0.0177 | TrAcc: 0.9999
+2026-01-14 12:17:16 | INFO     | models.trainers | [CLF] Client 2 | Ep 218/300 | LR: 0.0173 | TrAcc: 0.9993
+2026-01-14 12:17:32 | INFO     | models.trainers | [CLF] Client 2 | Ep 219/300 | LR: 0.0169 | TrAcc: 0.9999
+2026-01-14 12:17:47 | INFO     | models.trainers | [CLF] Client 2 | Ep 220/300 | LR: 0.0165 | TrAcc: 1.0000
+2026-01-14 12:18:03 | INFO     | models.trainers | [CLF] Client 2 | Ep 221/300 | LR: 0.0162 | TrAcc: 1.0000
+2026-01-14 12:18:18 | INFO     | models.trainers | [CLF] Client 2 | Ep 222/300 | LR: 0.0158 | TrAcc: 0.9999
+2026-01-14 12:18:33 | INFO     | models.trainers | [CLF] Client 2 | Ep 223/300 | LR: 0.0154 | TrAcc: 1.0000
+2026-01-14 12:18:49 | INFO     | models.trainers | [CLF] Client 2 | Ep 224/300 | LR: 0.0150 | TrAcc: 1.0000
+2026-01-14 12:19:04 | INFO     | models.trainers | [CLF] Client 2 | Ep 225/300 | LR: 0.0146 | TrAcc: 1.0000
+2026-01-14 12:19:20 | INFO     | models.trainers | [CLF] Client 2 | Ep 226/300 | LR: 0.0143 | TrAcc: 1.0000
+2026-01-14 12:19:35 | INFO     | models.trainers | [CLF] Client 2 | Ep 227/300 | LR: 0.0139 | TrAcc: 0.9999
+2026-01-14 12:19:51 | INFO     | models.trainers | [CLF] Client 2 | Ep 228/300 | LR: 0.0136 | TrAcc: 1.0000
+2026-01-14 12:20:06 | INFO     | models.trainers | [CLF] Client 2 | Ep 229/300 | LR: 0.0132 | TrAcc: 1.0000
+2026-01-14 12:20:21 | INFO     | models.trainers | [CLF] Client 2 | Ep 230/300 | LR: 0.0128 | TrAcc: 1.0000
+2026-01-14 12:20:37 | INFO     | models.trainers | [CLF] Client 2 | Ep 231/300 | LR: 0.0125 | TrAcc: 1.0000
+2026-01-14 12:20:52 | INFO     | models.trainers | [CLF] Client 2 | Ep 232/300 | LR: 0.0122 | TrAcc: 1.0000
+2026-01-14 12:21:08 | INFO     | models.trainers | [CLF] Client 2 | Ep 233/300 | LR: 0.0118 | TrAcc: 0.9999
+2026-01-14 12:21:23 | INFO     | models.trainers | [CLF] Client 2 | Ep 234/300 | LR: 0.0115 | TrAcc: 1.0000
+2026-01-14 12:21:39 | INFO     | models.trainers | [CLF] Client 2 | Ep 235/300 | LR: 0.0111 | TrAcc: 1.0000
+2026-01-14 12:21:54 | INFO     | models.trainers | [CLF] Client 2 | Ep 236/300 | LR: 0.0108 | TrAcc: 1.0000
+2026-01-14 12:22:10 | INFO     | models.trainers | [CLF] Client 2 | Ep 237/300 | LR: 0.0105 | TrAcc: 1.0000
+2026-01-14 12:22:25 | INFO     | models.trainers | [CLF] Client 2 | Ep 238/300 | LR: 0.0102 | TrAcc: 1.0000
+2026-01-14 12:22:40 | INFO     | models.trainers | [CLF] Client 2 | Ep 239/300 | LR: 0.0099 | TrAcc: 1.0000
+2026-01-14 12:22:56 | INFO     | models.trainers | [CLF] Client 2 | Ep 240/300 | LR: 0.0095 | TrAcc: 1.0000
+2026-01-14 12:23:11 | INFO     | models.trainers | [CLF] Client 2 | Ep 241/300 | LR: 0.0092 | TrAcc: 0.9999
+2026-01-14 12:23:27 | INFO     | models.trainers | [CLF] Client 2 | Ep 242/300 | LR: 0.0089 | TrAcc: 0.9999
+2026-01-14 12:23:42 | INFO     | models.trainers | [CLF] Client 2 | Ep 243/300 | LR: 0.0086 | TrAcc: 1.0000
+2026-01-14 12:23:58 | INFO     | models.trainers | [CLF] Client 2 | Ep 244/300 | LR: 0.0084 | TrAcc: 0.9999
+2026-01-14 12:24:13 | INFO     | models.trainers | [CLF] Client 2 | Ep 245/300 | LR: 0.0081 | TrAcc: 1.0000
+2026-01-14 12:24:28 | INFO     | models.trainers | [CLF] Client 2 | Ep 246/300 | LR: 0.0078 | TrAcc: 1.0000
+2026-01-14 12:24:44 | INFO     | models.trainers | [CLF] Client 2 | Ep 247/300 | LR: 0.0075 | TrAcc: 1.0000
+2026-01-14 12:24:59 | INFO     | models.trainers | [CLF] Client 2 | Ep 248/300 | LR: 0.0072 | TrAcc: 1.0000
+2026-01-14 12:25:15 | INFO     | models.trainers | [CLF] Client 2 | Ep 249/300 | LR: 0.0070 | TrAcc: 1.0000
+2026-01-14 12:25:30 | INFO     | models.trainers | [CLF] Client 2 | Ep 250/300 | LR: 0.0067 | TrAcc: 1.0000
+2026-01-14 12:25:46 | INFO     | models.trainers | [CLF] Client 2 | Ep 251/300 | LR: 0.0064 | TrAcc: 1.0000
+2026-01-14 12:26:01 | INFO     | models.trainers | [CLF] Client 2 | Ep 252/300 | LR: 0.0062 | TrAcc: 1.0000
+2026-01-14 12:26:16 | INFO     | models.trainers | [CLF] Client 2 | Ep 253/300 | LR: 0.0059 | TrAcc: 1.0000
+2026-01-14 12:26:32 | INFO     | models.trainers | [CLF] Client 2 | Ep 254/300 | LR: 0.0057 | TrAcc: 1.0000
+2026-01-14 12:26:47 | INFO     | models.trainers | [CLF] Client 2 | Ep 255/300 | LR: 0.0054 | TrAcc: 1.0000
+2026-01-14 12:27:03 | INFO     | models.trainers | [CLF] Client 2 | Ep 256/300 | LR: 0.0052 | TrAcc: 1.0000
+2026-01-14 12:27:18 | INFO     | models.trainers | [CLF] Client 2 | Ep 257/300 | LR: 0.0050 | TrAcc: 1.0000
+2026-01-14 12:27:33 | INFO     | models.trainers | [CLF] Client 2 | Ep 258/300 | LR: 0.0048 | TrAcc: 1.0000
+2026-01-14 12:27:49 | INFO     | models.trainers | [CLF] Client 2 | Ep 259/300 | LR: 0.0045 | TrAcc: 1.0000
+2026-01-14 12:28:04 | INFO     | models.trainers | [CLF] Client 2 | Ep 260/300 | LR: 0.0043 | TrAcc: 1.0000
+2026-01-14 12:28:20 | INFO     | models.trainers | [CLF] Client 2 | Ep 261/300 | LR: 0.0041 | TrAcc: 1.0000
+2026-01-14 12:28:35 | INFO     | models.trainers | [CLF] Client 2 | Ep 262/300 | LR: 0.0039 | TrAcc: 1.0000
+2026-01-14 12:28:51 | INFO     | models.trainers | [CLF] Client 2 | Ep 263/300 | LR: 0.0037 | TrAcc: 1.0000
+2026-01-14 12:29:06 | INFO     | models.trainers | [CLF] Client 2 | Ep 264/300 | LR: 0.0035 | TrAcc: 1.0000
+2026-01-14 12:29:22 | INFO     | models.trainers | [CLF] Client 2 | Ep 265/300 | LR: 0.0033 | TrAcc: 1.0000
+2026-01-14 12:29:37 | INFO     | models.trainers | [CLF] Client 2 | Ep 266/300 | LR: 0.0031 | TrAcc: 1.0000
+2026-01-14 12:29:52 | INFO     | models.trainers | [CLF] Client 2 | Ep 267/300 | LR: 0.0030 | TrAcc: 1.0000
+2026-01-14 12:30:08 | INFO     | models.trainers | [CLF] Client 2 | Ep 268/300 | LR: 0.0028 | TrAcc: 1.0000
+2026-01-14 12:30:23 | INFO     | models.trainers | [CLF] Client 2 | Ep 269/300 | LR: 0.0026 | TrAcc: 1.0000
+2026-01-14 12:30:39 | INFO     | models.trainers | [CLF] Client 2 | Ep 270/300 | LR: 0.0024 | TrAcc: 1.0000
+2026-01-14 12:30:54 | INFO     | models.trainers | [CLF] Client 2 | Ep 271/300 | LR: 0.0023 | TrAcc: 1.0000
+2026-01-14 12:31:10 | INFO     | models.trainers | [CLF] Client 2 | Ep 272/300 | LR: 0.0021 | TrAcc: 1.0000
+2026-01-14 12:31:25 | INFO     | models.trainers | [CLF] Client 2 | Ep 273/300 | LR: 0.0020 | TrAcc: 1.0000
+2026-01-14 12:31:41 | INFO     | models.trainers | [CLF] Client 2 | Ep 274/300 | LR: 0.0018 | TrAcc: 1.0000
+2026-01-14 12:31:56 | INFO     | models.trainers | [CLF] Client 2 | Ep 275/300 | LR: 0.0017 | TrAcc: 1.0000
+2026-01-14 12:32:11 | INFO     | models.trainers | [CLF] Client 2 | Ep 276/300 | LR: 0.0016 | TrAcc: 1.0000
+2026-01-14 12:32:27 | INFO     | models.trainers | [CLF] Client 2 | Ep 277/300 | LR: 0.0014 | TrAcc: 1.0000
+2026-01-14 12:32:42 | INFO     | models.trainers | [CLF] Client 2 | Ep 278/300 | LR: 0.0013 | TrAcc: 1.0000
+2026-01-14 12:32:58 | INFO     | models.trainers | [CLF] Client 2 | Ep 279/300 | LR: 0.0012 | TrAcc: 1.0000
+2026-01-14 12:33:13 | INFO     | models.trainers | [CLF] Client 2 | Ep 280/300 | LR: 0.0011 | TrAcc: 1.0000
+2026-01-14 12:33:29 | INFO     | models.trainers | [CLF] Client 2 | Ep 281/300 | LR: 0.0010 | TrAcc: 1.0000
+2026-01-14 12:33:44 | INFO     | models.trainers | [CLF] Client 2 | Ep 282/300 | LR: 0.0009 | TrAcc: 1.0000
+2026-01-14 12:33:59 | INFO     | models.trainers | [CLF] Client 2 | Ep 283/300 | LR: 0.0008 | TrAcc: 1.0000
+2026-01-14 12:34:15 | INFO     | models.trainers | [CLF] Client 2 | Ep 284/300 | LR: 0.0007 | TrAcc: 1.0000
+2026-01-14 12:34:30 | INFO     | models.trainers | [CLF] Client 2 | Ep 285/300 | LR: 0.0006 | TrAcc: 1.0000
+2026-01-14 12:34:46 | INFO     | models.trainers | [CLF] Client 2 | Ep 286/300 | LR: 0.0005 | TrAcc: 1.0000
+2026-01-14 12:35:01 | INFO     | models.trainers | [CLF] Client 2 | Ep 287/300 | LR: 0.0005 | TrAcc: 1.0000
+2026-01-14 12:35:17 | INFO     | models.trainers | [CLF] Client 2 | Ep 288/300 | LR: 0.0004 | TrAcc: 1.0000
+2026-01-14 12:35:32 | INFO     | models.trainers | [CLF] Client 2 | Ep 289/300 | LR: 0.0003 | TrAcc: 1.0000
+2026-01-14 12:35:48 | INFO     | models.trainers | [CLF] Client 2 | Ep 290/300 | LR: 0.0003 | TrAcc: 1.0000
+2026-01-14 12:36:03 | INFO     | models.trainers | [CLF] Client 2 | Ep 291/300 | LR: 0.0002 | TrAcc: 1.0000
+2026-01-14 12:36:19 | INFO     | models.trainers | [CLF] Client 2 | Ep 292/300 | LR: 0.0002 | TrAcc: 1.0000
+2026-01-14 12:36:34 | INFO     | models.trainers | [CLF] Client 2 | Ep 293/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 12:36:49 | INFO     | models.trainers | [CLF] Client 2 | Ep 294/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 12:37:05 | INFO     | models.trainers | [CLF] Client 2 | Ep 295/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 12:37:20 | INFO     | models.trainers | [CLF] Client 2 | Ep 296/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 12:37:36 | INFO     | models.trainers | [CLF] Client 2 | Ep 297/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 12:37:51 | INFO     | models.trainers | [CLF] Client 2 | Ep 298/300 | LR: 0.0000 | TrAcc: 0.9999
+2026-01-14 12:38:07 | INFO     | models.trainers | [CLF] Client 2 | Ep 299/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 12:38:24 | INFO     | models.trainers | [CLF] Client 2 | Ep 300/300 | LR: 0.0000 | TrAcc: 1.0000 | ValAcc: 0.9956
+2026-01-14 12:38:25 | INFO     | jobs.classifier_phase | [SILOS-LOCAL] Preparing Client 3 (Class 3)...
+2026-01-14 12:38:25 | INFO     | jobs.classifier_phase |   Generating 10000 synthetic images from 4 external models...
+Client 3 Synth Gen:   0%|          | 0/4 [00:00<?, ?it/s]Client 3 Synth Gen:  50%|█████     | 2/4 [00:00<00:00, 14.29it/s]Client 3 Synth Gen: 100%|██████████| 4/4 [00:00<00:00, 14.25it/s]Client 3 Synth Gen: 100%|██████████| 4/4 [00:00<00:00, 14.24it/s]
+2026-01-14 12:38:42 | INFO     | models.trainers | [CLF] Client 3 | Ep 1/300 | LR: 0.1000 | TrAcc: 0.2768
+2026-01-14 12:38:58 | INFO     | models.trainers | [CLF] Client 3 | Ep 2/300 | LR: 0.1000 | TrAcc: 0.4399
+2026-01-14 12:39:13 | INFO     | models.trainers | [CLF] Client 3 | Ep 3/300 | LR: 0.1000 | TrAcc: 0.5332
+2026-01-14 12:39:29 | INFO     | models.trainers | [CLF] Client 3 | Ep 4/300 | LR: 0.1000 | TrAcc: 0.5798
+2026-01-14 12:39:44 | INFO     | models.trainers | [CLF] Client 3 | Ep 5/300 | LR: 0.0999 | TrAcc: 0.6187
+2026-01-14 12:40:00 | INFO     | models.trainers | [CLF] Client 3 | Ep 6/300 | LR: 0.0999 | TrAcc: 0.6557
+2026-01-14 12:40:15 | INFO     | models.trainers | [CLF] Client 3 | Ep 7/300 | LR: 0.0999 | TrAcc: 0.7045
+2026-01-14 12:40:31 | INFO     | models.trainers | [CLF] Client 3 | Ep 8/300 | LR: 0.0998 | TrAcc: 0.7545
+2026-01-14 12:40:46 | INFO     | models.trainers | [CLF] Client 3 | Ep 9/300 | LR: 0.0998 | TrAcc: 0.8058
+2026-01-14 12:41:01 | INFO     | models.trainers | [CLF] Client 3 | Ep 10/300 | LR: 0.0997 | TrAcc: 0.8470
+2026-01-14 12:41:17 | INFO     | models.trainers | [CLF] Client 3 | Ep 11/300 | LR: 0.0997 | TrAcc: 0.8801
+2026-01-14 12:41:32 | INFO     | models.trainers | [CLF] Client 3 | Ep 12/300 | LR: 0.0996 | TrAcc: 0.9011
+2026-01-14 12:41:48 | INFO     | models.trainers | [CLF] Client 3 | Ep 13/300 | LR: 0.0995 | TrAcc: 0.9237
+2026-01-14 12:42:03 | INFO     | models.trainers | [CLF] Client 3 | Ep 14/300 | LR: 0.0995 | TrAcc: 0.9434
+2026-01-14 12:42:19 | INFO     | models.trainers | [CLF] Client 3 | Ep 15/300 | LR: 0.0994 | TrAcc: 0.9474
+2026-01-14 12:42:34 | INFO     | models.trainers | [CLF] Client 3 | Ep 16/300 | LR: 0.0993 | TrAcc: 0.9603
+2026-01-14 12:42:50 | INFO     | models.trainers | [CLF] Client 3 | Ep 17/300 | LR: 0.0992 | TrAcc: 0.9683
+2026-01-14 12:43:05 | INFO     | models.trainers | [CLF] Client 3 | Ep 18/300 | LR: 0.0991 | TrAcc: 0.9678
+2026-01-14 12:43:20 | INFO     | models.trainers | [CLF] Client 3 | Ep 19/300 | LR: 0.0990 | TrAcc: 0.9736
+2026-01-14 12:43:36 | INFO     | models.trainers | [CLF] Client 3 | Ep 20/300 | LR: 0.0989 | TrAcc: 0.9763
+2026-01-14 12:43:51 | INFO     | models.trainers | [CLF] Client 3 | Ep 21/300 | LR: 0.0988 | TrAcc: 0.9757
+2026-01-14 12:44:07 | INFO     | models.trainers | [CLF] Client 3 | Ep 22/300 | LR: 0.0987 | TrAcc: 0.9798
+2026-01-14 12:44:22 | INFO     | models.trainers | [CLF] Client 3 | Ep 23/300 | LR: 0.0986 | TrAcc: 0.9813
+2026-01-14 12:44:37 | INFO     | models.trainers | [CLF] Client 3 | Ep 24/300 | LR: 0.0984 | TrAcc: 0.9815
+2026-01-14 12:44:53 | INFO     | models.trainers | [CLF] Client 3 | Ep 25/300 | LR: 0.0983 | TrAcc: 0.9837
+2026-01-14 12:45:08 | INFO     | models.trainers | [CLF] Client 3 | Ep 26/300 | LR: 0.0982 | TrAcc: 0.9850
+2026-01-14 12:45:24 | INFO     | models.trainers | [CLF] Client 3 | Ep 27/300 | LR: 0.0980 | TrAcc: 0.9822
+2026-01-14 12:45:39 | INFO     | models.trainers | [CLF] Client 3 | Ep 28/300 | LR: 0.0979 | TrAcc: 0.9855
+2026-01-14 12:45:55 | INFO     | models.trainers | [CLF] Client 3 | Ep 29/300 | LR: 0.0977 | TrAcc: 0.9879
+2026-01-14 12:46:10 | INFO     | models.trainers | [CLF] Client 3 | Ep 30/300 | LR: 0.0976 | TrAcc: 0.9870
+2026-01-14 12:46:26 | INFO     | models.trainers | [CLF] Client 3 | Ep 31/300 | LR: 0.0974 | TrAcc: 0.9852
+2026-01-14 12:46:41 | INFO     | models.trainers | [CLF] Client 3 | Ep 32/300 | LR: 0.0972 | TrAcc: 0.9845
+2026-01-14 12:46:56 | INFO     | models.trainers | [CLF] Client 3 | Ep 33/300 | LR: 0.0970 | TrAcc: 0.9866
+2026-01-14 12:47:12 | INFO     | models.trainers | [CLF] Client 3 | Ep 34/300 | LR: 0.0969 | TrAcc: 0.9859
+2026-01-14 12:47:27 | INFO     | models.trainers | [CLF] Client 3 | Ep 35/300 | LR: 0.0967 | TrAcc: 0.9900
+2026-01-14 12:47:43 | INFO     | models.trainers | [CLF] Client 3 | Ep 36/300 | LR: 0.0965 | TrAcc: 0.9842
+2026-01-14 12:47:58 | INFO     | models.trainers | [CLF] Client 3 | Ep 37/300 | LR: 0.0963 | TrAcc: 0.9900
+2026-01-14 12:48:14 | INFO     | models.trainers | [CLF] Client 3 | Ep 38/300 | LR: 0.0961 | TrAcc: 0.9849
+2026-01-14 12:48:29 | INFO     | models.trainers | [CLF] Client 3 | Ep 39/300 | LR: 0.0959 | TrAcc: 0.9913
+2026-01-14 12:48:44 | INFO     | models.trainers | [CLF] Client 3 | Ep 40/300 | LR: 0.0957 | TrAcc: 0.9900
+2026-01-14 12:49:00 | INFO     | models.trainers | [CLF] Client 3 | Ep 41/300 | LR: 0.0955 | TrAcc: 0.9885
+2026-01-14 12:49:15 | INFO     | models.trainers | [CLF] Client 3 | Ep 42/300 | LR: 0.0952 | TrAcc: 0.9880
+2026-01-14 12:49:31 | INFO     | models.trainers | [CLF] Client 3 | Ep 43/300 | LR: 0.0950 | TrAcc: 0.9918
+2026-01-14 12:49:46 | INFO     | models.trainers | [CLF] Client 3 | Ep 44/300 | LR: 0.0948 | TrAcc: 0.9929
+2026-01-14 12:50:02 | INFO     | models.trainers | [CLF] Client 3 | Ep 45/300 | LR: 0.0946 | TrAcc: 0.9882
+2026-01-14 12:50:17 | INFO     | models.trainers | [CLF] Client 3 | Ep 46/300 | LR: 0.0943 | TrAcc: 0.9912
+2026-01-14 12:50:33 | INFO     | models.trainers | [CLF] Client 3 | Ep 47/300 | LR: 0.0941 | TrAcc: 0.9900
+2026-01-14 12:50:48 | INFO     | models.trainers | [CLF] Client 3 | Ep 48/300 | LR: 0.0938 | TrAcc: 0.9905
+2026-01-14 12:51:03 | INFO     | models.trainers | [CLF] Client 3 | Ep 49/300 | LR: 0.0936 | TrAcc: 0.9911
+2026-01-14 12:51:19 | INFO     | models.trainers | [CLF] Client 3 | Ep 50/300 | LR: 0.0933 | TrAcc: 0.9937
+2026-01-14 12:51:34 | INFO     | models.trainers | [CLF] Client 3 | Ep 51/300 | LR: 0.0930 | TrAcc: 0.9912
+2026-01-14 12:51:50 | INFO     | models.trainers | [CLF] Client 3 | Ep 52/300 | LR: 0.0928 | TrAcc: 0.9930
+2026-01-14 12:52:05 | INFO     | models.trainers | [CLF] Client 3 | Ep 53/300 | LR: 0.0925 | TrAcc: 0.9887
+2026-01-14 12:52:21 | INFO     | models.trainers | [CLF] Client 3 | Ep 54/300 | LR: 0.0922 | TrAcc: 0.9899
+2026-01-14 12:52:36 | INFO     | models.trainers | [CLF] Client 3 | Ep 55/300 | LR: 0.0919 | TrAcc: 0.9924
+2026-01-14 12:52:52 | INFO     | models.trainers | [CLF] Client 3 | Ep 56/300 | LR: 0.0916 | TrAcc: 0.9937
+2026-01-14 12:53:07 | INFO     | models.trainers | [CLF] Client 3 | Ep 57/300 | LR: 0.0914 | TrAcc: 0.9916
+2026-01-14 12:53:22 | INFO     | models.trainers | [CLF] Client 3 | Ep 58/300 | LR: 0.0911 | TrAcc: 0.9934
+2026-01-14 12:53:38 | INFO     | models.trainers | [CLF] Client 3 | Ep 59/300 | LR: 0.0908 | TrAcc: 0.9944
+2026-01-14 12:53:53 | INFO     | models.trainers | [CLF] Client 3 | Ep 60/300 | LR: 0.0905 | TrAcc: 0.9894
+2026-01-14 12:54:09 | INFO     | models.trainers | [CLF] Client 3 | Ep 61/300 | LR: 0.0901 | TrAcc: 0.9925
+2026-01-14 12:54:24 | INFO     | models.trainers | [CLF] Client 3 | Ep 62/300 | LR: 0.0898 | TrAcc: 0.9909
+2026-01-14 12:54:40 | INFO     | models.trainers | [CLF] Client 3 | Ep 63/300 | LR: 0.0895 | TrAcc: 0.9949
+2026-01-14 12:54:55 | INFO     | models.trainers | [CLF] Client 3 | Ep 64/300 | LR: 0.0892 | TrAcc: 0.9956
+2026-01-14 12:55:10 | INFO     | models.trainers | [CLF] Client 3 | Ep 65/300 | LR: 0.0889 | TrAcc: 0.9899
+2026-01-14 12:55:26 | INFO     | models.trainers | [CLF] Client 3 | Ep 66/300 | LR: 0.0885 | TrAcc: 0.9920
+2026-01-14 12:55:41 | INFO     | models.trainers | [CLF] Client 3 | Ep 67/300 | LR: 0.0882 | TrAcc: 0.9916
+2026-01-14 12:55:57 | INFO     | models.trainers | [CLF] Client 3 | Ep 68/300 | LR: 0.0878 | TrAcc: 0.9924
+2026-01-14 12:56:12 | INFO     | models.trainers | [CLF] Client 3 | Ep 69/300 | LR: 0.0875 | TrAcc: 0.9951
+2026-01-14 12:56:27 | INFO     | models.trainers | [CLF] Client 3 | Ep 70/300 | LR: 0.0872 | TrAcc: 0.9929
+2026-01-14 12:56:43 | INFO     | models.trainers | [CLF] Client 3 | Ep 71/300 | LR: 0.0868 | TrAcc: 0.9905
+2026-01-14 12:56:58 | INFO     | models.trainers | [CLF] Client 3 | Ep 72/300 | LR: 0.0864 | TrAcc: 0.9923
+2026-01-14 12:57:14 | INFO     | models.trainers | [CLF] Client 3 | Ep 73/300 | LR: 0.0861 | TrAcc: 0.9938
+2026-01-14 12:57:29 | INFO     | models.trainers | [CLF] Client 3 | Ep 74/300 | LR: 0.0857 | TrAcc: 0.9959
+2026-01-14 12:57:45 | INFO     | models.trainers | [CLF] Client 3 | Ep 75/300 | LR: 0.0854 | TrAcc: 0.9912
+2026-01-14 12:58:00 | INFO     | models.trainers | [CLF] Client 3 | Ep 76/300 | LR: 0.0850 | TrAcc: 0.9913
+2026-01-14 12:58:15 | INFO     | models.trainers | [CLF] Client 3 | Ep 77/300 | LR: 0.0846 | TrAcc: 0.9948
+2026-01-14 12:58:31 | INFO     | models.trainers | [CLF] Client 3 | Ep 78/300 | LR: 0.0842 | TrAcc: 0.9891
+2026-01-14 12:58:46 | INFO     | models.trainers | [CLF] Client 3 | Ep 79/300 | LR: 0.0838 | TrAcc: 0.9947
+2026-01-14 12:59:02 | INFO     | models.trainers | [CLF] Client 3 | Ep 80/300 | LR: 0.0835 | TrAcc: 0.9946
+2026-01-14 12:59:17 | INFO     | models.trainers | [CLF] Client 3 | Ep 81/300 | LR: 0.0831 | TrAcc: 0.9924
+2026-01-14 12:59:33 | INFO     | models.trainers | [CLF] Client 3 | Ep 82/300 | LR: 0.0827 | TrAcc: 0.9913
+2026-01-14 12:59:48 | INFO     | models.trainers | [CLF] Client 3 | Ep 83/300 | LR: 0.0823 | TrAcc: 0.9951
+2026-01-14 13:00:03 | INFO     | models.trainers | [CLF] Client 3 | Ep 84/300 | LR: 0.0819 | TrAcc: 0.9946
+2026-01-14 13:00:19 | INFO     | models.trainers | [CLF] Client 3 | Ep 85/300 | LR: 0.0815 | TrAcc: 0.9943
+2026-01-14 13:00:34 | INFO     | models.trainers | [CLF] Client 3 | Ep 86/300 | LR: 0.0811 | TrAcc: 0.9960
+2026-01-14 13:00:50 | INFO     | models.trainers | [CLF] Client 3 | Ep 87/300 | LR: 0.0806 | TrAcc: 0.9900
+2026-01-14 13:01:05 | INFO     | models.trainers | [CLF] Client 3 | Ep 88/300 | LR: 0.0802 | TrAcc: 0.9912
+2026-01-14 13:01:21 | INFO     | models.trainers | [CLF] Client 3 | Ep 89/300 | LR: 0.0798 | TrAcc: 0.9969
+2026-01-14 13:01:36 | INFO     | models.trainers | [CLF] Client 3 | Ep 90/300 | LR: 0.0794 | TrAcc: 0.9979
+2026-01-14 13:01:51 | INFO     | models.trainers | [CLF] Client 3 | Ep 91/300 | LR: 0.0790 | TrAcc: 0.9941
+2026-01-14 13:02:07 | INFO     | models.trainers | [CLF] Client 3 | Ep 92/300 | LR: 0.0785 | TrAcc: 0.9960
+2026-01-14 13:02:22 | INFO     | models.trainers | [CLF] Client 3 | Ep 93/300 | LR: 0.0781 | TrAcc: 0.9965
+2026-01-14 13:02:38 | INFO     | models.trainers | [CLF] Client 3 | Ep 94/300 | LR: 0.0777 | TrAcc: 0.9948
+2026-01-14 13:02:53 | INFO     | models.trainers | [CLF] Client 3 | Ep 95/300 | LR: 0.0772 | TrAcc: 0.9940
+2026-01-14 13:03:09 | INFO     | models.trainers | [CLF] Client 3 | Ep 96/300 | LR: 0.0768 | TrAcc: 0.9957
+2026-01-14 13:03:24 | INFO     | models.trainers | [CLF] Client 3 | Ep 97/300 | LR: 0.0763 | TrAcc: 0.9956
+2026-01-14 13:03:40 | INFO     | models.trainers | [CLF] Client 3 | Ep 98/300 | LR: 0.0759 | TrAcc: 0.9948
+2026-01-14 13:03:55 | INFO     | models.trainers | [CLF] Client 3 | Ep 99/300 | LR: 0.0755 | TrAcc: 0.9943
+2026-01-14 13:04:10 | INFO     | models.trainers | [CLF] Client 3 | Ep 100/300 | LR: 0.0750 | TrAcc: 0.9970
+2026-01-14 13:04:26 | INFO     | models.trainers | [CLF] Client 3 | Ep 101/300 | LR: 0.0745 | TrAcc: 0.9963
+2026-01-14 13:04:41 | INFO     | models.trainers | [CLF] Client 3 | Ep 102/300 | LR: 0.0741 | TrAcc: 0.9930
+2026-01-14 13:04:57 | INFO     | models.trainers | [CLF] Client 3 | Ep 103/300 | LR: 0.0736 | TrAcc: 0.9908
+2026-01-14 13:05:12 | INFO     | models.trainers | [CLF] Client 3 | Ep 104/300 | LR: 0.0732 | TrAcc: 0.9962
+2026-01-14 13:05:28 | INFO     | models.trainers | [CLF] Client 3 | Ep 105/300 | LR: 0.0727 | TrAcc: 0.9954
+2026-01-14 13:05:43 | INFO     | models.trainers | [CLF] Client 3 | Ep 106/300 | LR: 0.0722 | TrAcc: 0.9884
+2026-01-14 13:05:58 | INFO     | models.trainers | [CLF] Client 3 | Ep 107/300 | LR: 0.0718 | TrAcc: 0.9974
+2026-01-14 13:06:14 | INFO     | models.trainers | [CLF] Client 3 | Ep 108/300 | LR: 0.0713 | TrAcc: 0.9971
+2026-01-14 13:06:29 | INFO     | models.trainers | [CLF] Client 3 | Ep 109/300 | LR: 0.0708 | TrAcc: 0.9979
+2026-01-14 13:06:45 | INFO     | models.trainers | [CLF] Client 3 | Ep 110/300 | LR: 0.0703 | TrAcc: 0.9977
+2026-01-14 13:07:00 | INFO     | models.trainers | [CLF] Client 3 | Ep 111/300 | LR: 0.0699 | TrAcc: 0.9943
+2026-01-14 13:07:16 | INFO     | models.trainers | [CLF] Client 3 | Ep 112/300 | LR: 0.0694 | TrAcc: 0.9960
+2026-01-14 13:07:31 | INFO     | models.trainers | [CLF] Client 3 | Ep 113/300 | LR: 0.0689 | TrAcc: 0.9936
+2026-01-14 13:07:46 | INFO     | models.trainers | [CLF] Client 3 | Ep 114/300 | LR: 0.0684 | TrAcc: 0.9963
+2026-01-14 13:08:02 | INFO     | models.trainers | [CLF] Client 3 | Ep 115/300 | LR: 0.0679 | TrAcc: 0.9963
+2026-01-14 13:08:17 | INFO     | models.trainers | [CLF] Client 3 | Ep 116/300 | LR: 0.0674 | TrAcc: 0.9969
+2026-01-14 13:08:33 | INFO     | models.trainers | [CLF] Client 3 | Ep 117/300 | LR: 0.0669 | TrAcc: 0.9974
+2026-01-14 13:08:48 | INFO     | models.trainers | [CLF] Client 3 | Ep 118/300 | LR: 0.0664 | TrAcc: 0.9925
+2026-01-14 13:09:04 | INFO     | models.trainers | [CLF] Client 3 | Ep 119/300 | LR: 0.0659 | TrAcc: 0.9969
+2026-01-14 13:09:19 | INFO     | models.trainers | [CLF] Client 3 | Ep 120/300 | LR: 0.0655 | TrAcc: 0.9980
+2026-01-14 13:09:34 | INFO     | models.trainers | [CLF] Client 3 | Ep 121/300 | LR: 0.0650 | TrAcc: 0.9923
+2026-01-14 13:09:50 | INFO     | models.trainers | [CLF] Client 3 | Ep 122/300 | LR: 0.0645 | TrAcc: 0.9961
+2026-01-14 13:10:05 | INFO     | models.trainers | [CLF] Client 3 | Ep 123/300 | LR: 0.0639 | TrAcc: 0.9964
+2026-01-14 13:10:21 | INFO     | models.trainers | [CLF] Client 3 | Ep 124/300 | LR: 0.0634 | TrAcc: 0.9962
+2026-01-14 13:10:36 | INFO     | models.trainers | [CLF] Client 3 | Ep 125/300 | LR: 0.0629 | TrAcc: 0.9986
+2026-01-14 13:10:52 | INFO     | models.trainers | [CLF] Client 3 | Ep 126/300 | LR: 0.0624 | TrAcc: 0.9989
+2026-01-14 13:11:07 | INFO     | models.trainers | [CLF] Client 3 | Ep 127/300 | LR: 0.0619 | TrAcc: 0.9926
+2026-01-14 13:11:22 | INFO     | models.trainers | [CLF] Client 3 | Ep 128/300 | LR: 0.0614 | TrAcc: 0.9934
+2026-01-14 13:11:38 | INFO     | models.trainers | [CLF] Client 3 | Ep 129/300 | LR: 0.0609 | TrAcc: 0.9937
+2026-01-14 13:11:53 | INFO     | models.trainers | [CLF] Client 3 | Ep 130/300 | LR: 0.0604 | TrAcc: 0.9977
+2026-01-14 13:12:09 | INFO     | models.trainers | [CLF] Client 3 | Ep 131/300 | LR: 0.0599 | TrAcc: 0.9997
+2026-01-14 13:12:24 | INFO     | models.trainers | [CLF] Client 3 | Ep 132/300 | LR: 0.0594 | TrAcc: 0.9998
+2026-01-14 13:12:40 | INFO     | models.trainers | [CLF] Client 3 | Ep 133/300 | LR: 0.0589 | TrAcc: 0.9997
+2026-01-14 13:12:55 | INFO     | models.trainers | [CLF] Client 3 | Ep 134/300 | LR: 0.0583 | TrAcc: 0.9981
+2026-01-14 13:13:10 | INFO     | models.trainers | [CLF] Client 3 | Ep 135/300 | LR: 0.0578 | TrAcc: 0.9964
+2026-01-14 13:13:26 | INFO     | models.trainers | [CLF] Client 3 | Ep 136/300 | LR: 0.0573 | TrAcc: 0.9961
+2026-01-14 13:13:41 | INFO     | models.trainers | [CLF] Client 3 | Ep 137/300 | LR: 0.0568 | TrAcc: 0.9975
+2026-01-14 13:13:57 | INFO     | models.trainers | [CLF] Client 3 | Ep 138/300 | LR: 0.0563 | TrAcc: 0.9965
+2026-01-14 13:14:12 | INFO     | models.trainers | [CLF] Client 3 | Ep 139/300 | LR: 0.0557 | TrAcc: 0.9948
+2026-01-14 13:14:28 | INFO     | models.trainers | [CLF] Client 3 | Ep 140/300 | LR: 0.0552 | TrAcc: 0.9977
+2026-01-14 13:14:43 | INFO     | models.trainers | [CLF] Client 3 | Ep 141/300 | LR: 0.0547 | TrAcc: 0.9976
+2026-01-14 13:14:59 | INFO     | models.trainers | [CLF] Client 3 | Ep 142/300 | LR: 0.0542 | TrAcc: 0.9965
+2026-01-14 13:15:14 | INFO     | models.trainers | [CLF] Client 3 | Ep 143/300 | LR: 0.0537 | TrAcc: 0.9970
+2026-01-14 13:15:29 | INFO     | models.trainers | [CLF] Client 3 | Ep 144/300 | LR: 0.0531 | TrAcc: 0.9973
+2026-01-14 13:15:45 | INFO     | models.trainers | [CLF] Client 3 | Ep 145/300 | LR: 0.0526 | TrAcc: 0.9910
+2026-01-14 13:16:00 | INFO     | models.trainers | [CLF] Client 3 | Ep 146/300 | LR: 0.0521 | TrAcc: 0.9984
+2026-01-14 13:16:16 | INFO     | models.trainers | [CLF] Client 3 | Ep 147/300 | LR: 0.0516 | TrAcc: 0.9987
+2026-01-14 13:16:31 | INFO     | models.trainers | [CLF] Client 3 | Ep 148/300 | LR: 0.0510 | TrAcc: 0.9994
+2026-01-14 13:16:46 | INFO     | models.trainers | [CLF] Client 3 | Ep 149/300 | LR: 0.0505 | TrAcc: 0.9995
+2026-01-14 13:17:02 | INFO     | models.trainers | [CLF] Client 3 | Ep 150/300 | LR: 0.0500 | TrAcc: 0.9975
+2026-01-14 13:17:17 | INFO     | models.trainers | [CLF] Client 3 | Ep 151/300 | LR: 0.0495 | TrAcc: 0.9977
+2026-01-14 13:17:33 | INFO     | models.trainers | [CLF] Client 3 | Ep 152/300 | LR: 0.0490 | TrAcc: 0.9972
+2026-01-14 13:17:48 | INFO     | models.trainers | [CLF] Client 3 | Ep 153/300 | LR: 0.0484 | TrAcc: 0.9989
+2026-01-14 13:18:03 | INFO     | models.trainers | [CLF] Client 3 | Ep 154/300 | LR: 0.0479 | TrAcc: 0.9979
+2026-01-14 13:18:19 | INFO     | models.trainers | [CLF] Client 3 | Ep 155/300 | LR: 0.0474 | TrAcc: 0.9969
+2026-01-14 13:18:34 | INFO     | models.trainers | [CLF] Client 3 | Ep 156/300 | LR: 0.0469 | TrAcc: 0.9980
+2026-01-14 13:18:50 | INFO     | models.trainers | [CLF] Client 3 | Ep 157/300 | LR: 0.0463 | TrAcc: 0.9927
+2026-01-14 13:19:05 | INFO     | models.trainers | [CLF] Client 3 | Ep 158/300 | LR: 0.0458 | TrAcc: 0.9989
+2026-01-14 13:19:21 | INFO     | models.trainers | [CLF] Client 3 | Ep 159/300 | LR: 0.0453 | TrAcc: 0.9943
+2026-01-14 13:19:36 | INFO     | models.trainers | [CLF] Client 3 | Ep 160/300 | LR: 0.0448 | TrAcc: 0.9982
+2026-01-14 13:19:51 | INFO     | models.trainers | [CLF] Client 3 | Ep 161/300 | LR: 0.0443 | TrAcc: 0.9978
+2026-01-14 13:20:07 | INFO     | models.trainers | [CLF] Client 3 | Ep 162/300 | LR: 0.0437 | TrAcc: 0.9990
+2026-01-14 13:20:22 | INFO     | models.trainers | [CLF] Client 3 | Ep 163/300 | LR: 0.0432 | TrAcc: 0.9995
+2026-01-14 13:20:38 | INFO     | models.trainers | [CLF] Client 3 | Ep 164/300 | LR: 0.0427 | TrAcc: 0.9998
+2026-01-14 13:20:53 | INFO     | models.trainers | [CLF] Client 3 | Ep 165/300 | LR: 0.0422 | TrAcc: 0.9997
+2026-01-14 13:21:09 | INFO     | models.trainers | [CLF] Client 3 | Ep 166/300 | LR: 0.0417 | TrAcc: 0.9996
+2026-01-14 13:21:24 | INFO     | models.trainers | [CLF] Client 3 | Ep 167/300 | LR: 0.0411 | TrAcc: 0.9996
+2026-01-14 13:21:39 | INFO     | models.trainers | [CLF] Client 3 | Ep 168/300 | LR: 0.0406 | TrAcc: 0.9996
+2026-01-14 13:21:55 | INFO     | models.trainers | [CLF] Client 3 | Ep 169/300 | LR: 0.0401 | TrAcc: 0.9996
+2026-01-14 13:22:10 | INFO     | models.trainers | [CLF] Client 3 | Ep 170/300 | LR: 0.0396 | TrAcc: 0.9997
+2026-01-14 13:22:26 | INFO     | models.trainers | [CLF] Client 3 | Ep 171/300 | LR: 0.0391 | TrAcc: 0.9998
+2026-01-14 13:22:41 | INFO     | models.trainers | [CLF] Client 3 | Ep 172/300 | LR: 0.0386 | TrAcc: 0.9992
+2026-01-14 13:22:57 | INFO     | models.trainers | [CLF] Client 3 | Ep 173/300 | LR: 0.0381 | TrAcc: 0.9996
+2026-01-14 13:23:12 | INFO     | models.trainers | [CLF] Client 3 | Ep 174/300 | LR: 0.0376 | TrAcc: 0.9990
+2026-01-14 13:23:27 | INFO     | models.trainers | [CLF] Client 3 | Ep 175/300 | LR: 0.0371 | TrAcc: 0.9995
+2026-01-14 13:23:43 | INFO     | models.trainers | [CLF] Client 3 | Ep 176/300 | LR: 0.0366 | TrAcc: 0.9998
+2026-01-14 13:23:58 | INFO     | models.trainers | [CLF] Client 3 | Ep 177/300 | LR: 0.0361 | TrAcc: 0.9999
+2026-01-14 13:24:14 | INFO     | models.trainers | [CLF] Client 3 | Ep 178/300 | LR: 0.0355 | TrAcc: 1.0000
+2026-01-14 13:24:29 | INFO     | models.trainers | [CLF] Client 3 | Ep 179/300 | LR: 0.0350 | TrAcc: 1.0000
+2026-01-14 13:24:45 | INFO     | models.trainers | [CLF] Client 3 | Ep 180/300 | LR: 0.0345 | TrAcc: 1.0000
+2026-01-14 13:25:00 | INFO     | models.trainers | [CLF] Client 3 | Ep 181/300 | LR: 0.0341 | TrAcc: 1.0000
+2026-01-14 13:25:14 | INFO     | models.trainers | [CLF] Client 3 | Ep 182/300 | LR: 0.0336 | TrAcc: 1.0000
+2026-01-14 13:25:30 | INFO     | models.trainers | [CLF] Client 3 | Ep 183/300 | LR: 0.0331 | TrAcc: 1.0000
+2026-01-14 13:25:45 | INFO     | models.trainers | [CLF] Client 3 | Ep 184/300 | LR: 0.0326 | TrAcc: 1.0000
+2026-01-14 13:26:00 | INFO     | models.trainers | [CLF] Client 3 | Ep 185/300 | LR: 0.0321 | TrAcc: 0.9997
+2026-01-14 13:26:16 | INFO     | models.trainers | [CLF] Client 3 | Ep 186/300 | LR: 0.0316 | TrAcc: 1.0000
+2026-01-14 13:26:31 | INFO     | models.trainers | [CLF] Client 3 | Ep 187/300 | LR: 0.0311 | TrAcc: 0.9998
+2026-01-14 13:26:47 | INFO     | models.trainers | [CLF] Client 3 | Ep 188/300 | LR: 0.0306 | TrAcc: 0.9999
+2026-01-14 13:27:02 | INFO     | models.trainers | [CLF] Client 3 | Ep 189/300 | LR: 0.0301 | TrAcc: 0.9988
+2026-01-14 13:27:18 | INFO     | models.trainers | [CLF] Client 3 | Ep 190/300 | LR: 0.0297 | TrAcc: 0.9975
+2026-01-14 13:27:33 | INFO     | models.trainers | [CLF] Client 3 | Ep 191/300 | LR: 0.0292 | TrAcc: 0.9998
+2026-01-14 13:27:48 | INFO     | models.trainers | [CLF] Client 3 | Ep 192/300 | LR: 0.0287 | TrAcc: 0.9996
+2026-01-14 13:28:04 | INFO     | models.trainers | [CLF] Client 3 | Ep 193/300 | LR: 0.0282 | TrAcc: 0.9999
+2026-01-14 13:28:19 | INFO     | models.trainers | [CLF] Client 3 | Ep 194/300 | LR: 0.0278 | TrAcc: 0.9999
+2026-01-14 13:28:35 | INFO     | models.trainers | [CLF] Client 3 | Ep 195/300 | LR: 0.0273 | TrAcc: 0.9999
+2026-01-14 13:28:50 | INFO     | models.trainers | [CLF] Client 3 | Ep 196/300 | LR: 0.0268 | TrAcc: 1.0000
+2026-01-14 13:29:06 | INFO     | models.trainers | [CLF] Client 3 | Ep 197/300 | LR: 0.0264 | TrAcc: 1.0000
+2026-01-14 13:29:21 | INFO     | models.trainers | [CLF] Client 3 | Ep 198/300 | LR: 0.0259 | TrAcc: 0.9999
+2026-01-14 13:29:37 | INFO     | models.trainers | [CLF] Client 3 | Ep 199/300 | LR: 0.0255 | TrAcc: 1.0000
+2026-01-14 13:29:52 | INFO     | models.trainers | [CLF] Client 3 | Ep 200/300 | LR: 0.0250 | TrAcc: 1.0000
+2026-01-14 13:30:07 | INFO     | models.trainers | [CLF] Client 3 | Ep 201/300 | LR: 0.0245 | TrAcc: 1.0000
+2026-01-14 13:30:23 | INFO     | models.trainers | [CLF] Client 3 | Ep 202/300 | LR: 0.0241 | TrAcc: 0.9995
+2026-01-14 13:30:38 | INFO     | models.trainers | [CLF] Client 3 | Ep 203/300 | LR: 0.0237 | TrAcc: 1.0000
+2026-01-14 13:30:54 | INFO     | models.trainers | [CLF] Client 3 | Ep 204/300 | LR: 0.0232 | TrAcc: 0.9999
+2026-01-14 13:31:09 | INFO     | models.trainers | [CLF] Client 3 | Ep 205/300 | LR: 0.0228 | TrAcc: 0.9998
+2026-01-14 13:31:25 | INFO     | models.trainers | [CLF] Client 3 | Ep 206/300 | LR: 0.0223 | TrAcc: 1.0000
+2026-01-14 13:31:40 | INFO     | models.trainers | [CLF] Client 3 | Ep 207/300 | LR: 0.0219 | TrAcc: 1.0000
+2026-01-14 13:31:55 | INFO     | models.trainers | [CLF] Client 3 | Ep 208/300 | LR: 0.0215 | TrAcc: 1.0000
+2026-01-14 13:32:11 | INFO     | models.trainers | [CLF] Client 3 | Ep 209/300 | LR: 0.0210 | TrAcc: 1.0000
+2026-01-14 13:32:26 | INFO     | models.trainers | [CLF] Client 3 | Ep 210/300 | LR: 0.0206 | TrAcc: 1.0000
+2026-01-14 13:32:42 | INFO     | models.trainers | [CLF] Client 3 | Ep 211/300 | LR: 0.0202 | TrAcc: 1.0000
+2026-01-14 13:32:57 | INFO     | models.trainers | [CLF] Client 3 | Ep 212/300 | LR: 0.0198 | TrAcc: 1.0000
+2026-01-14 13:33:13 | INFO     | models.trainers | [CLF] Client 3 | Ep 213/300 | LR: 0.0194 | TrAcc: 0.9999
+2026-01-14 13:33:28 | INFO     | models.trainers | [CLF] Client 3 | Ep 214/300 | LR: 0.0189 | TrAcc: 1.0000
+2026-01-14 13:33:43 | INFO     | models.trainers | [CLF] Client 3 | Ep 215/300 | LR: 0.0185 | TrAcc: 0.9999
+2026-01-14 13:33:59 | INFO     | models.trainers | [CLF] Client 3 | Ep 216/300 | LR: 0.0181 | TrAcc: 1.0000
+2026-01-14 13:34:14 | INFO     | models.trainers | [CLF] Client 3 | Ep 217/300 | LR: 0.0177 | TrAcc: 1.0000
+2026-01-14 13:34:30 | INFO     | models.trainers | [CLF] Client 3 | Ep 218/300 | LR: 0.0173 | TrAcc: 1.0000
+2026-01-14 13:34:45 | INFO     | models.trainers | [CLF] Client 3 | Ep 219/300 | LR: 0.0169 | TrAcc: 1.0000
+2026-01-14 13:35:00 | INFO     | models.trainers | [CLF] Client 3 | Ep 220/300 | LR: 0.0165 | TrAcc: 0.9999
+2026-01-14 13:35:16 | INFO     | models.trainers | [CLF] Client 3 | Ep 221/300 | LR: 0.0162 | TrAcc: 1.0000
+2026-01-14 13:35:31 | INFO     | models.trainers | [CLF] Client 3 | Ep 222/300 | LR: 0.0158 | TrAcc: 1.0000
+2026-01-14 13:35:47 | INFO     | models.trainers | [CLF] Client 3 | Ep 223/300 | LR: 0.0154 | TrAcc: 1.0000
+2026-01-14 13:36:02 | INFO     | models.trainers | [CLF] Client 3 | Ep 224/300 | LR: 0.0150 | TrAcc: 1.0000
+2026-01-14 13:36:18 | INFO     | models.trainers | [CLF] Client 3 | Ep 225/300 | LR: 0.0146 | TrAcc: 1.0000
+2026-01-14 13:36:33 | INFO     | models.trainers | [CLF] Client 3 | Ep 226/300 | LR: 0.0143 | TrAcc: 1.0000
+2026-01-14 13:36:48 | INFO     | models.trainers | [CLF] Client 3 | Ep 227/300 | LR: 0.0139 | TrAcc: 1.0000
+2026-01-14 13:37:04 | INFO     | models.trainers | [CLF] Client 3 | Ep 228/300 | LR: 0.0136 | TrAcc: 1.0000
+2026-01-14 13:37:19 | INFO     | models.trainers | [CLF] Client 3 | Ep 229/300 | LR: 0.0132 | TrAcc: 1.0000
+2026-01-14 13:37:35 | INFO     | models.trainers | [CLF] Client 3 | Ep 230/300 | LR: 0.0128 | TrAcc: 1.0000
+2026-01-14 13:37:50 | INFO     | models.trainers | [CLF] Client 3 | Ep 231/300 | LR: 0.0125 | TrAcc: 1.0000
+2026-01-14 13:38:06 | INFO     | models.trainers | [CLF] Client 3 | Ep 232/300 | LR: 0.0122 | TrAcc: 1.0000
+2026-01-14 13:38:21 | INFO     | models.trainers | [CLF] Client 3 | Ep 233/300 | LR: 0.0118 | TrAcc: 1.0000
+2026-01-14 13:38:36 | INFO     | models.trainers | [CLF] Client 3 | Ep 234/300 | LR: 0.0115 | TrAcc: 1.0000
+2026-01-14 13:38:52 | INFO     | models.trainers | [CLF] Client 3 | Ep 235/300 | LR: 0.0111 | TrAcc: 1.0000
+2026-01-14 13:39:07 | INFO     | models.trainers | [CLF] Client 3 | Ep 236/300 | LR: 0.0108 | TrAcc: 1.0000
+2026-01-14 13:39:23 | INFO     | models.trainers | [CLF] Client 3 | Ep 237/300 | LR: 0.0105 | TrAcc: 1.0000
+2026-01-14 13:39:38 | INFO     | models.trainers | [CLF] Client 3 | Ep 238/300 | LR: 0.0102 | TrAcc: 1.0000
+2026-01-14 13:39:54 | INFO     | models.trainers | [CLF] Client 3 | Ep 239/300 | LR: 0.0099 | TrAcc: 1.0000
+2026-01-14 13:40:09 | INFO     | models.trainers | [CLF] Client 3 | Ep 240/300 | LR: 0.0095 | TrAcc: 1.0000
+2026-01-14 13:40:24 | INFO     | models.trainers | [CLF] Client 3 | Ep 241/300 | LR: 0.0092 | TrAcc: 1.0000
+2026-01-14 13:40:40 | INFO     | models.trainers | [CLF] Client 3 | Ep 242/300 | LR: 0.0089 | TrAcc: 1.0000
+2026-01-14 13:40:55 | INFO     | models.trainers | [CLF] Client 3 | Ep 243/300 | LR: 0.0086 | TrAcc: 1.0000
+2026-01-14 13:41:11 | INFO     | models.trainers | [CLF] Client 3 | Ep 244/300 | LR: 0.0084 | TrAcc: 1.0000
+2026-01-14 13:41:26 | INFO     | models.trainers | [CLF] Client 3 | Ep 245/300 | LR: 0.0081 | TrAcc: 1.0000
+2026-01-14 13:41:42 | INFO     | models.trainers | [CLF] Client 3 | Ep 246/300 | LR: 0.0078 | TrAcc: 1.0000
+2026-01-14 13:41:57 | INFO     | models.trainers | [CLF] Client 3 | Ep 247/300 | LR: 0.0075 | TrAcc: 1.0000
+2026-01-14 13:42:12 | INFO     | models.trainers | [CLF] Client 3 | Ep 248/300 | LR: 0.0072 | TrAcc: 1.0000
+2026-01-14 13:42:28 | INFO     | models.trainers | [CLF] Client 3 | Ep 249/300 | LR: 0.0070 | TrAcc: 1.0000
+2026-01-14 13:42:43 | INFO     | models.trainers | [CLF] Client 3 | Ep 250/300 | LR: 0.0067 | TrAcc: 0.9999
+2026-01-14 13:42:58 | INFO     | models.trainers | [CLF] Client 3 | Ep 251/300 | LR: 0.0064 | TrAcc: 0.9995
+2026-01-14 13:43:13 | INFO     | models.trainers | [CLF] Client 3 | Ep 252/300 | LR: 0.0062 | TrAcc: 1.0000
+2026-01-14 13:43:28 | INFO     | models.trainers | [CLF] Client 3 | Ep 253/300 | LR: 0.0059 | TrAcc: 1.0000
+2026-01-14 13:43:44 | INFO     | models.trainers | [CLF] Client 3 | Ep 254/300 | LR: 0.0057 | TrAcc: 1.0000
+2026-01-14 13:43:59 | INFO     | models.trainers | [CLF] Client 3 | Ep 255/300 | LR: 0.0054 | TrAcc: 1.0000
+2026-01-14 13:44:15 | INFO     | models.trainers | [CLF] Client 3 | Ep 256/300 | LR: 0.0052 | TrAcc: 1.0000
+2026-01-14 13:44:30 | INFO     | models.trainers | [CLF] Client 3 | Ep 257/300 | LR: 0.0050 | TrAcc: 1.0000
+2026-01-14 13:44:46 | INFO     | models.trainers | [CLF] Client 3 | Ep 258/300 | LR: 0.0048 | TrAcc: 1.0000
+2026-01-14 13:45:01 | INFO     | models.trainers | [CLF] Client 3 | Ep 259/300 | LR: 0.0045 | TrAcc: 1.0000
+2026-01-14 13:45:16 | INFO     | models.trainers | [CLF] Client 3 | Ep 260/300 | LR: 0.0043 | TrAcc: 1.0000
+2026-01-14 13:45:32 | INFO     | models.trainers | [CLF] Client 3 | Ep 261/300 | LR: 0.0041 | TrAcc: 1.0000
+2026-01-14 13:45:47 | INFO     | models.trainers | [CLF] Client 3 | Ep 262/300 | LR: 0.0039 | TrAcc: 1.0000
+2026-01-14 13:46:03 | INFO     | models.trainers | [CLF] Client 3 | Ep 263/300 | LR: 0.0037 | TrAcc: 1.0000
+2026-01-14 13:46:18 | INFO     | models.trainers | [CLF] Client 3 | Ep 264/300 | LR: 0.0035 | TrAcc: 1.0000
+2026-01-14 13:46:34 | INFO     | models.trainers | [CLF] Client 3 | Ep 265/300 | LR: 0.0033 | TrAcc: 1.0000
+2026-01-14 13:46:49 | INFO     | models.trainers | [CLF] Client 3 | Ep 266/300 | LR: 0.0031 | TrAcc: 1.0000
+2026-01-14 13:47:04 | INFO     | models.trainers | [CLF] Client 3 | Ep 267/300 | LR: 0.0030 | TrAcc: 1.0000
+2026-01-14 13:47:20 | INFO     | models.trainers | [CLF] Client 3 | Ep 268/300 | LR: 0.0028 | TrAcc: 1.0000
+2026-01-14 13:47:35 | INFO     | models.trainers | [CLF] Client 3 | Ep 269/300 | LR: 0.0026 | TrAcc: 1.0000
+2026-01-14 13:47:51 | INFO     | models.trainers | [CLF] Client 3 | Ep 270/300 | LR: 0.0024 | TrAcc: 1.0000
+2026-01-14 13:48:06 | INFO     | models.trainers | [CLF] Client 3 | Ep 271/300 | LR: 0.0023 | TrAcc: 1.0000
+2026-01-14 13:48:22 | INFO     | models.trainers | [CLF] Client 3 | Ep 272/300 | LR: 0.0021 | TrAcc: 1.0000
+2026-01-14 13:48:37 | INFO     | models.trainers | [CLF] Client 3 | Ep 273/300 | LR: 0.0020 | TrAcc: 1.0000
+2026-01-14 13:48:53 | INFO     | models.trainers | [CLF] Client 3 | Ep 274/300 | LR: 0.0018 | TrAcc: 1.0000
+2026-01-14 13:49:08 | INFO     | models.trainers | [CLF] Client 3 | Ep 275/300 | LR: 0.0017 | TrAcc: 1.0000
+2026-01-14 13:49:23 | INFO     | models.trainers | [CLF] Client 3 | Ep 276/300 | LR: 0.0016 | TrAcc: 1.0000
+2026-01-14 13:49:39 | INFO     | models.trainers | [CLF] Client 3 | Ep 277/300 | LR: 0.0014 | TrAcc: 1.0000
+2026-01-14 13:49:54 | INFO     | models.trainers | [CLF] Client 3 | Ep 278/300 | LR: 0.0013 | TrAcc: 1.0000
+2026-01-14 13:50:10 | INFO     | models.trainers | [CLF] Client 3 | Ep 279/300 | LR: 0.0012 | TrAcc: 1.0000
+2026-01-14 13:50:25 | INFO     | models.trainers | [CLF] Client 3 | Ep 280/300 | LR: 0.0011 | TrAcc: 1.0000
+2026-01-14 13:50:41 | INFO     | models.trainers | [CLF] Client 3 | Ep 281/300 | LR: 0.0010 | TrAcc: 1.0000
+2026-01-14 13:50:56 | INFO     | models.trainers | [CLF] Client 3 | Ep 282/300 | LR: 0.0009 | TrAcc: 1.0000
+2026-01-14 13:51:11 | INFO     | models.trainers | [CLF] Client 3 | Ep 283/300 | LR: 0.0008 | TrAcc: 1.0000
+2026-01-14 13:51:27 | INFO     | models.trainers | [CLF] Client 3 | Ep 284/300 | LR: 0.0007 | TrAcc: 1.0000
+2026-01-14 13:51:42 | INFO     | models.trainers | [CLF] Client 3 | Ep 285/300 | LR: 0.0006 | TrAcc: 1.0000
+2026-01-14 13:51:58 | INFO     | models.trainers | [CLF] Client 3 | Ep 286/300 | LR: 0.0005 | TrAcc: 1.0000
+2026-01-14 13:52:13 | INFO     | models.trainers | [CLF] Client 3 | Ep 287/300 | LR: 0.0005 | TrAcc: 1.0000
+2026-01-14 13:52:28 | INFO     | models.trainers | [CLF] Client 3 | Ep 288/300 | LR: 0.0004 | TrAcc: 1.0000
+2026-01-14 13:52:44 | INFO     | models.trainers | [CLF] Client 3 | Ep 289/300 | LR: 0.0003 | TrAcc: 1.0000
+2026-01-14 13:52:59 | INFO     | models.trainers | [CLF] Client 3 | Ep 290/300 | LR: 0.0003 | TrAcc: 1.0000
+2026-01-14 13:53:15 | INFO     | models.trainers | [CLF] Client 3 | Ep 291/300 | LR: 0.0002 | TrAcc: 1.0000
+2026-01-14 13:53:30 | INFO     | models.trainers | [CLF] Client 3 | Ep 292/300 | LR: 0.0002 | TrAcc: 1.0000
+2026-01-14 13:53:46 | INFO     | models.trainers | [CLF] Client 3 | Ep 293/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 13:54:01 | INFO     | models.trainers | [CLF] Client 3 | Ep 294/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 13:54:17 | INFO     | models.trainers | [CLF] Client 3 | Ep 295/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 13:54:32 | INFO     | models.trainers | [CLF] Client 3 | Ep 296/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 13:54:47 | INFO     | models.trainers | [CLF] Client 3 | Ep 297/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 13:55:03 | INFO     | models.trainers | [CLF] Client 3 | Ep 298/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 13:55:18 | INFO     | models.trainers | [CLF] Client 3 | Ep 299/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 13:55:35 | INFO     | models.trainers | [CLF] Client 3 | Ep 300/300 | LR: 0.0000 | TrAcc: 1.0000 | ValAcc: 0.9954
+2026-01-14 13:55:36 | INFO     | jobs.classifier_phase | [SILOS-LOCAL] Preparing Client 4 (Class 4)...
+2026-01-14 13:55:36 | INFO     | jobs.classifier_phase |   Generating 10000 synthetic images from 4 external models...
+Client 4 Synth Gen:   0%|          | 0/4 [00:00<?, ?it/s]Client 4 Synth Gen:  50%|█████     | 2/4 [00:00<00:00, 14.32it/s]Client 4 Synth Gen: 100%|██████████| 4/4 [00:00<00:00, 14.42it/s]Client 4 Synth Gen: 100%|██████████| 4/4 [00:00<00:00, 14.39it/s]
+2026-01-14 13:55:54 | INFO     | models.trainers | [CLF] Client 4 | Ep 1/300 | LR: 0.1000 | TrAcc: 0.2890
+2026-01-14 13:56:09 | INFO     | models.trainers | [CLF] Client 4 | Ep 2/300 | LR: 0.1000 | TrAcc: 0.3671
+2026-01-14 13:56:25 | INFO     | models.trainers | [CLF] Client 4 | Ep 3/300 | LR: 0.1000 | TrAcc: 0.4313
+2026-01-14 13:56:40 | INFO     | models.trainers | [CLF] Client 4 | Ep 4/300 | LR: 0.1000 | TrAcc: 0.4628
+2026-01-14 13:56:55 | INFO     | models.trainers | [CLF] Client 4 | Ep 5/300 | LR: 0.0999 | TrAcc: 0.4899
+2026-01-14 13:57:11 | INFO     | models.trainers | [CLF] Client 4 | Ep 6/300 | LR: 0.0999 | TrAcc: 0.5078
+2026-01-14 13:57:26 | INFO     | models.trainers | [CLF] Client 4 | Ep 7/300 | LR: 0.0999 | TrAcc: 0.5326
+2026-01-14 13:57:41 | INFO     | models.trainers | [CLF] Client 4 | Ep 8/300 | LR: 0.0998 | TrAcc: 0.5527
+2026-01-14 13:57:57 | INFO     | models.trainers | [CLF] Client 4 | Ep 9/300 | LR: 0.0998 | TrAcc: 0.5821
+2026-01-14 13:58:12 | INFO     | models.trainers | [CLF] Client 4 | Ep 10/300 | LR: 0.0997 | TrAcc: 0.6018
+2026-01-14 13:58:28 | INFO     | models.trainers | [CLF] Client 4 | Ep 11/300 | LR: 0.0997 | TrAcc: 0.6410
+2026-01-14 13:58:43 | INFO     | models.trainers | [CLF] Client 4 | Ep 12/300 | LR: 0.0996 | TrAcc: 0.6802
+2026-01-14 13:58:58 | INFO     | models.trainers | [CLF] Client 4 | Ep 13/300 | LR: 0.0995 | TrAcc: 0.7124
+2026-01-14 13:59:14 | INFO     | models.trainers | [CLF] Client 4 | Ep 14/300 | LR: 0.0995 | TrAcc: 0.7564
+2026-01-14 13:59:29 | INFO     | models.trainers | [CLF] Client 4 | Ep 15/300 | LR: 0.0994 | TrAcc: 0.7988
+2026-01-14 13:59:45 | INFO     | models.trainers | [CLF] Client 4 | Ep 16/300 | LR: 0.0993 | TrAcc: 0.8346
+2026-01-14 14:00:00 | INFO     | models.trainers | [CLF] Client 4 | Ep 17/300 | LR: 0.0992 | TrAcc: 0.8686
+2026-01-14 14:00:15 | INFO     | models.trainers | [CLF] Client 4 | Ep 18/300 | LR: 0.0991 | TrAcc: 0.8960
+2026-01-14 14:00:31 | INFO     | models.trainers | [CLF] Client 4 | Ep 19/300 | LR: 0.0990 | TrAcc: 0.9174
+2026-01-14 14:00:46 | INFO     | models.trainers | [CLF] Client 4 | Ep 20/300 | LR: 0.0989 | TrAcc: 0.9341
+2026-01-14 14:01:01 | INFO     | models.trainers | [CLF] Client 4 | Ep 21/300 | LR: 0.0988 | TrAcc: 0.9409
+2026-01-14 14:01:17 | INFO     | models.trainers | [CLF] Client 4 | Ep 22/300 | LR: 0.0987 | TrAcc: 0.9545
+2026-01-14 14:01:32 | INFO     | models.trainers | [CLF] Client 4 | Ep 23/300 | LR: 0.0986 | TrAcc: 0.9596
+2026-01-14 14:01:48 | INFO     | models.trainers | [CLF] Client 4 | Ep 24/300 | LR: 0.0984 | TrAcc: 0.9658
+2026-01-14 14:02:03 | INFO     | models.trainers | [CLF] Client 4 | Ep 25/300 | LR: 0.0983 | TrAcc: 0.9691
+2026-01-14 14:02:18 | INFO     | models.trainers | [CLF] Client 4 | Ep 26/300 | LR: 0.0982 | TrAcc: 0.9716
+2026-01-14 14:02:34 | INFO     | models.trainers | [CLF] Client 4 | Ep 27/300 | LR: 0.0980 | TrAcc: 0.9767
+2026-01-14 14:02:49 | INFO     | models.trainers | [CLF] Client 4 | Ep 28/300 | LR: 0.0979 | TrAcc: 0.9786
+2026-01-14 14:03:05 | INFO     | models.trainers | [CLF] Client 4 | Ep 29/300 | LR: 0.0977 | TrAcc: 0.9813
+2026-01-14 14:03:20 | INFO     | models.trainers | [CLF] Client 4 | Ep 30/300 | LR: 0.0976 | TrAcc: 0.9773
+2026-01-14 14:03:35 | INFO     | models.trainers | [CLF] Client 4 | Ep 31/300 | LR: 0.0974 | TrAcc: 0.9853
+2026-01-14 14:03:51 | INFO     | models.trainers | [CLF] Client 4 | Ep 32/300 | LR: 0.0972 | TrAcc: 0.9826
+2026-01-14 14:04:06 | INFO     | models.trainers | [CLF] Client 4 | Ep 33/300 | LR: 0.0970 | TrAcc: 0.9813
+2026-01-14 14:04:22 | INFO     | models.trainers | [CLF] Client 4 | Ep 34/300 | LR: 0.0969 | TrAcc: 0.9831
+2026-01-14 14:04:37 | INFO     | models.trainers | [CLF] Client 4 | Ep 35/300 | LR: 0.0967 | TrAcc: 0.9845
+2026-01-14 14:04:52 | INFO     | models.trainers | [CLF] Client 4 | Ep 36/300 | LR: 0.0965 | TrAcc: 0.9866
+2026-01-14 14:05:08 | INFO     | models.trainers | [CLF] Client 4 | Ep 37/300 | LR: 0.0963 | TrAcc: 0.9850
+2026-01-14 14:05:23 | INFO     | models.trainers | [CLF] Client 4 | Ep 38/300 | LR: 0.0961 | TrAcc: 0.9870
+2026-01-14 14:05:38 | INFO     | models.trainers | [CLF] Client 4 | Ep 39/300 | LR: 0.0959 | TrAcc: 0.9859
+2026-01-14 14:05:54 | INFO     | models.trainers | [CLF] Client 4 | Ep 40/300 | LR: 0.0957 | TrAcc: 0.9876
+2026-01-14 14:06:09 | INFO     | models.trainers | [CLF] Client 4 | Ep 41/300 | LR: 0.0955 | TrAcc: 0.9876
+2026-01-14 14:06:25 | INFO     | models.trainers | [CLF] Client 4 | Ep 42/300 | LR: 0.0952 | TrAcc: 0.9886
+2026-01-14 14:06:40 | INFO     | models.trainers | [CLF] Client 4 | Ep 43/300 | LR: 0.0950 | TrAcc: 0.9895
+2026-01-14 14:06:55 | INFO     | models.trainers | [CLF] Client 4 | Ep 44/300 | LR: 0.0948 | TrAcc: 0.9891
+2026-01-14 14:07:11 | INFO     | models.trainers | [CLF] Client 4 | Ep 45/300 | LR: 0.0946 | TrAcc: 0.9879
+2026-01-14 14:07:26 | INFO     | models.trainers | [CLF] Client 4 | Ep 46/300 | LR: 0.0943 | TrAcc: 0.9915
+2026-01-14 14:07:42 | INFO     | models.trainers | [CLF] Client 4 | Ep 47/300 | LR: 0.0941 | TrAcc: 0.9926
+2026-01-14 14:07:57 | INFO     | models.trainers | [CLF] Client 4 | Ep 48/300 | LR: 0.0938 | TrAcc: 0.9915
+2026-01-14 14:08:12 | INFO     | models.trainers | [CLF] Client 4 | Ep 49/300 | LR: 0.0936 | TrAcc: 0.9886
+2026-01-14 14:08:28 | INFO     | models.trainers | [CLF] Client 4 | Ep 50/300 | LR: 0.0933 | TrAcc: 0.9894
+2026-01-14 14:08:43 | INFO     | models.trainers | [CLF] Client 4 | Ep 51/300 | LR: 0.0930 | TrAcc: 0.9916
+2026-01-14 14:08:58 | INFO     | models.trainers | [CLF] Client 4 | Ep 52/300 | LR: 0.0928 | TrAcc: 0.9900
+2026-01-14 14:09:14 | INFO     | models.trainers | [CLF] Client 4 | Ep 53/300 | LR: 0.0925 | TrAcc: 0.9915
+2026-01-14 14:09:29 | INFO     | models.trainers | [CLF] Client 4 | Ep 54/300 | LR: 0.0922 | TrAcc: 0.9905
+2026-01-14 14:09:45 | INFO     | models.trainers | [CLF] Client 4 | Ep 55/300 | LR: 0.0919 | TrAcc: 0.9905
+2026-01-14 14:10:00 | INFO     | models.trainers | [CLF] Client 4 | Ep 56/300 | LR: 0.0916 | TrAcc: 0.9915
+2026-01-14 14:10:15 | INFO     | models.trainers | [CLF] Client 4 | Ep 57/300 | LR: 0.0914 | TrAcc: 0.9940
+2026-01-14 14:10:31 | INFO     | models.trainers | [CLF] Client 4 | Ep 58/300 | LR: 0.0911 | TrAcc: 0.9911
+2026-01-14 14:10:46 | INFO     | models.trainers | [CLF] Client 4 | Ep 59/300 | LR: 0.0908 | TrAcc: 0.9910
+2026-01-14 14:11:01 | INFO     | models.trainers | [CLF] Client 4 | Ep 60/300 | LR: 0.0905 | TrAcc: 0.9922
+2026-01-14 14:11:17 | INFO     | models.trainers | [CLF] Client 4 | Ep 61/300 | LR: 0.0901 | TrAcc: 0.9941
+2026-01-14 14:11:32 | INFO     | models.trainers | [CLF] Client 4 | Ep 62/300 | LR: 0.0898 | TrAcc: 0.9937
+2026-01-14 14:11:48 | INFO     | models.trainers | [CLF] Client 4 | Ep 63/300 | LR: 0.0895 | TrAcc: 0.9957
+2026-01-14 14:12:03 | INFO     | models.trainers | [CLF] Client 4 | Ep 64/300 | LR: 0.0892 | TrAcc: 0.9899
+2026-01-14 14:12:18 | INFO     | models.trainers | [CLF] Client 4 | Ep 65/300 | LR: 0.0889 | TrAcc: 0.9903
+2026-01-14 14:12:34 | INFO     | models.trainers | [CLF] Client 4 | Ep 66/300 | LR: 0.0885 | TrAcc: 0.9896
+2026-01-14 14:12:49 | INFO     | models.trainers | [CLF] Client 4 | Ep 67/300 | LR: 0.0882 | TrAcc: 0.9953
+2026-01-14 14:13:05 | INFO     | models.trainers | [CLF] Client 4 | Ep 68/300 | LR: 0.0878 | TrAcc: 0.9960
+2026-01-14 14:13:20 | INFO     | models.trainers | [CLF] Client 4 | Ep 69/300 | LR: 0.0875 | TrAcc: 0.9941
+2026-01-14 14:13:35 | INFO     | models.trainers | [CLF] Client 4 | Ep 70/300 | LR: 0.0872 | TrAcc: 0.9876
+2026-01-14 14:13:51 | INFO     | models.trainers | [CLF] Client 4 | Ep 71/300 | LR: 0.0868 | TrAcc: 0.9905
+2026-01-14 14:14:06 | INFO     | models.trainers | [CLF] Client 4 | Ep 72/300 | LR: 0.0864 | TrAcc: 0.9952
+2026-01-14 14:14:21 | INFO     | models.trainers | [CLF] Client 4 | Ep 73/300 | LR: 0.0861 | TrAcc: 0.9935
+2026-01-14 14:14:37 | INFO     | models.trainers | [CLF] Client 4 | Ep 74/300 | LR: 0.0857 | TrAcc: 0.9942
+2026-01-14 14:14:52 | INFO     | models.trainers | [CLF] Client 4 | Ep 75/300 | LR: 0.0854 | TrAcc: 0.9959
+2026-01-14 14:15:07 | INFO     | models.trainers | [CLF] Client 4 | Ep 76/300 | LR: 0.0850 | TrAcc: 0.9960
+2026-01-14 14:15:23 | INFO     | models.trainers | [CLF] Client 4 | Ep 77/300 | LR: 0.0846 | TrAcc: 0.9949
+2026-01-14 14:15:38 | INFO     | models.trainers | [CLF] Client 4 | Ep 78/300 | LR: 0.0842 | TrAcc: 0.9899
+2026-01-14 14:15:54 | INFO     | models.trainers | [CLF] Client 4 | Ep 79/300 | LR: 0.0838 | TrAcc: 0.9943
+2026-01-14 14:16:09 | INFO     | models.trainers | [CLF] Client 4 | Ep 80/300 | LR: 0.0835 | TrAcc: 0.9944
+2026-01-14 14:16:24 | INFO     | models.trainers | [CLF] Client 4 | Ep 81/300 | LR: 0.0831 | TrAcc: 0.9933
+2026-01-14 14:16:40 | INFO     | models.trainers | [CLF] Client 4 | Ep 82/300 | LR: 0.0827 | TrAcc: 0.9935
+2026-01-14 14:16:55 | INFO     | models.trainers | [CLF] Client 4 | Ep 83/300 | LR: 0.0823 | TrAcc: 0.9968
+2026-01-14 14:17:11 | INFO     | models.trainers | [CLF] Client 4 | Ep 84/300 | LR: 0.0819 | TrAcc: 0.9965
+2026-01-14 14:17:26 | INFO     | models.trainers | [CLF] Client 4 | Ep 85/300 | LR: 0.0815 | TrAcc: 0.9927
+2026-01-14 14:17:41 | INFO     | models.trainers | [CLF] Client 4 | Ep 86/300 | LR: 0.0811 | TrAcc: 0.9952
+2026-01-14 14:17:57 | INFO     | models.trainers | [CLF] Client 4 | Ep 87/300 | LR: 0.0806 | TrAcc: 0.9923
+2026-01-14 14:18:12 | INFO     | models.trainers | [CLF] Client 4 | Ep 88/300 | LR: 0.0802 | TrAcc: 0.9941
+2026-01-14 14:18:27 | INFO     | models.trainers | [CLF] Client 4 | Ep 89/300 | LR: 0.0798 | TrAcc: 0.9930
+2026-01-14 14:18:43 | INFO     | models.trainers | [CLF] Client 4 | Ep 90/300 | LR: 0.0794 | TrAcc: 0.9949
+2026-01-14 14:18:58 | INFO     | models.trainers | [CLF] Client 4 | Ep 91/300 | LR: 0.0790 | TrAcc: 0.9942
+2026-01-14 14:19:14 | INFO     | models.trainers | [CLF] Client 4 | Ep 92/300 | LR: 0.0785 | TrAcc: 0.9964
+2026-01-14 14:19:29 | INFO     | models.trainers | [CLF] Client 4 | Ep 93/300 | LR: 0.0781 | TrAcc: 0.9964
+2026-01-14 14:19:44 | INFO     | models.trainers | [CLF] Client 4 | Ep 94/300 | LR: 0.0777 | TrAcc: 0.9891
+2026-01-14 14:20:00 | INFO     | models.trainers | [CLF] Client 4 | Ep 95/300 | LR: 0.0772 | TrAcc: 0.9952
+2026-01-14 14:20:15 | INFO     | models.trainers | [CLF] Client 4 | Ep 96/300 | LR: 0.0768 | TrAcc: 0.9958
+2026-01-14 14:20:30 | INFO     | models.trainers | [CLF] Client 4 | Ep 97/300 | LR: 0.0763 | TrAcc: 0.9983
+2026-01-14 14:20:46 | INFO     | models.trainers | [CLF] Client 4 | Ep 98/300 | LR: 0.0759 | TrAcc: 0.9975
+2026-01-14 14:21:01 | INFO     | models.trainers | [CLF] Client 4 | Ep 99/300 | LR: 0.0755 | TrAcc: 0.9934
+2026-01-14 14:21:16 | INFO     | models.trainers | [CLF] Client 4 | Ep 100/300 | LR: 0.0750 | TrAcc: 0.9938
+2026-01-14 14:21:32 | INFO     | models.trainers | [CLF] Client 4 | Ep 101/300 | LR: 0.0745 | TrAcc: 0.9952
+2026-01-14 14:21:47 | INFO     | models.trainers | [CLF] Client 4 | Ep 102/300 | LR: 0.0741 | TrAcc: 0.9946
+2026-01-14 14:22:03 | INFO     | models.trainers | [CLF] Client 4 | Ep 103/300 | LR: 0.0736 | TrAcc: 0.9964
+2026-01-14 14:22:18 | INFO     | models.trainers | [CLF] Client 4 | Ep 104/300 | LR: 0.0732 | TrAcc: 0.9943
+2026-01-14 14:22:33 | INFO     | models.trainers | [CLF] Client 4 | Ep 105/300 | LR: 0.0727 | TrAcc: 0.9948
+2026-01-14 14:22:49 | INFO     | models.trainers | [CLF] Client 4 | Ep 106/300 | LR: 0.0722 | TrAcc: 0.9980
+2026-01-14 14:23:04 | INFO     | models.trainers | [CLF] Client 4 | Ep 107/300 | LR: 0.0718 | TrAcc: 0.9961
+2026-01-14 14:23:20 | INFO     | models.trainers | [CLF] Client 4 | Ep 108/300 | LR: 0.0713 | TrAcc: 0.9952
+2026-01-14 14:23:35 | INFO     | models.trainers | [CLF] Client 4 | Ep 109/300 | LR: 0.0708 | TrAcc: 0.9968
+2026-01-14 14:23:50 | INFO     | models.trainers | [CLF] Client 4 | Ep 110/300 | LR: 0.0703 | TrAcc: 0.9938
+2026-01-14 14:24:06 | INFO     | models.trainers | [CLF] Client 4 | Ep 111/300 | LR: 0.0699 | TrAcc: 0.9931
+2026-01-14 14:24:21 | INFO     | models.trainers | [CLF] Client 4 | Ep 112/300 | LR: 0.0694 | TrAcc: 0.9950
+2026-01-14 14:24:36 | INFO     | models.trainers | [CLF] Client 4 | Ep 113/300 | LR: 0.0689 | TrAcc: 0.9959
+2026-01-14 14:24:52 | INFO     | models.trainers | [CLF] Client 4 | Ep 114/300 | LR: 0.0684 | TrAcc: 0.9920
+2026-01-14 14:25:17 | INFO     | models.trainers | [CLF] Client 4 | Ep 115/300 | LR: 0.0679 | TrAcc: 0.9929
+2026-01-14 14:25:43 | INFO     | models.trainers | [CLF] Client 4 | Ep 116/300 | LR: 0.0674 | TrAcc: 0.9967
+2026-01-14 14:26:11 | INFO     | models.trainers | [CLF] Client 4 | Ep 117/300 | LR: 0.0669 | TrAcc: 0.9982
+2026-01-14 14:26:37 | INFO     | models.trainers | [CLF] Client 4 | Ep 118/300 | LR: 0.0664 | TrAcc: 0.9971
+2026-01-14 14:27:05 | INFO     | models.trainers | [CLF] Client 4 | Ep 119/300 | LR: 0.0659 | TrAcc: 0.9953
+2026-01-14 14:27:32 | INFO     | models.trainers | [CLF] Client 4 | Ep 120/300 | LR: 0.0655 | TrAcc: 0.9982
+2026-01-14 14:28:00 | INFO     | models.trainers | [CLF] Client 4 | Ep 121/300 | LR: 0.0650 | TrAcc: 0.9998
+2026-01-14 14:28:27 | INFO     | models.trainers | [CLF] Client 4 | Ep 122/300 | LR: 0.0645 | TrAcc: 0.9998
+2026-01-14 14:28:53 | INFO     | models.trainers | [CLF] Client 4 | Ep 123/300 | LR: 0.0639 | TrAcc: 0.9999
+2026-01-14 14:29:23 | INFO     | models.trainers | [CLF] Client 4 | Ep 124/300 | LR: 0.0634 | TrAcc: 0.9993
+2026-01-14 14:29:52 | INFO     | models.trainers | [CLF] Client 4 | Ep 125/300 | LR: 0.0629 | TrAcc: 0.9994
+2026-01-14 14:30:20 | INFO     | models.trainers | [CLF] Client 4 | Ep 126/300 | LR: 0.0624 | TrAcc: 0.9990
+2026-01-14 14:30:46 | INFO     | models.trainers | [CLF] Client 4 | Ep 127/300 | LR: 0.0619 | TrAcc: 0.9997
+2026-01-14 14:31:13 | INFO     | models.trainers | [CLF] Client 4 | Ep 128/300 | LR: 0.0614 | TrAcc: 0.9997
+2026-01-14 14:31:39 | INFO     | models.trainers | [CLF] Client 4 | Ep 129/300 | LR: 0.0609 | TrAcc: 0.9998
+2026-01-14 14:32:01 | INFO     | models.trainers | [CLF] Client 4 | Ep 130/300 | LR: 0.0604 | TrAcc: 0.9999
+2026-01-14 14:32:27 | INFO     | models.trainers | [CLF] Client 4 | Ep 131/300 | LR: 0.0599 | TrAcc: 1.0000
+2026-01-14 14:32:54 | INFO     | models.trainers | [CLF] Client 4 | Ep 132/300 | LR: 0.0594 | TrAcc: 1.0000
+2026-01-14 14:33:20 | INFO     | models.trainers | [CLF] Client 4 | Ep 133/300 | LR: 0.0589 | TrAcc: 0.9996
+2026-01-14 14:33:46 | INFO     | models.trainers | [CLF] Client 4 | Ep 134/300 | LR: 0.0583 | TrAcc: 0.9991
+2026-01-14 14:34:14 | INFO     | models.trainers | [CLF] Client 4 | Ep 135/300 | LR: 0.0578 | TrAcc: 0.9988
+2026-01-14 14:34:40 | INFO     | models.trainers | [CLF] Client 4 | Ep 136/300 | LR: 0.0573 | TrAcc: 0.9985
+2026-01-14 14:35:08 | INFO     | models.trainers | [CLF] Client 4 | Ep 137/300 | LR: 0.0568 | TrAcc: 0.9850
+2026-01-14 14:35:35 | INFO     | models.trainers | [CLF] Client 4 | Ep 138/300 | LR: 0.0563 | TrAcc: 0.9958
+2026-01-14 14:36:03 | INFO     | models.trainers | [CLF] Client 4 | Ep 139/300 | LR: 0.0557 | TrAcc: 0.9937
+2026-01-14 14:36:33 | INFO     | models.trainers | [CLF] Client 4 | Ep 140/300 | LR: 0.0552 | TrAcc: 0.9923
+2026-01-14 14:37:01 | INFO     | models.trainers | [CLF] Client 4 | Ep 141/300 | LR: 0.0547 | TrAcc: 0.9949
+2026-01-14 14:37:27 | INFO     | models.trainers | [CLF] Client 4 | Ep 142/300 | LR: 0.0542 | TrAcc: 0.9971
+2026-01-14 14:37:54 | INFO     | models.trainers | [CLF] Client 4 | Ep 143/300 | LR: 0.0537 | TrAcc: 0.9959
+2026-01-14 14:38:21 | INFO     | models.trainers | [CLF] Client 4 | Ep 144/300 | LR: 0.0531 | TrAcc: 0.9946
+2026-01-14 14:38:44 | INFO     | models.trainers | [CLF] Client 4 | Ep 145/300 | LR: 0.0526 | TrAcc: 0.9955
+2026-01-14 14:39:08 | INFO     | models.trainers | [CLF] Client 4 | Ep 146/300 | LR: 0.0521 | TrAcc: 0.9979
+2026-01-14 14:39:35 | INFO     | models.trainers | [CLF] Client 4 | Ep 147/300 | LR: 0.0516 | TrAcc: 0.9945
+2026-01-14 14:40:02 | INFO     | models.trainers | [CLF] Client 4 | Ep 148/300 | LR: 0.0510 | TrAcc: 0.9975
+2026-01-14 14:40:29 | INFO     | models.trainers | [CLF] Client 4 | Ep 149/300 | LR: 0.0505 | TrAcc: 0.9996
+2026-01-14 14:40:56 | INFO     | models.trainers | [CLF] Client 4 | Ep 150/300 | LR: 0.0500 | TrAcc: 0.9992
+2026-01-14 14:41:23 | INFO     | models.trainers | [CLF] Client 4 | Ep 151/300 | LR: 0.0495 | TrAcc: 0.9987
+2026-01-14 14:41:51 | INFO     | models.trainers | [CLF] Client 4 | Ep 152/300 | LR: 0.0490 | TrAcc: 0.9996
+2026-01-14 14:42:19 | INFO     | models.trainers | [CLF] Client 4 | Ep 153/300 | LR: 0.0484 | TrAcc: 0.9994
+2026-01-14 14:42:45 | INFO     | models.trainers | [CLF] Client 4 | Ep 154/300 | LR: 0.0479 | TrAcc: 0.9997
+2026-01-14 14:43:14 | INFO     | models.trainers | [CLF] Client 4 | Ep 155/300 | LR: 0.0474 | TrAcc: 0.9997
+2026-01-14 14:43:44 | INFO     | models.trainers | [CLF] Client 4 | Ep 156/300 | LR: 0.0469 | TrAcc: 0.9984
+2026-01-14 14:44:12 | INFO     | models.trainers | [CLF] Client 4 | Ep 157/300 | LR: 0.0463 | TrAcc: 0.9995
+2026-01-14 14:44:39 | INFO     | models.trainers | [CLF] Client 4 | Ep 158/300 | LR: 0.0458 | TrAcc: 0.9998
+2026-01-14 14:45:05 | INFO     | models.trainers | [CLF] Client 4 | Ep 159/300 | LR: 0.0453 | TrAcc: 1.0000
+2026-01-14 14:45:31 | INFO     | models.trainers | [CLF] Client 4 | Ep 160/300 | LR: 0.0448 | TrAcc: 0.9998
+2026-01-14 14:45:53 | INFO     | models.trainers | [CLF] Client 4 | Ep 161/300 | LR: 0.0443 | TrAcc: 0.9999
+2026-01-14 14:46:20 | INFO     | models.trainers | [CLF] Client 4 | Ep 162/300 | LR: 0.0437 | TrAcc: 0.9998
+2026-01-14 14:46:47 | INFO     | models.trainers | [CLF] Client 4 | Ep 163/300 | LR: 0.0432 | TrAcc: 0.9999
+2026-01-14 14:47:15 | INFO     | models.trainers | [CLF] Client 4 | Ep 164/300 | LR: 0.0427 | TrAcc: 0.9995
+2026-01-14 14:47:41 | INFO     | models.trainers | [CLF] Client 4 | Ep 165/300 | LR: 0.0422 | TrAcc: 0.9998
+2026-01-14 14:48:10 | INFO     | models.trainers | [CLF] Client 4 | Ep 166/300 | LR: 0.0417 | TrAcc: 0.9999
+2026-01-14 14:48:36 | INFO     | models.trainers | [CLF] Client 4 | Ep 167/300 | LR: 0.0411 | TrAcc: 1.0000
+2026-01-14 14:49:05 | INFO     | models.trainers | [CLF] Client 4 | Ep 168/300 | LR: 0.0406 | TrAcc: 0.9999
+2026-01-14 14:49:32 | INFO     | models.trainers | [CLF] Client 4 | Ep 169/300 | LR: 0.0401 | TrAcc: 0.9998
+2026-01-14 14:50:01 | INFO     | models.trainers | [CLF] Client 4 | Ep 170/300 | LR: 0.0396 | TrAcc: 0.9998
+2026-01-14 14:50:29 | INFO     | models.trainers | [CLF] Client 4 | Ep 171/300 | LR: 0.0391 | TrAcc: 0.9998
+2026-01-14 14:50:57 | INFO     | models.trainers | [CLF] Client 4 | Ep 172/300 | LR: 0.0386 | TrAcc: 1.0000
+2026-01-14 14:51:24 | INFO     | models.trainers | [CLF] Client 4 | Ep 173/300 | LR: 0.0381 | TrAcc: 0.9998
+2026-01-14 14:51:52 | INFO     | models.trainers | [CLF] Client 4 | Ep 174/300 | LR: 0.0376 | TrAcc: 0.9999
+2026-01-14 14:52:18 | INFO     | models.trainers | [CLF] Client 4 | Ep 175/300 | LR: 0.0371 | TrAcc: 0.9998
+2026-01-14 14:52:40 | INFO     | models.trainers | [CLF] Client 4 | Ep 176/300 | LR: 0.0366 | TrAcc: 0.9998
+2026-01-14 14:53:07 | INFO     | models.trainers | [CLF] Client 4 | Ep 177/300 | LR: 0.0361 | TrAcc: 0.9997
+2026-01-14 14:53:35 | INFO     | models.trainers | [CLF] Client 4 | Ep 178/300 | LR: 0.0355 | TrAcc: 0.9988
+2026-01-14 14:54:03 | INFO     | models.trainers | [CLF] Client 4 | Ep 179/300 | LR: 0.0350 | TrAcc: 0.9987
+2026-01-14 14:54:29 | INFO     | models.trainers | [CLF] Client 4 | Ep 180/300 | LR: 0.0345 | TrAcc: 0.9998
+2026-01-14 14:54:57 | INFO     | models.trainers | [CLF] Client 4 | Ep 181/300 | LR: 0.0341 | TrAcc: 0.9996
+2026-01-14 14:55:24 | INFO     | models.trainers | [CLF] Client 4 | Ep 182/300 | LR: 0.0336 | TrAcc: 0.9999
+2026-01-14 14:55:52 | INFO     | models.trainers | [CLF] Client 4 | Ep 183/300 | LR: 0.0331 | TrAcc: 0.9999
+2026-01-14 14:56:19 | INFO     | models.trainers | [CLF] Client 4 | Ep 184/300 | LR: 0.0326 | TrAcc: 0.9998
+2026-01-14 14:56:49 | INFO     | models.trainers | [CLF] Client 4 | Ep 185/300 | LR: 0.0321 | TrAcc: 1.0000
+2026-01-14 14:57:16 | INFO     | models.trainers | [CLF] Client 4 | Ep 186/300 | LR: 0.0316 | TrAcc: 1.0000
+2026-01-14 14:57:46 | INFO     | models.trainers | [CLF] Client 4 | Ep 187/300 | LR: 0.0311 | TrAcc: 1.0000
+2026-01-14 14:58:12 | INFO     | models.trainers | [CLF] Client 4 | Ep 188/300 | LR: 0.0306 | TrAcc: 0.9998
+2026-01-14 14:58:38 | INFO     | models.trainers | [CLF] Client 4 | Ep 189/300 | LR: 0.0301 | TrAcc: 1.0000
+2026-01-14 14:59:04 | INFO     | models.trainers | [CLF] Client 4 | Ep 190/300 | LR: 0.0297 | TrAcc: 0.9999
+2026-01-14 14:59:22 | INFO     | models.trainers | [CLF] Client 4 | Ep 191/300 | LR: 0.0292 | TrAcc: 0.9998
+2026-01-14 14:59:38 | INFO     | models.trainers | [CLF] Client 4 | Ep 192/300 | LR: 0.0287 | TrAcc: 0.9999
+2026-01-14 14:59:53 | INFO     | models.trainers | [CLF] Client 4 | Ep 193/300 | LR: 0.0282 | TrAcc: 0.9999
+2026-01-14 15:00:08 | INFO     | models.trainers | [CLF] Client 4 | Ep 194/300 | LR: 0.0278 | TrAcc: 1.0000
+2026-01-14 15:00:24 | INFO     | models.trainers | [CLF] Client 4 | Ep 195/300 | LR: 0.0273 | TrAcc: 1.0000
+2026-01-14 15:00:39 | INFO     | models.trainers | [CLF] Client 4 | Ep 196/300 | LR: 0.0268 | TrAcc: 0.9999
+2026-01-14 15:00:55 | INFO     | models.trainers | [CLF] Client 4 | Ep 197/300 | LR: 0.0264 | TrAcc: 1.0000
+2026-01-14 15:01:10 | INFO     | models.trainers | [CLF] Client 4 | Ep 198/300 | LR: 0.0259 | TrAcc: 1.0000
+2026-01-14 15:01:25 | INFO     | models.trainers | [CLF] Client 4 | Ep 199/300 | LR: 0.0255 | TrAcc: 1.0000
+2026-01-14 15:01:41 | INFO     | models.trainers | [CLF] Client 4 | Ep 200/300 | LR: 0.0250 | TrAcc: 1.0000
+2026-01-14 15:01:56 | INFO     | models.trainers | [CLF] Client 4 | Ep 201/300 | LR: 0.0245 | TrAcc: 1.0000
+2026-01-14 15:02:11 | INFO     | models.trainers | [CLF] Client 4 | Ep 202/300 | LR: 0.0241 | TrAcc: 1.0000
+2026-01-14 15:02:27 | INFO     | models.trainers | [CLF] Client 4 | Ep 203/300 | LR: 0.0237 | TrAcc: 1.0000
+2026-01-14 15:02:42 | INFO     | models.trainers | [CLF] Client 4 | Ep 204/300 | LR: 0.0232 | TrAcc: 1.0000
+2026-01-14 15:02:57 | INFO     | models.trainers | [CLF] Client 4 | Ep 205/300 | LR: 0.0228 | TrAcc: 0.9998
+2026-01-14 15:03:13 | INFO     | models.trainers | [CLF] Client 4 | Ep 206/300 | LR: 0.0223 | TrAcc: 1.0000
+2026-01-14 15:03:28 | INFO     | models.trainers | [CLF] Client 4 | Ep 207/300 | LR: 0.0219 | TrAcc: 1.0000
+2026-01-14 15:03:44 | INFO     | models.trainers | [CLF] Client 4 | Ep 208/300 | LR: 0.0215 | TrAcc: 1.0000
+2026-01-14 15:03:59 | INFO     | models.trainers | [CLF] Client 4 | Ep 209/300 | LR: 0.0210 | TrAcc: 1.0000
+2026-01-14 15:04:14 | INFO     | models.trainers | [CLF] Client 4 | Ep 210/300 | LR: 0.0206 | TrAcc: 1.0000
+2026-01-14 15:04:30 | INFO     | models.trainers | [CLF] Client 4 | Ep 211/300 | LR: 0.0202 | TrAcc: 1.0000
+2026-01-14 15:04:45 | INFO     | models.trainers | [CLF] Client 4 | Ep 212/300 | LR: 0.0198 | TrAcc: 1.0000
+2026-01-14 15:05:00 | INFO     | models.trainers | [CLF] Client 4 | Ep 213/300 | LR: 0.0194 | TrAcc: 1.0000
+2026-01-14 15:05:17 | INFO     | models.trainers | [CLF] Client 4 | Ep 214/300 | LR: 0.0189 | TrAcc: 1.0000
+2026-01-14 15:05:36 | INFO     | models.trainers | [CLF] Client 4 | Ep 215/300 | LR: 0.0185 | TrAcc: 1.0000
+2026-01-14 15:05:51 | INFO     | models.trainers | [CLF] Client 4 | Ep 216/300 | LR: 0.0181 | TrAcc: 1.0000
+2026-01-14 15:06:07 | INFO     | models.trainers | [CLF] Client 4 | Ep 217/300 | LR: 0.0177 | TrAcc: 1.0000
+2026-01-14 15:06:31 | INFO     | models.trainers | [CLF] Client 4 | Ep 218/300 | LR: 0.0173 | TrAcc: 1.0000
+2026-01-14 15:07:02 | INFO     | models.trainers | [CLF] Client 4 | Ep 219/300 | LR: 0.0169 | TrAcc: 1.0000
+2026-01-14 15:07:31 | INFO     | models.trainers | [CLF] Client 4 | Ep 220/300 | LR: 0.0165 | TrAcc: 1.0000
+2026-01-14 15:08:00 | INFO     | models.trainers | [CLF] Client 4 | Ep 221/300 | LR: 0.0162 | TrAcc: 1.0000
+2026-01-14 15:08:17 | INFO     | models.trainers | [CLF] Client 4 | Ep 222/300 | LR: 0.0158 | TrAcc: 1.0000
+2026-01-14 15:08:35 | INFO     | models.trainers | [CLF] Client 4 | Ep 223/300 | LR: 0.0154 | TrAcc: 1.0000
+2026-01-14 15:08:54 | INFO     | models.trainers | [CLF] Client 4 | Ep 224/300 | LR: 0.0150 | TrAcc: 1.0000
+2026-01-14 15:09:13 | INFO     | models.trainers | [CLF] Client 4 | Ep 225/300 | LR: 0.0146 | TrAcc: 1.0000
+2026-01-14 15:09:28 | INFO     | models.trainers | [CLF] Client 4 | Ep 226/300 | LR: 0.0143 | TrAcc: 1.0000
+2026-01-14 15:09:44 | INFO     | models.trainers | [CLF] Client 4 | Ep 227/300 | LR: 0.0139 | TrAcc: 1.0000
+2026-01-14 15:10:00 | INFO     | models.trainers | [CLF] Client 4 | Ep 228/300 | LR: 0.0136 | TrAcc: 1.0000
+2026-01-14 15:10:20 | INFO     | models.trainers | [CLF] Client 4 | Ep 229/300 | LR: 0.0132 | TrAcc: 1.0000
+2026-01-14 15:10:40 | INFO     | models.trainers | [CLF] Client 4 | Ep 230/300 | LR: 0.0128 | TrAcc: 1.0000
+2026-01-14 15:11:00 | INFO     | models.trainers | [CLF] Client 4 | Ep 231/300 | LR: 0.0125 | TrAcc: 1.0000
+2026-01-14 15:11:20 | INFO     | models.trainers | [CLF] Client 4 | Ep 232/300 | LR: 0.0122 | TrAcc: 1.0000
+2026-01-14 15:11:36 | INFO     | models.trainers | [CLF] Client 4 | Ep 233/300 | LR: 0.0118 | TrAcc: 1.0000
+2026-01-14 15:11:51 | INFO     | models.trainers | [CLF] Client 4 | Ep 234/300 | LR: 0.0115 | TrAcc: 1.0000
+2026-01-14 15:12:11 | INFO     | models.trainers | [CLF] Client 4 | Ep 235/300 | LR: 0.0111 | TrAcc: 1.0000
+2026-01-14 15:12:31 | INFO     | models.trainers | [CLF] Client 4 | Ep 236/300 | LR: 0.0108 | TrAcc: 1.0000
+2026-01-14 15:12:51 | INFO     | models.trainers | [CLF] Client 4 | Ep 237/300 | LR: 0.0105 | TrAcc: 1.0000
+2026-01-14 15:13:11 | INFO     | models.trainers | [CLF] Client 4 | Ep 238/300 | LR: 0.0102 | TrAcc: 1.0000
+2026-01-14 15:13:30 | INFO     | models.trainers | [CLF] Client 4 | Ep 239/300 | LR: 0.0099 | TrAcc: 1.0000
+2026-01-14 15:13:45 | INFO     | models.trainers | [CLF] Client 4 | Ep 240/300 | LR: 0.0095 | TrAcc: 1.0000
+2026-01-14 15:14:00 | INFO     | models.trainers | [CLF] Client 4 | Ep 241/300 | LR: 0.0092 | TrAcc: 1.0000
+2026-01-14 15:14:16 | INFO     | models.trainers | [CLF] Client 4 | Ep 242/300 | LR: 0.0089 | TrAcc: 1.0000
+2026-01-14 15:14:31 | INFO     | models.trainers | [CLF] Client 4 | Ep 243/300 | LR: 0.0086 | TrAcc: 1.0000
+2026-01-14 15:14:46 | INFO     | models.trainers | [CLF] Client 4 | Ep 244/300 | LR: 0.0084 | TrAcc: 1.0000
+2026-01-14 15:15:05 | INFO     | models.trainers | [CLF] Client 4 | Ep 245/300 | LR: 0.0081 | TrAcc: 1.0000
+2026-01-14 15:15:25 | INFO     | models.trainers | [CLF] Client 4 | Ep 246/300 | LR: 0.0078 | TrAcc: 1.0000
+2026-01-14 15:15:45 | INFO     | models.trainers | [CLF] Client 4 | Ep 247/300 | LR: 0.0075 | TrAcc: 1.0000
+2026-01-14 15:16:05 | INFO     | models.trainers | [CLF] Client 4 | Ep 248/300 | LR: 0.0072 | TrAcc: 1.0000
+2026-01-14 15:16:24 | INFO     | models.trainers | [CLF] Client 4 | Ep 249/300 | LR: 0.0070 | TrAcc: 1.0000
+2026-01-14 15:16:39 | INFO     | models.trainers | [CLF] Client 4 | Ep 250/300 | LR: 0.0067 | TrAcc: 1.0000
+2026-01-14 15:16:55 | INFO     | models.trainers | [CLF] Client 4 | Ep 251/300 | LR: 0.0064 | TrAcc: 1.0000
+2026-01-14 15:17:10 | INFO     | models.trainers | [CLF] Client 4 | Ep 252/300 | LR: 0.0062 | TrAcc: 1.0000
+2026-01-14 15:17:26 | INFO     | models.trainers | [CLF] Client 4 | Ep 253/300 | LR: 0.0059 | TrAcc: 1.0000
+2026-01-14 15:17:41 | INFO     | models.trainers | [CLF] Client 4 | Ep 254/300 | LR: 0.0057 | TrAcc: 1.0000
+2026-01-14 15:17:56 | INFO     | models.trainers | [CLF] Client 4 | Ep 255/300 | LR: 0.0054 | TrAcc: 1.0000
+2026-01-14 15:18:12 | INFO     | models.trainers | [CLF] Client 4 | Ep 256/300 | LR: 0.0052 | TrAcc: 1.0000
+2026-01-14 15:18:27 | INFO     | models.trainers | [CLF] Client 4 | Ep 257/300 | LR: 0.0050 | TrAcc: 1.0000
+2026-01-14 15:18:42 | INFO     | models.trainers | [CLF] Client 4 | Ep 258/300 | LR: 0.0048 | TrAcc: 1.0000
+2026-01-14 15:18:58 | INFO     | models.trainers | [CLF] Client 4 | Ep 259/300 | LR: 0.0045 | TrAcc: 1.0000
+2026-01-14 15:19:13 | INFO     | models.trainers | [CLF] Client 4 | Ep 260/300 | LR: 0.0043 | TrAcc: 1.0000
+2026-01-14 15:19:29 | INFO     | models.trainers | [CLF] Client 4 | Ep 261/300 | LR: 0.0041 | TrAcc: 1.0000
+2026-01-14 15:19:44 | INFO     | models.trainers | [CLF] Client 4 | Ep 262/300 | LR: 0.0039 | TrAcc: 1.0000
+2026-01-14 15:19:59 | INFO     | models.trainers | [CLF] Client 4 | Ep 263/300 | LR: 0.0037 | TrAcc: 1.0000
+2026-01-14 15:20:15 | INFO     | models.trainers | [CLF] Client 4 | Ep 264/300 | LR: 0.0035 | TrAcc: 1.0000
+2026-01-14 15:20:30 | INFO     | models.trainers | [CLF] Client 4 | Ep 265/300 | LR: 0.0033 | TrAcc: 1.0000
+2026-01-14 15:20:45 | INFO     | models.trainers | [CLF] Client 4 | Ep 266/300 | LR: 0.0031 | TrAcc: 1.0000
+2026-01-14 15:21:01 | INFO     | models.trainers | [CLF] Client 4 | Ep 267/300 | LR: 0.0030 | TrAcc: 1.0000
+2026-01-14 15:21:16 | INFO     | models.trainers | [CLF] Client 4 | Ep 268/300 | LR: 0.0028 | TrAcc: 1.0000
+2026-01-14 15:21:31 | INFO     | models.trainers | [CLF] Client 4 | Ep 269/300 | LR: 0.0026 | TrAcc: 1.0000
+2026-01-14 15:21:47 | INFO     | models.trainers | [CLF] Client 4 | Ep 270/300 | LR: 0.0024 | TrAcc: 1.0000
+2026-01-14 15:22:02 | INFO     | models.trainers | [CLF] Client 4 | Ep 271/300 | LR: 0.0023 | TrAcc: 1.0000
+2026-01-14 15:22:18 | INFO     | models.trainers | [CLF] Client 4 | Ep 272/300 | LR: 0.0021 | TrAcc: 1.0000
+2026-01-14 15:22:33 | INFO     | models.trainers | [CLF] Client 4 | Ep 273/300 | LR: 0.0020 | TrAcc: 1.0000
+2026-01-14 15:22:48 | INFO     | models.trainers | [CLF] Client 4 | Ep 274/300 | LR: 0.0018 | TrAcc: 1.0000
+2026-01-14 15:23:04 | INFO     | models.trainers | [CLF] Client 4 | Ep 275/300 | LR: 0.0017 | TrAcc: 1.0000
+2026-01-14 15:23:19 | INFO     | models.trainers | [CLF] Client 4 | Ep 276/300 | LR: 0.0016 | TrAcc: 1.0000
+2026-01-14 15:23:35 | INFO     | models.trainers | [CLF] Client 4 | Ep 277/300 | LR: 0.0014 | TrAcc: 1.0000
+2026-01-14 15:23:50 | INFO     | models.trainers | [CLF] Client 4 | Ep 278/300 | LR: 0.0013 | TrAcc: 1.0000
+2026-01-14 15:24:05 | INFO     | models.trainers | [CLF] Client 4 | Ep 279/300 | LR: 0.0012 | TrAcc: 1.0000
+2026-01-14 15:24:21 | INFO     | models.trainers | [CLF] Client 4 | Ep 280/300 | LR: 0.0011 | TrAcc: 1.0000
+2026-01-14 15:24:36 | INFO     | models.trainers | [CLF] Client 4 | Ep 281/300 | LR: 0.0010 | TrAcc: 1.0000
+2026-01-14 15:24:51 | INFO     | models.trainers | [CLF] Client 4 | Ep 282/300 | LR: 0.0009 | TrAcc: 1.0000
+2026-01-14 15:25:07 | INFO     | models.trainers | [CLF] Client 4 | Ep 283/300 | LR: 0.0008 | TrAcc: 1.0000
+2026-01-14 15:25:22 | INFO     | models.trainers | [CLF] Client 4 | Ep 284/300 | LR: 0.0007 | TrAcc: 1.0000
+2026-01-14 15:25:38 | INFO     | models.trainers | [CLF] Client 4 | Ep 285/300 | LR: 0.0006 | TrAcc: 1.0000
+2026-01-14 15:25:53 | INFO     | models.trainers | [CLF] Client 4 | Ep 286/300 | LR: 0.0005 | TrAcc: 1.0000
+2026-01-14 15:26:08 | INFO     | models.trainers | [CLF] Client 4 | Ep 287/300 | LR: 0.0005 | TrAcc: 1.0000
+2026-01-14 15:26:24 | INFO     | models.trainers | [CLF] Client 4 | Ep 288/300 | LR: 0.0004 | TrAcc: 1.0000
+2026-01-14 15:26:40 | INFO     | models.trainers | [CLF] Client 4 | Ep 289/300 | LR: 0.0003 | TrAcc: 1.0000
+2026-01-14 15:26:57 | INFO     | models.trainers | [CLF] Client 4 | Ep 290/300 | LR: 0.0003 | TrAcc: 1.0000
+2026-01-14 15:27:13 | INFO     | models.trainers | [CLF] Client 4 | Ep 291/300 | LR: 0.0002 | TrAcc: 1.0000
+2026-01-14 15:27:30 | INFO     | models.trainers | [CLF] Client 4 | Ep 292/300 | LR: 0.0002 | TrAcc: 1.0000
+2026-01-14 15:27:47 | INFO     | models.trainers | [CLF] Client 4 | Ep 293/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 15:28:03 | INFO     | models.trainers | [CLF] Client 4 | Ep 294/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 15:28:19 | INFO     | models.trainers | [CLF] Client 4 | Ep 295/300 | LR: 0.0001 | TrAcc: 1.0000
+2026-01-14 15:28:35 | INFO     | models.trainers | [CLF] Client 4 | Ep 296/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 15:28:52 | INFO     | models.trainers | [CLF] Client 4 | Ep 297/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 15:29:09 | INFO     | models.trainers | [CLF] Client 4 | Ep 298/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 15:29:26 | INFO     | models.trainers | [CLF] Client 4 | Ep 299/300 | LR: 0.0000 | TrAcc: 1.0000
+2026-01-14 15:29:44 | INFO     | models.trainers | [CLF] Client 4 | Ep 300/300 | LR: 0.0000 | TrAcc: 1.0000 | ValAcc: 0.9984
+2026-01-14 15:29:47 | INFO     | jobs.experiment_runner | [EXPORT] Modern predictions (.npz) saved to: federatedfactory_output_H100/diffusion/medmnist:retinamnist/seed-1/local-L128/silos/2026-01-14/T07-25-46Z/artifacts/predictions.npz
+2026-01-14 15:29:47 | INFO     | jobs.experiment_runner | [EXPORT] Legacy predictions (.npy) saved to: federatedfactory_output_H100/diffusion/medmnist:retinamnist/seed-1/local-L128/silos/2026-01-14/T07-25-46Z/artifacts/test_predictions.npy
+2026-01-14 15:29:47 | INFO     | jobs.experiment_runner | [EXPORT] Class distribution CSV saved to: federatedfactory_output_H100/diffusion/medmnist:retinamnist/seed-1/local-L128/silos/2026-01-14/T07-25-46Z/distributions/client_class_distribution.csv
+2026-01-14 15:29:47 | INFO     | jobs.experiment_runner | Experiment saved to: federatedfactory_output_H100/diffusion/medmnist:retinamnist/seed-1/local-L128/silos/2026-01-14/T07-25-46Z

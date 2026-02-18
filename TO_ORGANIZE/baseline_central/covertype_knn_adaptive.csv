@@ -1,0 +1,2 @@
+Method,Avg k,AUROC,Accuracy,Precision,Recall,F1-Score
+Adaptive K-NN,3.0,0.9696 ± 0.0311,0.9179 ± 0.0489,0.9663 ± 0.0534,0.9142 ± 0.0540,0.9394 ± 0.0531
