@@ -1,0 +1,2 @@
+Dataset,Partition,Alpha,Mode,N_Seeds,Local Acc (Avg),PoE Acc,Gain (%),PoE AUROC
+fed_isic2019,silos,0.1,local,5,0.5625 ±0.012,0.6085 ±0.005,+4.60,0.8158 ±0.003

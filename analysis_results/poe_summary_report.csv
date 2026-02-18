@@ -1,0 +1,6 @@
+Dataset,Partition,Alpha,Mode,N_Seeds,Local Acc (Avg),PoE Acc,Gain (%),PoE AUROC
+medmnist:bloodmnist,silos,0.1,local,5,0.8856 ±0.002,0.9425 ±0.004,+5.69,0.9951 ±0.000
+fed_isic2019,silos,0.1,local,5,0.5625 ±0.012,0.6085 ±0.005,+4.60,0.8158 ±0.003
+medmnist:retinamnist,silos,0.1,local,5,0.4605 ±0.007,0.4650 ±0.013,+0.45,0.7010 ±0.003
+cifar,silos,0.1,local,5,0.8149 ±0.003,0.9057 ±0.001,+9.08,0.9914 ±0.000
+medmnist:pathmnist,silos,0.1,local,5,0.8138 ±0.009,0.8986 ±0.009,+8.48,0.9828 ±0.004

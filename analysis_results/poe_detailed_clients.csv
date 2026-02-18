@@ -1,0 +1,251 @@
+signature,dataset,partition,run_id,model_name,type,accuracy,auroc
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,client-000,local_client,0.8985676702718504,0.9894470592215162
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,client-001,local_client,0.9254603916983338,0.9925390629657629
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,client-002,local_client,0.9143525285004385,0.9921236867241885
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,client-003,local_client,0.8021046477638117,0.9687335447724824
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,client-004,local_client,0.8935983630517392,0.9887902038273072
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,client-005,local_client,0.8848289973691903,0.9825422317661414
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,client-006,local_client,0.8360128617363344,0.9840507742590379
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,client-007,local_client,0.9248757673194973,0.9930380716416378
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,AVG Local,aggregate,0.8849751534638994,0.9864080793972594
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-45Z,PoE Ensemble,ensemble,0.937445191464484,0.9945774131591743
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,client-000,local_client,0.8973984215141771,0.9898408555413039
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,client-001,local_client,0.9269219526454253,0.9918035789045752
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,client-002,local_client,0.9137679041216019,0.991512549749578
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,client-003,local_client,0.7953814674071908,0.9680467966262793
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,client-004,local_client,0.9125986553639287,0.9936769828690912
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,client-005,local_client,0.8801520023384976,0.9657458809161898
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,client-006,local_client,0.8322128032738966,0.9839148670184428
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,client-007,local_client,0.9269219526454253,0.9931360128540226
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,AVG Local,aggregate,0.885669394913768,0.9847096905599353
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T02-05-56Z,PoE Ensemble,ensemble,0.9421221864951769,0.9952388181596442
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,client-000,local_client,0.9014907921660333,0.9913912194149012
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,client-001,local_client,0.9336451330020462,0.9938057702838345
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,client-002,local_client,0.9234142063724057,0.9915716192470451
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,client-003,local_client,0.8038585209003215,0.964860656726431
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,client-004,local_client,0.9067524115755627,0.9904608333051506
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,client-005,local_client,0.8854136217480268,0.9740289764613724
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,client-006,local_client,0.8038585209003215,0.9829102580502621
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,client-007,local_client,0.9389067524115756,0.9944974853229925
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,AVG Local,aggregate,0.8871674948845367,0.9854408523514986
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T21-11-07Z,PoE Ensemble,ensemble,0.9488453668517978,0.9956408732012358
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,client-000,local_client,0.8973984215141771,0.9869711363751259
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,client-001,local_client,0.9280912014030985,0.9925949910904771
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,client-002,local_client,0.9231218941829874,0.9929690748559492
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,client-003,local_client,0.803273896521485,0.9736348686048204
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,client-004,local_client,0.8930137386729027,0.9910631043798892
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,client-005,local_client,0.8851213095586086,0.9766976225836921
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,client-006,local_client,0.8497515346389944,0.988361597107315
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,client-007,local_client,0.9254603916983338,0.9923565376282841
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,AVG Local,aggregate,0.8881540485238234,0.9868311165781941
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T08-40-41Z,PoE Ensemble,ensemble,0.9450453083893599,0.9953519624939424
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,client-000,local_client,0.8971061093247589,0.9860073037938042
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,client-001,local_client,0.9257527038877521,0.9924831046286839
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,client-002,local_client,0.9169833382052032,0.9923940662529225
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,client-003,local_client,0.8012277111955568,0.9672896601244999
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,client-004,local_client,0.8971061093247589,0.9910265670326206
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,client-005,local_client,0.8807366267173341,0.9646205068284806
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,client-006,local_client,0.7962584039754458,0.9812239191485448
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,client-007,local_client,0.9394913767904122,0.9954575505962495
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,AVG Local,aggregate,0.8818327974276527,0.9838128348007258
+medmnist:bloodmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:bloodmnist,silos,T07-25-46Z,PoE Ensemble,ensemble,0.9389067524115756,0.9948901130854488
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,client-000,local_client,0.5774193548387097,0.7842723822848499
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,client-001,local_client,0.5406451612903226,0.7591860758512454
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,client-002,local_client,0.5655913978494623,0.8000935550177531
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,client-003,local_client,0.5836559139784946,0.7931975298324146
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,client-004,local_client,0.5750537634408602,0.7974544492244507
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,client-005,local_client,0.5544086021505377,0.7755425491348543
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,client-006,local_client,0.5750537634408602,0.7936782132491051
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,client-007,local_client,0.563010752688172,0.7709083599387542
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,AVG Local,aggregate,0.5668548387096775,0.7842916393166784
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-33Z,PoE Ensemble,ensemble,0.6079569892473118,0.8106909360331374
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,client-000,local_client,0.5890322580645161,0.7966995311563325
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,client-001,local_client,0.5402150537634408,0.7705641906420657
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,client-002,local_client,0.5636559139784946,0.7982298224923006
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,client-003,local_client,0.5634408602150538,0.7777109176200603
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,client-004,local_client,0.5688172043010753,0.7831895805182743
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,client-005,local_client,0.558494623655914,0.7932764199607651
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,client-006,local_client,0.5754838709677419,0.8026412997495
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,client-007,local_client,0.5849462365591398,0.7807741551690539
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,AVG Local,aggregate,0.568010752688172,0.7878857396635441
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T04-07-07Z,PoE Ensemble,ensemble,0.6040860215053764,0.8125247363882826
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,client-000,local_client,0.5941935483870968,0.796373965704437
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,client-001,local_client,0.4664516129032258,0.7303999900650564
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,client-002,local_client,0.5443010752688172,0.7953952284684127
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,client-003,local_client,0.5883870967741935,0.8035586345027981
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,client-004,local_client,0.5832258064516129,0.8014058357702243
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,client-005,local_client,0.5812903225806452,0.7996532437015261
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,client-006,local_client,0.5987096774193549,0.7896607641849496
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,client-007,local_client,0.5941935483870968,0.789041188057803
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,AVG Local,aggregate,0.5688440860215054,0.7881861063069009
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T05-23-40Z,PoE Ensemble,ensemble,0.6178494623655914,0.8179618377146891
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,client-000,local_client,0.604516129032258,0.7950652972847009
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,client-001,local_client,0.5253763440860215,0.7690401614763587
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,client-002,local_client,0.54,0.8022540870892767
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,client-003,local_client,0.5748387096774193,0.7955221555537283
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,client-004,local_client,0.5812903225806452,0.8089912671194299
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,client-005,local_client,0.5950537634408603,0.8043784808985244
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,client-006,local_client,0.5718279569892473,0.8005576486850827
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,client-007,local_client,0.5686021505376344,0.7721087555269498
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,AVG Local,aggregate,0.5701881720430106,0.7934897317042564
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T02-18-20Z,PoE Ensemble,ensemble,0.6053763440860215,0.818670925538779
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,client-000,local_client,0.572258064516129,0.7692684959296913
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,client-001,local_client,0.28774193548387095,0.6216925083961946
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,client-002,local_client,0.5748387096774193,0.8080049889625716
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,client-003,local_client,0.5802150537634408,0.8090059820242956
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,client-004,local_client,0.5795698924731183,0.8076772587793198
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,client-005,local_client,0.5817204301075268,0.7874922872283855
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,client-006,local_client,0.5550537634408602,0.792676377152623
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,client-007,local_client,0.5761290322580646,0.777221878883182
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,AVG Local,aggregate,0.5384408602150538,0.7716299721695329
+fed_isic2019 | silos | 0.1 | 10 | diffusion | 64 | False | local,fed_isic2019,silos,T07-03-30Z,PoE Ensemble,ensemble,0.6073118279569892,0.8190539920377173
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T07-25-46Z,client-000,local_client,0.4275,0.6461929561765298
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T07-25-46Z,client-001,local_client,0.47,0.7005383460190415
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T07-25-46Z,client-002,local_client,0.4675,0.708586279719519
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T07-25-46Z,client-003,local_client,0.46,0.6913382872406915
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T07-25-46Z,client-004,local_client,0.435,0.6806707572662022
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T07-25-46Z,AVG Local,aggregate,0.45199999999999996,0.6854653252843967
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T07-25-46Z,PoE Ensemble,ensemble,0.45,0.6988347123073824
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T09-04-40Z,client-000,local_client,0.475,0.667958639625224
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T09-04-40Z,client-001,local_client,0.48,0.6819974979790754
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T09-04-40Z,client-002,local_client,0.4625,0.6893948435949346
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T09-04-40Z,client-003,local_client,0.4625,0.6824213788727813
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T09-04-40Z,client-004,local_client,0.47,0.7001474897218045
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T09-04-40Z,AVG Local,aggregate,0.4699999999999999,0.6843839699587638
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T09-04-40Z,PoE Ensemble,ensemble,0.4675,0.696439692702907
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T22-22-11Z,client-000,local_client,0.445,0.6914382687122853
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T22-22-11Z,client-001,local_client,0.4775,0.685892467678573
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T22-22-11Z,client-002,local_client,0.43,0.6870176858764714
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T22-22-11Z,client-003,local_client,0.4575,0.6945093638789163
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T22-22-11Z,client-004,local_client,0.4475,0.6970661363186554
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T22-22-11Z,AVG Local,aggregate,0.45150000000000007,0.6911847844929803
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T22-22-11Z,PoE Ensemble,ensemble,0.4525,0.700235021655838
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T15-01-41Z,client-000,local_client,0.4275,0.6523188385786203
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T15-01-41Z,client-001,local_client,0.485,0.6893946096492736
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T15-01-41Z,client-002,local_client,0.45,0.6842305546034122
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T15-01-41Z,client-003,local_client,0.47,0.7079895998642932
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T15-01-41Z,client-004,local_client,0.4975,0.7026025107705868
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T15-01-41Z,AVG Local,aggregate,0.466,0.6873072226932372
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T15-01-41Z,PoE Ensemble,ensemble,0.4675,0.7043923283084139
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T14-30-17Z,client-000,local_client,0.435,0.6686979142023853
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T14-30-17Z,client-001,local_client,0.5025,0.7083414774923664
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T14-30-17Z,client-002,local_client,0.485,0.7044779443700913
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T14-30-17Z,client-003,local_client,0.4375,0.6936972550183764
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T14-30-17Z,client-004,local_client,0.455,0.6853926566073987
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T14-30-17Z,AVG Local,aggregate,0.46299999999999997,0.6921214495381236
+medmnist:retinamnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:retinamnist,silos,T14-30-17Z,PoE Ensemble,ensemble,0.4875,0.7053120318578884
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-000,local_client,0.7904,0.9781756611111112
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-001,local_client,0.8577,0.9888182611111113
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-002,local_client,0.7797,0.9773070333333334
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-003,local_client,0.7673,0.9684127444444446
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-004,local_client,0.8381,0.9849201666666667
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-005,local_client,0.7737,0.9682000944444444
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-006,local_client,0.8441,0.9855001055555557
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-007,local_client,0.8384,0.984961388888889
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-008,local_client,0.8528,0.9870133555555555
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,client-009,local_client,0.8454,0.9869954944444445
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,AVG Local,aggregate,0.8187599999999999,0.9810304305555556
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-46Z,PoE Ensemble,ensemble,0.9059,0.9914408333333334
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-000,local_client,0.803,0.97949655
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-001,local_client,0.8447,0.9857994055555557
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-002,local_client,0.7938,0.9774830333333332
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-003,local_client,0.7681,0.9668439500000001
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-004,local_client,0.8205,0.9815447333333335
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-005,local_client,0.7704,0.9687436944444443
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-006,local_client,0.8428,0.9855274055555554
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-007,local_client,0.8233,0.9821109777777777
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-008,local_client,0.8471,0.985614688888889
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,client-009,local_client,0.8347,0.9849097666666665
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,AVG Local,aggregate,0.81484,0.9798074205555555
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T01-22-18Z,PoE Ensemble,ensemble,0.9041,0.9910771333333332
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-000,local_client,0.7895,0.9776283666666667
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-001,local_client,0.8491,0.9882070277777778
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-002,local_client,0.789,0.9784311944444444
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-003,local_client,0.7569,0.9679348666666666
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-004,local_client,0.8319,0.9843577055555557
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-005,local_client,0.7911,0.9708854500000001
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-006,local_client,0.847,0.9857801166666667
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-007,local_client,0.8351,0.9845734944444444
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-008,local_client,0.8502,0.9872193999999999
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,client-009,local_client,0.8379,0.9875529333333333
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,AVG Local,aggregate,0.81777,0.9812570555555556
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T20-58-23Z,PoE Ensemble,ensemble,0.9065,0.991324761111111
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-000,local_client,0.7649,0.973970627777778
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-001,local_client,0.844,0.9869597111111112
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-002,local_client,0.7876,0.97444565
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-003,local_client,0.7578,0.9637408722222223
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-004,local_client,0.8159,0.9825337222222222
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-005,local_client,0.7873,0.9711920666666666
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-006,local_client,0.8397,0.9847715111111113
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-007,local_client,0.8118,0.9800799777777778
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-008,local_client,0.8478,0.986182938888889
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,client-009,local_client,0.8408,0.9856378222222222
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,AVG Local,aggregate,0.80976,0.97895149
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-01-56Z,PoE Ensemble,ensemble,0.9058,0.9915818166666668
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-000,local_client,0.7849,0.9769718055555556
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-001,local_client,0.8399,0.9859021
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-002,local_client,0.7833,0.9767145444444445
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-003,local_client,0.7644,0.9704843222222224
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-004,local_client,0.8335,0.985393411111111
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-005,local_client,0.7663,0.9663400055555554
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-006,local_client,0.8404,0.9846569444444443
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-007,local_client,0.8285,0.9846739222222223
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-008,local_client,0.8563,0.9872017333333334
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,client-009,local_client,0.8352,0.9862483055555555
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,AVG Local,aggregate,0.8132699999999999,0.9804587094444445
+cifar | silos | 0.1 | 10 | diffusion | 128 | False | local,cifar,silos,T07-25-47Z,PoE Ensemble,ensemble,0.9061,0.9914771555555555
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,client-000,local_client,0.8174094707520891,0.984826304824247
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,client-001,local_client,0.8832869080779945,0.9792283199992675
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,client-002,local_client,0.8623955431754875,0.9742437227189534
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,client-003,local_client,0.7486072423398329,0.9527584004385388
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,client-004,local_client,0.783008356545961,0.9722414579588577
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,client-005,local_client,0.8139275766016713,0.9442489950853736
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,client-006,local_client,0.7984679665738161,0.9584130451456132
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,client-007,local_client,0.8541782729805014,0.9685197531799178
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,client-008,local_client,0.743175487465181,0.9529608292847725
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,AVG Local,aggregate,0.811606313834726,0.965271203181727
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T07-25-51Z,PoE Ensemble,ensemble,0.8995821727019498,0.9812804649057542
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,client-000,local_client,0.8547353760445683,0.9787590075858965
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,client-001,local_client,0.8887186629526462,0.976701262916918
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,client-002,local_client,0.8857938718662952,0.9675802409075478
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,client-003,local_client,0.7596100278551532,0.9577122857565128
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,client-004,local_client,0.7977715877437326,0.9789721936551277
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,client-005,local_client,0.8147632311977716,0.9310118291920908
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,client-006,local_client,0.8086350974930362,0.9454550888601732
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,client-007,local_client,0.8674094707520892,0.9631145455733345
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,client-008,local_client,0.7540389972144846,0.96434263653076
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,AVG Local,aggregate,0.825719591457753,0.9626276767753735
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T16-50-55Z,PoE Ensemble,ensemble,0.9118384401114206,0.9805738377224181
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,client-000,local_client,0.8080779944289693,0.9751360145774759
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,client-001,local_client,0.8863509749303621,0.9882304868801302
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,client-002,local_client,0.8766016713091922,0.9630353889591922
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,client-003,local_client,0.7714484679665738,0.9682380574138888
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,client-004,local_client,0.791782729805014,0.9806310400952023
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,client-005,local_client,0.8201949860724234,0.9309420790239089
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,client-006,local_client,0.7885793871866296,0.9505559100996559
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,client-007,local_client,0.8538997214484679,0.9709095872145705
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,client-008,local_client,0.7267409470752089,0.9565710500825517
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,AVG Local,aggregate,0.8137418755803156,0.9649166238162863
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T05-39-50Z,PoE Ensemble,ensemble,0.8993036211699165,0.98637761487491
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,client-000,local_client,0.8220055710306406,0.9655327491919657
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,client-001,local_client,0.8767409470752089,0.9755261933433995
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,client-002,local_client,0.8711699164345403,0.9625695132629427
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,client-003,local_client,0.7309192200557103,0.952703434174694
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,client-004,local_client,0.704874651810585,0.965813232590521
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,client-005,local_client,0.8133704735376045,0.9367667033197971
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,client-006,local_client,0.8047353760445682,0.9451985407558959
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,client-007,local_client,0.8497214484679666,0.956964515232854
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,client-008,local_client,0.7151810584958217,0.9410265855082911
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,AVG Local,aggregate,0.7987465181058496,0.9557890519311513
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T20-14-55Z,PoE Ensemble,ensemble,0.8832869080779945,0.976874176051016
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,client-000,local_client,0.8725626740947076,0.989112877017442
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,client-001,local_client,0.8850974930362117,0.9889165355262013
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,client-002,local_client,0.8686629526462396,0.9690694412817966
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,client-003,local_client,0.7377437325905293,0.9669431586287287
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,client-004,local_client,0.7636490250696378,0.9761540502003913
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,client-005,local_client,0.8389972144846797,0.9313640479956445
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,client-006,local_client,0.7986072423398328,0.9462009936974015
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,client-007,local_client,0.8598885793871867,0.9717114685192263
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,client-008,local_client,0.7472144846796658,0.9614744193015805
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,AVG Local,aggregate,0.8191581553698546,0.9667718880187126
+medmnist:pathmnist | silos | 0.1 | 10 | diffusion | 128 | False | local,medmnist:pathmnist,silos,T00-45-04Z,PoE Ensemble,ensemble,0.8987465181058496,0.9887623304174767
